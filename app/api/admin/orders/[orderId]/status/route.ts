@@ -1,0 +1,80 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+import { sendOrderStatusNotification } from '@/lib/notifications';
+
+// PATCH /api/admin/orders/[orderId]/status - 更新訂單狀態
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: { orderId: string } }
+) {
+    try {
+        const { orderId } = params;
+        const { status } = await request.json();
+
+        // 驗證狀態值
+        const validStatuses = ['pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled'];
+        if (!validStatuses.includes(status)) {
+            return NextResponse.json(
+                { success: false, message: '無效的狀態值' },
+                { status: 400 }
+            );
+        }
+
+        // 先取得訂單資料（用於發送通知）
+        const { data: order, error: fetchError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('order_id', orderId)
+            .single();
+
+        if (fetchError || !order) {
+            return NextResponse.json(
+                { success: false, message: '找不到訂單' },
+                { status: 404 }
+            );
+        }
+
+        const oldStatus = order.status;
+
+        // 更新狀態
+        const { error: updateError } = await supabase
+            .from('orders')
+            .update({
+                status,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('order_id', orderId);
+
+        if (updateError) {
+            throw updateError;
+        }
+
+        // 發送狀態變更通知（非同步，不阻塞回應）
+        sendOrderStatusNotification({
+            orderId: order.order_id,
+            customerName: order.customer_name,
+            phone: order.phone,
+            email: order.email,
+            oldStatus,
+            newStatus: status,
+            pickupTime: order.pickup_time,
+            deliveryMethod: order.delivery_method || 'pickup',
+        }).catch((err) => {
+            console.error('發送狀態通知錯誤（不影響更新）:', err);
+        });
+
+        console.log(`訂單 ${orderId} 狀態更新: ${oldStatus} → ${status}`);
+
+        return NextResponse.json({
+            success: true,
+            message: `訂單狀態已更新為 ${status}`,
+            data: { orderId, oldStatus, newStatus: status },
+        });
+    } catch (error) {
+        console.error('更新訂單狀態錯誤:', error);
+        return NextResponse.json(
+            { success: false, message: '更新狀態失敗' },
+            { status: 500 }
+        );
+    }
+}

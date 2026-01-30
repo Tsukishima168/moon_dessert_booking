@@ -1,0 +1,142 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createOrder, OrderItem } from '@/lib/supabase';
+import { sendCustomerEmail, notifyNewOrder } from '@/lib/notifications';
+
+// POST /api/order - 建立新訂單
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // 驗證必要欄位
+    const { 
+      customer_name, 
+      phone, 
+      email, 
+      pickup_time, 
+      items, 
+      total_price,
+      promo_code,
+      discount_amount,
+      original_price,
+      final_price,
+      payment_date,
+      delivery_method,
+      delivery_address,
+      delivery_fee,
+      delivery_notes,
+    } = body;
+    
+    if (!customer_name || !phone || !pickup_time || !items || !total_price) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: '缺少必要欄位',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 驗證購物車不是空的
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: '購物車是空的',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 驗證手機號碼格式
+    const phoneRegex = /^[0-9]{8,12}$/;
+    if (!phoneRegex.test(phone.replace(/[\s-]/g, ''))) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: '手機號碼格式不正確',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 建立訂單
+    const result = await createOrder({
+      customer_name,
+      phone,
+      email,
+      pickup_time,
+      items: items as OrderItem[],
+      total_price: parseFloat(total_price),
+      promo_code,
+      discount_amount: discount_amount ? parseFloat(discount_amount) : 0,
+      original_price: original_price ? parseFloat(original_price) : parseFloat(total_price),
+      final_price: final_price ? parseFloat(final_price) : parseFloat(total_price),
+      payment_date,
+      delivery_method: delivery_method || 'pickup',
+      delivery_address: delivery_address || null,
+      delivery_fee: delivery_fee ? parseFloat(delivery_fee) : 0,
+      delivery_notes: delivery_notes || null,
+    });
+
+    // 發送通知（非同步，不阻塞回應）
+    const finalPriceValue = final_price ? parseFloat(final_price) : parseFloat(total_price);
+    const originalPriceValue = original_price ? parseFloat(original_price) : parseFloat(total_price);
+    const discountAmountValue = discount_amount ? parseFloat(discount_amount) : 0;
+
+    Promise.all([
+      // 1. 寄信給客戶（如果有提供 email）
+      email ? sendCustomerEmail({
+        to: email,
+        customerName: customer_name,
+        orderId: result.order_id,
+        items: items as OrderItem[],
+        totalPrice: finalPriceValue,
+        pickupTime: pickup_time,
+        promoCode: promo_code,
+        discountAmount: discountAmountValue,
+        originalPrice: originalPriceValue,
+        paymentDate: payment_date,
+        deliveryMethod: delivery_method || 'pickup',
+        deliveryAddress: delivery_address || null,
+        deliveryFee: delivery_fee ? parseFloat(delivery_fee) : 0,
+        deliveryNotes: delivery_notes || null,
+      }) : Promise.resolve(false),
+      
+      // 2. LINE 通知店家
+      notifyNewOrder({
+        orderId: result.order_id,
+        customerName: customer_name,
+        phone,
+        totalPrice: finalPriceValue,
+        pickupTime: pickup_time,
+        items: items as OrderItem[],
+        promoCode: promo_code,
+        discountAmount: discountAmountValue,
+        originalPrice: originalPriceValue,
+        paymentDate: payment_date,
+        deliveryMethod: delivery_method || 'pickup',
+        deliveryAddress: delivery_address || null,
+        deliveryFee: delivery_fee ? parseFloat(delivery_fee) : 0,
+        deliveryNotes: delivery_notes || null,
+      }),
+    ]).catch((error) => {
+      console.error('通知發送錯誤（不影響訂單）:', error);
+    });
+
+    return NextResponse.json({
+      success: true,
+      order_id: result.order_id,
+      message: '訂單建立成功！我們已收到您的預訂。',
+    });
+  } catch (error) {
+    console.error('API 錯誤 - 建立訂單:', error);
+    
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : '建立訂單失敗，請稍後再試',
+      },
+      { status: 500 }
+    );
+  }
+}
