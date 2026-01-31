@@ -257,10 +257,17 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* 推薦商品使用列表式 */}
-            <div className="border border-moon-border bg-moon-dark">
+            {/* 推薦商品列表 */}
+            {/* Mobile: List */}
+            <div className="md:hidden border border-moon-border bg-moon-dark">
               {recommendedItems.map((item) => (
                 <ProductListItem key={item.id} item={item} />
+              ))}
+            </div>
+            {/* Desktop: Grid */}
+            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {recommendedItems.map((item) => (
+                <ProductCard key={item.id} item={item} />
               ))}
             </div>
 
@@ -273,50 +280,70 @@ export default function HomePage() {
         )}
 
         {categories.length === 0 ? (
-          // 如果沒有分類，顯示所有商品 - 列表式
-          <div className="border border-moon-border bg-moon-dark">
-            {menuItems.map((item) => (
-              <ProductListItem key={item.id} item={item} />
-            ))}
-          </div>
+          // 如果沒有分類，顯示所有商品
+          <>
+            {/* Mobile: 列表式 */}
+            <div className="md:hidden border border-moon-border bg-moon-dark">
+              {menuItems.map((item) => (
+                <ProductListItem key={item.id} item={item} />
+              ))}
+            </div>
+            {/* Desktop: 卡片 Grid */}
+            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {menuItems.map((item) => (
+                <ProductCard key={item.id} item={item} />
+              ))}
+            </div>
+          </>
         ) : (
-          // 按分類分組顯示 - 列表式，可展開
-          <div className="space-y-8 sm:space-y-12">
+          // 按分類分組顯示
+          <div className="space-y-8 sm:space-y-16">
             {categories.map((category) => {
               const categoryItems = getItemsByCategory(category.id);
 
               // 如果該分類沒有商品，跳過
               if (categoryItems.length === 0) return null;
 
+              const isDrinkCategory =
+                category.name.toLowerCase().includes('drink') ||
+                category.name.includes('飲品') ||
+                category.name.includes('飲料');
+
               return (
                 <div key={category.id} className="category-section">
                   {/* 分類標題 */}
-                  <div className="mb-4 px-4 sm:px-0">
+                  <div className="mb-6 px-4 sm:px-0">
                     <div className="flex items-center gap-4 mb-2">
-                      <h2 className="text-lg sm:text-xl font-light text-moon-accent tracking-widest">
+                      {/* 裝飾線 - 左 */}
+                      <div className="hidden sm:block h-px bg-moon-border w-8"></div>
+                      <h2 className="text-lg sm:text-xl font-light text-moon-accent tracking-widest whitespace-nowrap">
                         {category.name.toUpperCase()}
                       </h2>
                       <div className="h-px bg-moon-border flex-1"></div>
                       <span className="text-xs text-moon-muted tracking-wider">
-                        {categoryItems.length} 項
+                        {categoryItems.length} ITEMS
                       </span>
                     </div>
-                    <p className="text-xs text-moon-muted/60 tracking-wide">
-                      點擊商品查看詳情並加入購物車
-                    </p>
                   </div>
 
-                  {/* 商品列表 - 可展開 */}
-                  <div className="border border-moon-border bg-moon-dark">
+                  {/* 商品列表 - Mobile (List) */}
+                  <div className="md:hidden border border-moon-border bg-moon-dark">
                     {categoryItems.map((item) => (
                       <ProductListItem
                         key={item.id}
                         item={item}
-                        displayOnly={
-                          category.name.toLowerCase().includes('drink') ||
-                          category.name.includes('飲品') ||
-                          category.name.includes('飲料')
-                        }
+                        displayOnly={isDrinkCategory}
+                      />
+                    ))}
+                  </div>
+
+                  {/* 商品列表 - Desktop (Grid) */}
+                  <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+                    {categoryItems.map((item) => (
+                      <ProductCard
+                        key={item.id}
+                        item={item}
+                        displayOnly={isDrinkCategory}
                       />
                     ))}
                   </div>

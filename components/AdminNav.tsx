@@ -13,7 +13,7 @@ export default function AdminNav() {
         { href: '/admin/settings', label: '營業設定', icon: Settings },
         // 未來功能
         // { href: '/admin/products', label: '產品管理', icon: Tag },
-        // { href: '/admin/promo-codes', label: '優惠碼', icon: Users },
+        { href: '/admin/promo-codes', label: '優惠碼', icon: Users },
         // { href: '/admin/analytics', label: '數據分析', icon: BarChart3 },
     ];
 

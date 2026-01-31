@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, User } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -35,34 +35,58 @@ export default function Navbar() {
             />
           </Link>
 
-          {/* 中間導航 */}
-          <div className="hidden md:flex items-center gap-8">
+          {/* 中間導航 - 月島網絡 */}
+          <div className="hidden md:flex items-center gap-6">
             <a
-              href="https://moon-map-original.vercel.app"
+              href="https://moonisland-map.vercel.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors"
+              className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors flex items-center gap-1"
             >
-              探索展覽
+              品牌地圖
             </a>
+            <a
+              href="https://kiwimu-mbti.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors flex items-center gap-1"
+            >
+              MBTI測驗
+            </a>
+            {/* Passport Link - 暫時導向登入頁，未來指向獨立 Passport App */}
+            <Link
+              href="/auth/login"
+              className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors flex items-center gap-1"
+            >
+              甜點護照
+            </Link>
           </div>
 
           {/* 購物車按鈕 */}
-          <button
-            onClick={toggleCart}
-            className="relative group"
-          >
-            <div className="bg-moon-gray border border-moon-border p-3 sm:p-4 rounded-none hover:bg-moon-border transition-all">
-              <ShoppingCart size={18} className="text-moon-text sm:w-5 sm:h-5" />
-            </div>
-            
-            {/* 商品數量徽章 */}
-            {totalItems > 0 && (
-              <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-moon-accent text-moon-black text-[10px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/auth/login"
+              className="bg-moon-black border border-moon-border p-3 sm:p-4 hover:bg-moon-border transition-all group"
+            >
+              <User size={18} className="text-moon-text sm:w-5 sm:h-5 group-hover:text-moon-accent transition-colors" />
+            </Link>
+
+            <button
+              onClick={toggleCart}
+              className="relative group"
+            >
+              <div className="bg-moon-gray border border-moon-border p-3 sm:p-4 rounded-none hover:bg-moon-border transition-all">
+                <ShoppingCart size={18} className="text-moon-text sm:w-5 sm:h-5" />
+              </div>
+
+              {/* 商品數量徽章 */}
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-moon-accent text-moon-black text-[10px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </nav>

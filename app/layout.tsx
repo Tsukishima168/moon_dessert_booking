@@ -5,6 +5,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import CartSidebar from '@/components/CartSidebar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
+import FacebookPixel from '@/components/FacebookPixel';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -135,6 +136,8 @@ export default function RootLayout({
       <body className={inter.variable}>
         {/* Google Analytics */}
         <GoogleAnalytics />
+        {/* Facebook Pixel */}
+        <FacebookPixel />
 
         <Navbar />
         <Suspense fallback={

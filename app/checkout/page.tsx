@@ -8,9 +8,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useCartStore } from '@/store/cartStore';
-import { Calendar, Phone, User, Loader2, CheckCircle, Mail, Tag, X } from 'lucide-react';
+import { Calendar, Phone, User, Loader2, CheckCircle, Mail, Tag, X, MapPin, LogIn } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { TAIWAN_CITIES } from '@/lib/taiwan-data';
+import { supabase } from '@/lib/supabase'; // Import Supabase
 
 interface CheckoutFormData {
   customer_name: string;
@@ -19,7 +21,10 @@ interface CheckoutFormData {
   delivery_method: 'pickup' | 'delivery';
   pickup_date: string;
   pickup_time: string;
-  delivery_address?: string;
+  delivery_city?: string;          // 縣市
+  delivery_district?: string;      // 區域
+  delivery_address_detail?: string; // 詳細地址
+  delivery_address?: string;       // 完整地址 (組合後)
   delivery_notes?: string;
   payment_date: string;
 }
@@ -51,16 +56,36 @@ export default function CheckoutPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [dateValidation, setDateValidation] = useState<{ valid: boolean; reason: string } | null>(null);
 
+  // 地址選擇狀態
+  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const districts = useMemo(() => {
+    return TAIWAN_CITIES.find(c => c.name === selectedCity)?.districts || [];
+  }, [selectedCity]);
+
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<CheckoutFormData>({
     defaultValues: {
       delivery_method: 'pickup',
     },
   });
+
+  // Auth State
+  const [loggedInUser, setLoggedInUser] = useState<{ email: string } | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setLoggedInUser({ email: session.user.email || '' });
+        setValue('email', session.user.email || '');
+      }
+    });
+  }, [setValue]);
 
   // 載入預訂規則
   useEffect(() => {
@@ -86,7 +111,7 @@ export default function CheckoutPage() {
 
   const totalPrice = getTotalPrice();
 
-  // 計算最早取貨日期（根據後台設定）
+  // 計算最早取貨日期 (Today + 3)
   const getMinPickupDate = () => {
     const date = new Date();
     const minDays = reservationRules?.min_advance_days || 3;
@@ -94,7 +119,7 @@ export default function CheckoutPage() {
     return date.toISOString().split('T')[0];
   };
 
-  // 計算最晚取貨日期（根據後台設定）
+  // 計算最晚取貨日期
   const getMaxPickupDate = () => {
     const date = new Date();
     const maxDays = reservationRules?.max_advance_days || 30;
@@ -103,33 +128,41 @@ export default function CheckoutPage() {
   };
 
   // 驗證選擇的日期
-  const validateSelectedDate = async (date: string) => {
-    if (!date) return;
+  const validateSelectedDate = async (dateStr: string) => {
+    if (!dateStr) return;
+    const date = new Date(dateStr);
+    const day = date.getDay(); // 0 is Sunday, 1 is Monday
 
-    try {
-      // 1. 驗證預訂規則
-      const validationResponse = await fetch(`/api/validate-reservation?date=${date}`);
-      if (validationResponse.ok) {
-        const result = await validationResponse.json();
-        setDateValidation(result);
-
-        if (!result.valid) {
-          return;
-        }
+    // 1. 星期限制
+    if (watchedDeliveryMethod === 'pickup') {
+      // 自取: 鎖週一
+      if (day === 1) {
+        setDateValidation({ valid: false, reason: '週一公休無法自取' });
+        return;
       }
+    } else {
+      // 宅配: 鎖週一、週日 (假設週日不配送)
+      if (day === 1 || day === 0) {
+        setDateValidation({ valid: false, reason: '宅配週日與週一無法到貨' });
+        return;
+      }
+    }
 
-      // 2. 檢查產能
-      const capacityResponse = await fetch(`/api/check-capacity?date=${date}&delivery_method=${watchedDeliveryMethod}`);
+    // 2. 產能與 API 驗證
+    try {
+      const capacityResponse = await fetch(`/api/check-capacity?date=${dateStr}&delivery_method=${watchedDeliveryMethod}`);
       if (capacityResponse.ok) {
         const capacity = await capacityResponse.json();
-
         if (!capacity.available) {
           setDateValidation({
             valid: false,
             reason: capacity.reason || '當日已達產能上限',
           });
+          return;
         }
       }
+      // 通過所有驗證
+      setDateValidation({ valid: true, reason: '' });
     } catch (error) {
       console.error('驗證日期錯誤:', error);
     }
@@ -144,169 +177,47 @@ export default function CheckoutPage() {
     }
   }, [watchedPickupDate, watchedDeliveryMethod]);
 
-  // 檢查日期是否可用
-  const isDateAvailable = (date: string): { available: boolean; reason?: string } => {
-    if (!date) return { available: false };
-
-    const dateInfo = availableDates[date];
-    if (dateInfo) {
-      return dateInfo;
-    }
-
-    // 如果沒有載入到該日期的資訊，預設允許（向後兼容）
-    return { available: true };
-  };
-
-  // 運費計算（固定150，滿2000免運）
+  // 運費計算
   const calculateDeliveryFee = (method: 'pickup' | 'delivery', subtotal: number): number => {
     if (method === 'pickup') return 0;
-    // 滿2000免運
     if (subtotal >= 2000) return 0;
-    return 150; // 固定運費
+    return 150;
   };
 
-  // 監聽取貨方式變化，重新計算總價
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery'>('pickup');
   const deliveryFee = calculateDeliveryFee(deliveryMethod, totalPrice);
   const finalPrice = getFinalPrice() + deliveryFee;
 
-  // 自動將舊的購物車價格字串（含 $、逗號）轉成數字，避免出現 NaN
   useEffect(() => {
     normalizePrices();
   }, [normalizePrices]);
 
-  // 載入可預訂日期列表
-  useEffect(() => {
-    const loadAvailableDates = async () => {
-      setLoadingDates(true);
-      try {
-        const minDate = getMinPickupDate();
-        const maxDate = new Date();
-        maxDate.setDate(maxDate.getDate() + 30); // 未來 30 天
-
-        const response = await fetch(
-          `/api/available-dates?start_date=${minDate}&end_date=${maxDate.toISOString().split('T')[0]}&delivery_method=${watchedDeliveryMethod || 'pickup'}`
-        );
-
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          const datesMap: Record<string, { available: boolean; reason?: string }> = {};
-          result.data.forEach((item: any) => {
-            datesMap[item.date] = {
-              available: item.available,
-              reason: item.reason,
-            };
-          });
-          setAvailableDates(datesMap);
-        }
-      } catch (error) {
-        console.error('載入可預訂日期錯誤:', error);
-        // 如果載入失敗，不限制日期（允許所有日期）
-      } finally {
-        setLoadingDates(false);
-      }
-    };
-
-    loadAvailableDates();
-  }, [watchedDeliveryMethod]);
-
-  // 給 LINE 匯款回報用的預設訊息
-  const lineReportMessage = useMemo(() => {
-    if (!orderSuccess || !orderId) return '';
-    const amount = confirmedAmount || finalPrice || totalPrice;
-    const name = confirmedName || '';
-    return [
-      '【月島甜點匯款回報】',
-      `訂單編號：${orderId}`,
-      name ? `訂購人：${name}` : '訂購人：',
-      `金額：$${amount}`,
-      '轉帳後五碼：_____',
-    ].join('\n');
-  }, [orderSuccess, orderId, confirmedAmount, finalPrice, totalPrice, confirmedName]);
-
-  // 如果購物車是空的
-  if (items.length === 0 && !orderSuccess) {
-    return (
-      <div className="min-h-screen bg-moon-black py-16">
-        <div className="max-w-2xl mx-auto px-6">
-          <div className="border border-moon-border bg-moon-dark p-16 text-center">
-            <div className="text-6xl mb-6 opacity-20">🛒</div>
-            <h2 className="text-2xl font-light text-moon-accent mb-4 tracking-wide">
-              YOUR CART IS EMPTY
-            </h2>
-            <p className="text-sm text-moon-muted mb-8 leading-relaxed">
-              Please add items to your cart before checkout
-            </p>
-            <Link href="/">
-              <button className="border border-moon-border text-moon-text px-8 py-3 text-sm tracking-widest hover:bg-moon-border transition-colors">
-                BACK TO SHOP
-              </button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 驗證優惠碼
-  const handleValidatePromo = async () => {
-    if (!promoInput.trim()) {
-      setPromoError('請輸入優惠碼');
+  // 提交訂單
+  const onSubmit = async (data: CheckoutFormData) => {
+    if (dateValidation && !dateValidation.valid) {
+      alert(dateValidation.reason);
       return;
     }
 
-    setPromoLoading(true);
-    setPromoError('');
-
-    try {
-      const response = await fetch('/api/promo-code/validate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code: promoInput.toUpperCase().trim(),
-          orderAmount: totalPrice,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success && result.data.valid) {
-        setPromoCode(promoInput.toUpperCase().trim(), result.data.discount_amount);
-        setPromoInput('');
-        setPromoError('');
-      } else {
-        setPromoError(result.data?.message || '優惠碼無效');
-      }
-    } catch (error) {
-      console.error('驗證優惠碼錯誤:', error);
-      setPromoError('驗證失敗，請稍後再試');
-    } finally {
-      setPromoLoading(false);
-    }
-  };
-
-  // 提交訂單
-  const onSubmit = async (data: CheckoutFormData) => {
     setIsSubmitting(true);
 
     try {
-      const pickup_time = data.delivery_method === 'pickup'
-        ? `${data.pickup_date} ${data.pickup_time}`
-        : null;
+      // 組合地址
+      let finalAddress = null;
+      if (data.delivery_method === 'delivery') {
+        finalAddress = `${data.delivery_city}${data.delivery_district}${data.delivery_address_detail}`;
+      } else {
+        finalAddress = '月島甜點店 台南市安南區本原街一段97巷';
+      }
 
       const response = await fetch('/api/order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer_name: data.customer_name,
           phone: data.phone,
           email: data.email,
-          pickup_time: pickup_time || `${data.pickup_date} ${data.pickup_time}`, // 宅配也記錄預計出貨日期
+          pickup_time: data.pickup_date ? `${data.pickup_date} ${data.pickup_time}` : `${data.pickup_date} 00:00`,
           items: items.map((item) => ({
             id: item.id,
             name: item.name,
@@ -319,118 +230,112 @@ export default function CheckoutPage() {
           discount_amount: discountAmount,
           original_price: totalPrice,
           final_price: finalPrice,
-          payment_date: data.payment_date,
-          delivery_method: data.delivery_method || 'pickup',
-          delivery_address: data.delivery_method === 'delivery' ? data.delivery_address : null,
+          delivery_method: data.delivery_method,
+          delivery_address: finalAddress,
           delivery_fee: data.delivery_method === 'delivery' ? deliveryFee : 0,
-          delivery_notes: data.delivery_method === 'delivery' ? (data.delivery_notes || null) : null,
+          delivery_notes: data.delivery_notes,
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        setOrderId(result.order_id);
-        setConfirmedName(data.customer_name);
-        setConfirmedAmount(finalPrice);
+        const newOrderId = result.order_id;
+        setOrderId(newOrderId);
         setOrderSuccess(true);
         clearCart();
 
+        // 6. Build LINE message with payment info (Referencing moon_map_original)
+        let msg = `【月島甜點訂單確認】\n`;
+        msg += `訂單編號：${newOrderId}\n`;
+        msg += `訂購人：${data.customer_name} (${data.phone})\n`;
+        msg += `總金額：$${finalPrice}\n`;
+        msg += `取貨日期：${data.pickup_date}\n`;
+        if (data.delivery_method === 'delivery') {
+          msg += `配送地址：${finalAddress}\n`;
+        } else {
+          msg += `取貨時間：${data.pickup_time}\n`;
+        }
+
+        msg += `\n訂購內容：\n`;
+        items.forEach(item => {
+          msg += `● ${item.name} | ${item.variant_name || '單一規格'} x ${item.quantity}\n`;
+        });
+
+        if (data.delivery_notes) msg += `\n備註：${data.delivery_notes}`;
+
+        msg += `\n\n付款方式：\n`;
+        msg += `LINE Bank (824) 連線商業銀行\n`;
+        msg += `帳號：111007479473\n`;
+        msg += `備註欄請填寫：${newOrderId}\n`;
+        msg += `\n付款完成後請回傳「後五碼」\n`;
+        msg += `   （轉帳通知中的後五碼數字）`;
+
+        // 7. Redirect to LINE (oaMessage)
+        const encodedMsg = encodeURIComponent(msg);
+        const lineUrl = `https://line.me/R/oaMessage/@931cxefd/?text=${encodedMsg}`;
+
+        // 成功後直接跳轉 LINE OA
         setTimeout(() => {
-          router.push('/');
-        }, 5000);
+          window.location.href = lineUrl;
+        }, 1500);
+
       } else {
         alert(`訂單失敗：${result.message}`);
       }
     } catch (error) {
-      console.error('提交訂單錯誤:', error);
-      alert('系統錯誤，請稍後再試');
+      console.error('訂單錯誤:', error);
+      alert('系統錯誤，請重試');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCopyLineMessage = async () => {
-    if (!lineReportMessage) return;
+  // 驗證優惠碼邏輯 (略過 UI 顯示部分直接用)
+  const handleValidatePromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true);
     try {
-      await navigator.clipboard.writeText(lineReportMessage);
-      alert('已複製匯款回報內容，請到 LINE 貼上並填寫後五碼。');
-    } catch (error) {
-      console.error('複製失敗', error);
-      alert('複製失敗，請手動選取文字複製。');
-    }
+      const response = await fetch('/api/promo-code/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoInput.toUpperCase().trim(), orderAmount: totalPrice }),
+      });
+      const result = await response.json();
+      if (result.success && result.data.valid) {
+        setPromoCode(promoInput.toUpperCase().trim(), result.data.discount_amount);
+        setPromoInput(''); setPromoError('');
+      } else {
+        setPromoError(result.data?.message || '優惠碼無效');
+      }
+    } catch (error) { setPromoError('驗證失敗'); }
+    finally { setPromoLoading(false); }
   };
 
-  const handleOpenLine = () => {
-    if (!lineReportMessage) return;
-    const url = `https://line.me/R/msg/text/?${encodeURIComponent(lineReportMessage)}`;
-    window.location.href = url;
-  };
-
-  // 訂單成功畫面
+  // 成功畫面 (雖然會快速跳轉，但還是保留 UI)
   if (orderSuccess) {
     return (
-      <div className="min-h-screen bg-moon-black py-16 flex items-center justify-center">
-        <div className="max-w-2xl mx-auto px-6">
-          <div className="border border-moon-border bg-moon-dark p-16 text-center">
-            <div className="mb-6 flex justify-center">
-              <Image
-                src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1768736617/mbti_%E5%B7%A5%E4%BD%9C%E5%8D%80%E5%9F%9F_1_zpt5jq.webp"
-                alt="Kiwimu"
-                width={80}
-                height={80}
-                className="h-16 w-auto"
-              />
-            </div>
-            <CheckCircle size={48} className="text-moon-accent mx-auto mb-4" strokeWidth={1} />
-            <h2 className="text-2xl sm:text-3xl font-light text-moon-accent mb-6 tracking-wider">
-              ORDER CONFIRMED
-            </h2>
-            <p className="text-sm text-moon-muted mb-2 tracking-wide">
-              Order ID
-            </p>
-            <p className="font-mono text-moon-accent mb-8 tracking-wider">
-              {orderId}
-            </p>
-            <div className="border-t border-moon-border pt-8 mb-8 space-y-4 text-left sm:text-center">
-              <p className="text-xs text-moon-muted leading-relaxed">
-                我們已收到您的訂單，請在兩天內完成轉帳，並透過 LINE 回報以下資訊：
-              </p>
-              {lineReportMessage && (
-                <pre className="bg-moon-black border border-moon-border text-left text-xs text-moon-text p-4 whitespace-pre-wrap break-words">
-                  {lineReportMessage}
-                </pre>
-              )}
-              <div className="flex flex-col sm:flex-row gap-3 sm:justify-center">
-                <button
-                  type="button"
-                  onClick={handleCopyLineMessage}
-                  className="flex-1 sm:flex-none border border-moon-border text-moon-text px-4 py-2 text-xs tracking-widest hover:bg-moon-border transition-colors"
-                >
-                  複製回報內容
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenLine}
-                  className="flex-1 sm:flex-none bg-moon-accent text-moon-black px-4 py-2 text-xs tracking-widest hover:bg-moon-text transition-colors"
-                >
-                  打開 LINE 回報
-                </button>
-              </div>
-            </div>
-            <Link href="/">
-              <button className="border border-moon-border text-moon-text px-8 py-3 text-sm tracking-widest hover:bg-moon-border transition-colors">
-                BACK TO SHOP
-              </button>
-            </Link>
-            <p className="text-xs text-moon-muted/60 mt-6">Redirecting in 5 seconds...</p>
-          </div>
+      <div className="min-h-screen bg-moon-black flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="animate-spin w-12 h-12 text-moon-accent mx-auto" />
+          <h2 className="text-xl text-moon-accent tracking-wider">正在前往 LINE 完成訂單確認...</h2>
+          <p className="text-moon-muted text-sm">如果沒有自動跳轉，請<a href="https://line.me/R/ti/p/@838jomhj" className="underline text-white">點擊這裡</a></p>
         </div>
       </div>
     );
   }
 
-  // 結帳表單
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen bg-moon-black py-16 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-light text-moon-accent mb-4">YOUR CART IS EMPTY</h2>
+          <Link href="/"><button className="border border-moon-border px-8 py-3 text-moon-text hover:bg-moon-border">BACK TO SHOP</button></Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-moon-black py-8 sm:py-12 lg:py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -439,515 +344,214 @@ export default function CheckoutPage() {
         </h1>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* 左側：訂單資訊 */}
+          {/* 左側：訂單總覽 */}
           <div>
-            <div className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8">
-              <h2 className="text-lg sm:text-xl font-light text-moon-accent mb-6 sm:mb-8 tracking-wider">
-                ORDER SUMMARY
-              </h2>
-
-              <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
+            <div className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 sticky top-24">
+              <h2 className="text-lg sm:text-xl font-light text-moon-accent mb-6 sm:mb-8 tracking-wider">ORDER SUMMARY</h2>
+              {/* Product List */}
+              <div className="space-y-4 mb-6">
                 {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-moon-border last:border-0"
-                  >
-                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-moon-gray">
-                      {item.image_url ? (
-                        <Image
-                          src={item.image_url}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="80px"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-2xl opacity-20">
-                          🍰
-                        </div>
-                      )}
+                  <div key={item.id} className="flex gap-4 border-b border-moon-border pb-4 last:border-0">
+                    <div className="relative w-16 h-16 bg-moon-gray flex-shrink-0">
+                      {item.image_url && <Image src={item.image_url} alt={item.name} fill className="object-cover" />}
                     </div>
-
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm sm:text-base font-light text-moon-accent mb-1 tracking-wide truncate">
-                        {item.name}
-                      </h3>
-                      {item.variant_name && (
-                        <p className="text-[10px] sm:text-xs text-moon-muted mb-1 sm:mb-2 tracking-wider">
-                          {item.variant_name}
-                        </p>
-                      )}
-                      <p className="text-xs sm:text-sm text-moon-muted">
-                        ${item.price} × {item.quantity}
-                      </p>
+                    <div className="flex-1">
+                      <h3 className="text-sm text-moon-accent">{item.name}</h3>
+                      <p className="text-xs text-moon-muted">{item.variant_name}</p>
+                      <p className="text-xs text-moon-muted">${item.price} x {item.quantity}</p>
                     </div>
-
-                    <div className="text-sm sm:text-base font-light text-moon-accent">
-                      ${item.price * item.quantity}
-                    </div>
+                    <div className="text-sm text-moon-accent">${item.price * item.quantity}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-moon-border pt-4 sm:pt-6 space-y-3">
-                {/* 小計 */}
-                <div className="flex justify-between items-baseline text-moon-muted">
-                  <span className="text-xs tracking-widest">SUBTOTAL</span>
-                  <span className="text-sm">${totalPrice}</span>
-                </div>
-
-                {/* 優惠折扣 */}
-                {promoCode && discountAmount > 0 && (
-                  <div className="flex justify-between items-baseline text-moon-accent">
-                    <span className="text-xs tracking-widest">
-                      DISCOUNT ({promoCode})
-                    </span>
-                    <span className="text-sm">-${discountAmount}</span>
-                  </div>
+              {/* Totals */}
+              <div className="space-y-2 pt-4 border-t border-moon-border">
+                <div className="flex justify-between text-moon-muted text-sm"><span>SUBTOTAL</span><span>${totalPrice}</span></div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-moon-accent text-sm"><span>DISCOUNT</span><span>-${discountAmount}</span></div>
                 )}
-
-                {/* 運費 */}
                 {watchedDeliveryMethod === 'delivery' && (
-                  <div className="flex justify-between items-baseline text-moon-muted">
-                    <span className="text-xs tracking-widest">
-                      運費 {deliveryFee === 0 && totalPrice >= 2000 && '(滿額免運)'}
-                    </span>
-                    <span className="text-sm">
-                      {deliveryFee === 0 ? '免費' : `$${deliveryFee}`}
-                    </span>
-                  </div>
+                  <div className="flex justify-between text-moon-muted text-sm"><span>SHIPPING</span><span>${deliveryFee}</span></div>
                 )}
-
-                {/* 總計 */}
-                <div className="flex justify-between items-baseline pt-3 border-t border-moon-border">
-                  <span className="text-xs sm:text-sm tracking-widest text-moon-muted">TOTAL</span>
-                  <span className="text-2xl sm:text-3xl font-light text-moon-accent tracking-wide">
-                    <span className="text-lg sm:text-xl mr-1">$</span>{finalPrice}
-                  </span>
+                <div className="flex justify-between text-moon-accent text-xl pt-2 border-t border-moon-border mt-2">
+                  <span>TOTAL</span><span>${finalPrice}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 右側：顧客資訊表單 */}
+          {/* 右側：表單 */}
           <div>
-            <div className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8">
-              <h2 className="text-lg sm:text-xl font-light text-moon-accent mb-6 sm:mb-8 tracking-wider">
-                YOUR INFORMATION
-              </h2>
+            <form onSubmit={handleSubmit(onSubmit)} className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 space-y-6">
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-                {/* 優惠碼區塊 */}
-                <div className="bg-moon-black border border-moon-border p-4">
-                  <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                    <Tag size={14} className="inline mr-2" />
-                    PROMO CODE
-                  </label>
+              {/* Promo Code */}
+              <div className="space-y-2">
+                <label className="text-xs tracking-widest text-moon-muted flex items-center gap-2"><Tag size={12} /> PROMO CODE</label>
+                <div className="flex gap-2">
+                  <input
+                    value={promoInput}
+                    onChange={e => setPromoInput(e.target.value)}
+                    className="flex-1 bg-moon-black border border-moon-border px-3 py-2 text-white uppercase text-sm focus:border-moon-accent outline-none"
+                    placeholder="Enter code"
+                  />
+                  <button type="button" onClick={handleValidatePromo} className="px-4 bg-moon-gray text-white text-xs hover:bg-white hover:text-black transition-colors">APPLY</button>
+                </div>
+                {promoCode && <p className="text-xs text-moon-accent">Applied: {promoCode}</p>}
+                {promoError && <p className="text-xs text-red-400">{promoError}</p>}
+              </div>
 
-                  {promoCode ? (
-                    // 已套用優惠碼
-                    <div className="flex items-center justify-between bg-moon-accent/10 border border-moon-accent px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Tag size={16} className="text-moon-accent" />
-                        <span className="text-sm text-moon-accent tracking-wider">{promoCode}</span>
-                        <span className="text-xs text-moon-muted">(-${discountAmount})</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={clearPromoCode}
-                        className="text-moon-muted hover:text-moon-accent transition-colors"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
+              {/* Personal Info */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-moon-border pb-2">
+                  <h3 className="text-sm font-light text-moon-accent">CONTACT INFO</h3>
+                  {loggedInUser ? (
+                    <span className="text-xs text-moon-accent bg-moon-accent/10 px-2 py-1 rounded flex items-center gap-1">
+                      <User size={12} /> 会員: {loggedInUser.email}
+                    </span>
                   ) : (
-                    // 優惠碼輸入
-                    <div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={promoInput}
-                          onChange={(e) => {
-                            setPromoInput(e.target.value.toUpperCase());
-                            setPromoError('');
-                          }}
-                          placeholder="Enter code"
-                          className="flex-1 px-4 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:border-moon-muted focus:outline-none transition-colors uppercase"
-                          disabled={promoLoading}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleValidatePromo}
-                          disabled={promoLoading || !promoInput.trim()}
-                          className="px-6 py-2 bg-moon-gray border border-moon-border text-moon-text text-xs tracking-widest hover:bg-moon-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {promoLoading ? (
-                            <Loader2 className="animate-spin" size={14} />
-                          ) : (
-                            'APPLY'
-                          )}
-                        </button>
-                      </div>
-                      {promoError && (
-                        <p className="text-red-400 text-xs mt-2">{promoError}</p>
-                      )}
-                    </div>
+                    <Link href="/auth/login" className="text-xs text-moon-muted hover:text-white flex items-center gap-1 underline decoration-dotted">
+                      <LogIn size={12} /> 已經是會員？登入
+                    </Link>
                   )}
                 </div>
-
-                {/* 姓名 */}
                 <div>
-                  <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                    NAME *
-                  </label>
-                  <input
-                    {...register('customer_name', {
-                      required: '請輸入姓名',
-                      minLength: { value: 2, message: '姓名至少 2 個字' },
-                    })}
-                    type="text"
-                    className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors"
-                    placeholder="Your name"
-                  />
-                  {errors.customer_name && (
-                    <p className="text-red-400 text-xs mt-2">
-                      {errors.customer_name.message}
-                    </p>
-                  )}
+                  <label className="text-xs text-moon-muted block mb-1">NAME *</label>
+                  <input {...register('customer_name', { required: true })} className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none" />
                 </div>
-
-                {/* 手機號碼 */}
                 <div>
-                  <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                    PHONE *
-                  </label>
-                  <input
-                    {...register('phone', {
-                      required: '請輸入手機號碼',
-                      pattern: {
-                        value: /^[0-9]{8,12}$/,
-                        message: '請輸入有效的手機號碼',
-                      },
-                    })}
-                    type="tel"
-                    className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors"
-                    placeholder="0912345678"
-                  />
-                  {errors.phone && (
-                    <p className="text-red-400 text-xs mt-2">
-                      {errors.phone.message}
-                    </p>
-                  )}
+                  <label className="text-xs text-moon-muted block mb-1">PHONE *</label>
+                  <input type="tel" {...register('phone', { required: true })} className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none" />
                 </div>
-
-                {/* Email */}
                 <div>
-                  <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                    EMAIL (Optional)
-                  </label>
+                  <label className="text-xs text-moon-muted block mb-1">EMAIL <span className="text-moon-accent">*</span></label>
                   <input
-                    {...register('email', {
-                      pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                        message: '請輸入有效的 Email',
-                      },
-                    })}
                     type="email"
-                    className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors"
-                    placeholder="your@email.com"
+                    {...register('email', { required: true })}
+                    placeholder="請填寫正確 Email 以接收訂單確認信"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-600"
                   />
-                  {errors.email && (
-                    <p className="text-red-400 text-xs mt-2">
-                      {errors.email.message}
-                    </p>
-                  )}
-                  <p className="text-xs text-moon-muted/60 mt-2">
-                    For order confirmation & payment details
+                  <p className="text-[10px] text-moon-muted mt-1">
+                    * 訂單確認信與匯款帳號將寄送至此信箱
                   </p>
                 </div>
+              </div>
 
-                {/* 取貨方式 */}
-                <div className="bg-moon-black/50 border border-moon-border p-4">
-                  <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                    📦 取貨方式 *
+              {/* Delivery Method */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-light text-moon-accent border-b border-moon-border pb-2">DELIVERY METHOD</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <label className={`border p-4 cursor-pointer text-center transition-all ${watchedDeliveryMethod === 'pickup' ? 'border-moon-accent bg-moon-accent/10' : 'border-moon-border'}`}>
+                    <input type="radio" value="pickup" {...register('delivery_method')} className="sr-only" />
+                    <div className="text-xl mb-1">🏪</div>
+                    <div className="text-xs">門市自取</div>
                   </label>
-                  <div className="flex gap-3">
-                    <label className="flex-1 cursor-pointer">
-                      <input
-                        {...register('delivery_method', {
-                          required: '請選擇取貨方式',
-                        })}
-                        type="radio"
-                        value="pickup"
-                        onChange={(e) => setDeliveryMethod(e.target.value as 'pickup' | 'delivery')}
-                        className="sr-only"
-                      />
-                      <div className={`
-                        border p-4 text-center transition-all
-                        ${watchedDeliveryMethod === 'pickup'
-                          ? 'border-moon-accent bg-moon-accent/10'
-                          : 'border-moon-border hover:border-moon-muted'
-                        }
-                      `}>
-                        <div className="text-2xl mb-2">🏪</div>
-                        <div className="text-xs tracking-wider">門市自取</div>
-                      </div>
-                    </label>
-                    <label className="flex-1 cursor-pointer">
-                      <input
-                        {...register('delivery_method', {
-                          required: '請選擇取貨方式',
-                        })}
-                        type="radio"
-                        value="delivery"
-                        className="sr-only"
-                      />
-                      <div className={`
-                        border p-4 text-center transition-all
-                        ${watchedDeliveryMethod === 'delivery'
-                          ? 'border-moon-accent bg-moon-accent/10'
-                          : 'border-moon-border hover:border-moon-muted'
-                        }
-                      `}>
-                        <div className="text-2xl mb-2">🚚</div>
-                        <div className="text-xs tracking-wider">宅配</div>
-                        {watchedDeliveryMethod === 'delivery' && deliveryFee > 0 && (
-                          <div className="text-[10px] text-moon-muted mt-1">
-                            運費 ${deliveryFee}
-                          </div>
-                        )}
-                        {watchedDeliveryMethod === 'delivery' && deliveryFee === 0 && totalPrice >= 2000 && (
-                          <div className="text-[10px] text-moon-accent mt-1">
-                            滿額免運
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  </div>
-                  {errors.delivery_method && (
-                    <p className="text-red-400 text-xs mt-2">
-                      {errors.delivery_method.message}
-                    </p>
-                  )}
+                  <label className={`border p-4 cursor-pointer text-center transition-all ${watchedDeliveryMethod === 'delivery' ? 'border-moon-accent bg-moon-accent/10' : 'border-moon-border'}`}>
+                    <input type="radio" value="delivery" {...register('delivery_method')} className="sr-only" />
+                    <div className="text-xl mb-1">🚚</div>
+                    <div className="text-xs">宅配 (+$150)</div>
+                  </label>
                 </div>
+              </div>
 
-                {/* 門市自取：日期和時間 */}
+              {/* Date Selection */}
+              <div className="space-y-4">
+                <label className="text-xs text-moon-muted block mb-1">
+                  {watchedDeliveryMethod === 'pickup' ? 'PICKUP DATE *' : 'DESIRED DELIVERY DATE *'}
+                </label>
+                <input
+                  type="date"
+                  {...register('pickup_date', {
+                    required: true,
+                    validate: () => dateValidation?.valid || dateValidation?.reason
+                  })}
+                  min={getMinPickupDate()} // Enforce today + 3
+                  max={getMaxPickupDate()}
+                  className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                />
+
+                {/* Date Validation Hints */}
+                {dateValidation && !dateValidation.valid && <p className="text-xs text-red-400 mt-1">{dateValidation.reason}</p>}
+                {!dateValidation && <p className="text-xs text-moon-muted mt-1">
+                  {watchedDeliveryMethod === 'pickup' ? '週一公休' : '週日、週一不配送'} • 需提前 3 天預訂
+                </p>}
+
                 {watchedDeliveryMethod === 'pickup' && (
-                  <>
-                    <div>
-                      <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                        取貨日期 *
-                      </label>
-                      <input
-                        {...register('pickup_date', {
-                          required: '請選擇取貨日期',
-                          validate: (value) => {
-                            const dateInfo = isDateAvailable(value);
-                            if (!dateInfo.available) {
-                              return dateInfo.reason || '此日期無法預訂';
-                            }
-                            return true;
-                          },
-                        })}
-                        type="date"
-                        min={getMinPickupDate()}
-                        max={getMaxPickupDate()}
-                        className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors"
-                      />
-                      {errors.pickup_date && (
-                        <p className="text-red-400 text-xs mt-2">
-                          {errors.pickup_date.message}
-                        </p>
-                      )}
-                      {dateValidation && !dateValidation.valid && (
-                        <p className="text-xs text-red-400 mt-2">
-                          ✗ {dateValidation.reason}
-                        </p>
-                      )}
-                      {dateValidation && dateValidation.valid && watch('pickup_date') && (
-                        <p className="text-xs text-moon-accent/80 mt-2">
-                          ✓ 此日期可預訂
-                        </p>
-                      )}
-                      {!watch('pickup_date') && reservationRules && (
-                        <p className="text-xs text-moon-muted/60 mt-2">
-                          📅 需提前 {reservationRules.min_advance_days || 3} 天預訂
-                          {reservationRules.allow_rush_orders && ` (急單可加價 ${reservationRules.rush_order_fee_percentage}%)`}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                        取貨時間 *
-                      </label>
-                      <select
-                        {...register('pickup_time', {
-                          required: '請選擇取貨時間',
-                        })}
-                        className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors"
-                      >
-                        <option value="">Select time slot</option>
-                        <option value="10:00-11:00">10:00 - 11:00</option>
-                        <option value="11:00-12:00">11:00 - 12:00</option>
-                        <option value="12:00-13:00">12:00 - 13:00</option>
-                        <option value="13:00-14:00">13:00 - 14:00</option>
-                        <option value="14:00-15:00">14:00 - 15:00</option>
-                        <option value="15:00-16:00">15:00 - 16:00</option>
-                        <option value="16:00-17:00">16:00 - 17:00</option>
-                        <option value="17:00-18:00">17:00 - 18:00</option>
-                        <option value="18:00-19:00">18:00 - 19:00</option>
-                      </select>
-                      {errors.pickup_time && (
-                        <p className="text-red-400 text-xs mt-2">
-                          {errors.pickup_time.message}
-                        </p>
-                      )}
-                    </div>
-                  </>
+                  <div>
+                    <label className="text-xs text-moon-muted block mb-1">PICKUP TIME *</label>
+                    <select {...register('pickup_time')} className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none">
+                      <option value="12:00-13:00">12:00 - 13:00</option>
+                      <option value="13:00-14:00">13:00 - 14:00</option>
+                      <option value="14:00-15:00">14:00 - 15:00</option>
+                      <option value="15:00-16:00">15:00 - 16:00</option>
+                      <option value="16:00-17:00">16:00 - 17:00</option>
+                      <option value="17:00-18:00">17:00 - 18:00</option>
+                    </select>
+                  </div>
                 )}
+              </div>
 
-                {/* 宅配：地址和備註 */}
-                {watchedDeliveryMethod === 'delivery' && (
-                  <>
+              {/* Address Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-light text-moon-accent border-b border-moon-border pb-2">
+                  {watchedDeliveryMethod === 'pickup' ? 'PICKUP ADDRESS' : 'SHIPPING ADDRESS'}
+                </h3>
+
+                {watchedDeliveryMethod === 'pickup' ? (
+                  <div className="bg-moon-black/50 p-4 border border-moon-border flex items-start gap-3">
+                    <MapPin className="text-moon-accent mt-1" size={16} />
                     <div>
-                      <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                        預計出貨日期 *
-                      </label>
-                      <input
-                        {...register('pickup_date', {
-                          required: '請選擇預計出貨日期',
-                          validate: (value) => {
-                            const dateInfo = isDateAvailable(value);
-                            if (!dateInfo.available) {
-                              return dateInfo.reason || '此日期無法預訂';
-                            }
-                            return true;
-                          },
-                        })}
-                        type="date"
-                        min={getMinPickupDate()}
-                        max={getMaxPickupDate()}
-                        className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors"
-                      />
-                      {errors.pickup_date && (
-                        <p className="text-red-400 text-xs mt-2">
-                          {errors.pickup_date.message}
-                        </p>
-                      )}
-                      {watch('pickup_date') && isDateAvailable(watch('pickup_date')).available && (
-                        <p className="text-xs text-moon-accent/80 mt-2">
-                          ✓ 此日期可出貨
-                        </p>
-                      )}
-                      {watch('pickup_date') && !isDateAvailable(watch('pickup_date')).available && (
-                        <p className="text-xs text-red-400 mt-2">
-                          ✗ {isDateAvailable(watch('pickup_date')).reason || '此日期無法出貨'}
-                        </p>
-                      )}
-                      {!watch('pickup_date') && (
-                        <p className="text-xs text-moon-muted/60 mt-2">
-                          最早可預訂日期為 {getMinPickupDate()}（今天起三天後）
-                          {loadingDates && <span className="ml-2">載入中...</span>}
-                        </p>
-                      )}
+                      <p className="text-white text-sm">月島甜點店</p>
+                      <p className="text-moon-muted text-xs">台南市安南區本原街一段97巷</p>
                     </div>
-
-                    <div>
-                      <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                        取貨時間（宅配時段）
-                      </label>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
                       <select
-                        {...register('pickup_time', {
-                          required: false,
-                        })}
-                        className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors"
+                        {...register('delivery_city', { required: true })}
+                        onChange={(e) => {
+                          setSelectedCity(e.target.value);
+                          setSelectedDistrict(''); // reset district
+                        }}
+                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
                       >
-                        <option value="不指定">不指定時段</option>
-                        <option value="上午">上午 (09:00-12:00)</option>
-                        <option value="下午">下午 (12:00-18:00)</option>
-                        <option value="晚上">晚上 (18:00-21:00)</option>
+                        <option value="">選擇縣市</option>
+                        {TAIWAN_CITIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      </select>
+                      <select
+                        {...register('delivery_district', { required: true })}
+                        onChange={(e) => setSelectedDistrict(e.target.value)}
+                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                      >
+                        <option value="">選擇區域</option>
+                        {districts.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
-
-                    <div>
-                      <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                        收件地址 *
-                      </label>
-                      <textarea
-                        {...register('delivery_address', {
-                          required: deliveryMethod === 'delivery' ? '請輸入收件地址' : false,
-                          minLength: { value: 10, message: '地址至少 10 個字' },
-                        })}
-                        rows={3}
-                        className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors resize-none"
-                        placeholder="請輸入完整地址（含郵遞區號）"
-                      />
-                      {errors.delivery_address && (
-                        <p className="text-red-400 text-xs mt-2">
-                          {errors.delivery_address.message}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs tracking-widest text-moon-muted mb-3">
-                        宅配備註（選填）
-                      </label>
-                      <textarea
-                        {...register('delivery_notes')}
-                        rows={2}
-                        className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors resize-none"
-                        placeholder="例如：請放管理室、請按門鈴等"
-                      />
-                    </div>
-                  </>
+                    <input
+                      {...register('delivery_address_detail', { required: true })}
+                      placeholder="請輸入詳細地址 (街道/巷弄/門牌)"
+                      className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                    />
+                    <textarea
+                      {...register('delivery_notes')}
+                      placeholder="備註 (選填)"
+                      rows={2}
+                      className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                    />
+                  </div>
                 )}
+              </div>
 
-                {/* 預計轉帳日期 */}
-                <div className="bg-moon-black/50 border border-moon-accent/30 p-4 rounded">
-                  <label className="block text-xs tracking-widest text-moon-accent mb-3">
-                    💳 預計轉帳日期 *
-                  </label>
-                  <input
-                    {...register('payment_date', {
-                      required: '請選擇預計轉帳日期',
-                    })}
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-accent focus:outline-none transition-colors"
-                  />
-                  {errors.payment_date && (
-                    <p className="text-red-400 text-xs mt-2">
-                      {errors.payment_date.message}
-                    </p>
-                  )}
-                  <p className="text-xs text-moon-muted/80 mt-2 leading-relaxed">
-                    請選擇您預計完成轉帳的日期，方便我們追蹤訂單狀態
-                  </p>
-                </div>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-white transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? 'PROCESSING...' : `PLACE ORDER • $${finalPrice}`}
+              </button>
 
-                {/* 提交按鈕 */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-moon-accent text-moon-black py-3 sm:py-4 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:gap-3 mt-6 sm:mt-8"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="animate-spin" size={16} />
-                      <span className="hidden sm:inline">PROCESSING...</span>
-                      <span className="sm:hidden">處理中...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="hidden sm:inline">PLACE ORDER</span>
-                      <span className="sm:hidden">確認訂單</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
+            </form>
           </div>
         </div>
       </div>

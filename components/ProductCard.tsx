@@ -8,9 +8,10 @@ import { useCartStore } from '@/store/cartStore';
 
 interface ProductCardProps {
   item: MenuItemWithVariants;
+  displayOnly?: boolean;
 }
 
-export default function ProductCard({ item }: ProductCardProps) {
+export default function ProductCard({ item, displayOnly = false }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
   const openCart = useCartStore((state) => state.openCart);
   const [selectedVariant, setSelectedVariant] = useState(item.variants[0]);
@@ -80,7 +81,7 @@ export default function ProductCard({ item }: ProductCardProps) {
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-6xl opacity-20">🍰</span>
         </div>
-        
+
         {/* 分類標籤 */}
         <div className="absolute top-4 left-4">
           <span className="text-xs tracking-widest text-moon-muted border border-moon-border bg-moon-black/80 px-3 py-1 backdrop-blur-sm">
@@ -94,7 +95,7 @@ export default function ProductCard({ item }: ProductCardProps) {
         <h3 className="text-lg sm:text-xl font-light text-moon-accent tracking-wide mb-2 sm:mb-3">
           {item.name}
         </h3>
-        
+
         <p className="text-xs sm:text-sm text-moon-muted leading-relaxed mb-4 sm:mb-6 min-h-[2.5rem] sm:min-h-[3rem]">
           {item.description}
         </p>
@@ -109,10 +110,9 @@ export default function ProductCard({ item }: ProductCardProps) {
                   onClick={() => setSelectedVariant(variant)}
                   className={`
                     flex-1 py-2 px-2 sm:px-3 text-[10px] sm:text-xs tracking-wider border transition-all
-                    ${
-                      selectedVariant.id === variant.id
-                        ? 'border-moon-accent bg-moon-accent text-moon-black'
-                        : 'border-moon-border text-moon-muted hover:border-moon-muted'
+                    ${selectedVariant.id === variant.id
+                      ? 'border-moon-accent bg-moon-accent text-moon-black'
+                      : 'border-moon-border text-moon-muted hover:border-moon-muted'
                     }
                   `}
                 >
@@ -129,31 +129,40 @@ export default function ProductCard({ item }: ProductCardProps) {
           <span className="text-base sm:text-lg mr-1">$</span>{selectedVariant.price}
         </div>
 
-        {/* 數量選擇 */}
-        <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-          <div className="flex items-center border border-moon-border">
+        {/* 僅門市供應提示 */}
+        {displayOnly ? (
+          <div className="text-center py-2 border border-moon-border/40 bg-moon-dark/30">
+            <p className="text-[11px] sm:text-xs text-moon-muted/80 tracking-widest italic">
+              僅供門市內用
+            </p>
+          </div>
+        ) : (
+          /* 數量選擇與加入購物車 */
+          <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+            <div className="flex items-center border border-moon-border">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="p-2 hover:bg-moon-border transition-colors"
+              >
+                <Minus size={14} className="text-moon-text sm:w-4 sm:h-4" />
+              </button>
+              <span className="px-4 sm:px-6 text-sm sm:text-base text-moon-text">{quantity}</span>
+              <button
+                onClick={() => setQuantity(quantity + 1)}
+                className="p-2 hover:bg-moon-border transition-colors"
+              >
+                <Plus size={14} className="text-moon-text sm:w-4 sm:h-4" />
+              </button>
+            </div>
             <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="p-2 hover:bg-moon-border transition-colors"
+              onClick={handleAddToCart}
+              className="flex-1 bg-moon-accent text-moon-black py-2.5 sm:py-3 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors"
             >
-              <Minus size={14} className="text-moon-text sm:w-4 sm:h-4" />
-            </button>
-            <span className="px-4 sm:px-6 text-sm sm:text-base text-moon-text">{quantity}</span>
-            <button
-              onClick={() => setQuantity(quantity + 1)}
-              className="p-2 hover:bg-moon-border transition-colors"
-            >
-              <Plus size={14} className="text-moon-text sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">ADD TO CART</span>
+              <span className="sm:hidden">加入購物車</span>
             </button>
           </div>
-          <button
-            onClick={handleAddToCart}
-            className="flex-1 bg-moon-accent text-moon-black py-2.5 sm:py-3 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors"
-          >
-            <span className="hidden sm:inline">ADD TO CART</span>
-            <span className="sm:hidden">加入購物車</span>
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
