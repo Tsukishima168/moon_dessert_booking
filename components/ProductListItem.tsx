@@ -46,7 +46,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           <div className="flex-1">
             <h3 className="text-sm text-moon-muted line-through">{item.name}</h3>
           </div>
-          <span className="text-xs text-moon-muted tracking-wider">SOLD OUT</span>
+          <span className="text-xs text-moon-muted tracking-wider">已售完</span>
         </div>
       </div>
     );
@@ -70,7 +70,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 : '甜點說明準備中'}
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {item.recommended && (
               <span className="text-xs bg-moon-accent text-moon-black px-2 py-0.5 tracking-wider hidden sm:inline">
@@ -104,7 +104,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
               />
             ) : null}
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-4xl opacity-20">🍰</span>
+              <span className="text-xl opacity-20">—</span>
             </div>
           </div>
 
@@ -135,10 +135,9 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                     onClick={() => setSelectedVariant(variant)}
                     className={`
                       flex-1 py-2 px-3 text-xs tracking-wider border transition-all
-                      ${
-                        selectedVariant.id === variant.id
-                          ? 'border-moon-accent bg-moon-accent text-moon-black'
-                          : 'border-moon-border text-moon-muted hover:border-moon-muted'
+                      ${selectedVariant.id === variant.id
+                        ? 'border-moon-accent bg-moon-accent text-moon-black'
+                        : 'border-moon-border text-moon-muted hover:border-moon-muted'
                       }
                     `}
                   >
@@ -184,7 +183,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           {item.recommended && item.reason && (
             <div className="mt-3 pt-3 border-t border-moon-border/30">
               <p className="text-xs text-moon-accent/80 italic text-center">
-                💭 {item.reason}
+                {item.reason}
               </p>
             </div>
           )}

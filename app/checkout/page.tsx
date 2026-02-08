@@ -329,8 +329,9 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen bg-moon-black py-16 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-light text-moon-accent mb-4">YOUR CART IS EMPTY</h2>
-          <Link href="/"><button className="border border-moon-border px-8 py-3 text-moon-text hover:bg-moon-border">BACK TO SHOP</button></Link>
+          <h2 className="text-2xl font-light text-moon-accent mb-4">購物車是空的</h2>
+          <p className="text-sm text-moon-muted mb-6">先選一些甜點再來結帳吧</p>
+          <Link href="/"><button className="border border-moon-border px-8 py-3 text-moon-text hover:bg-moon-border">返回選購</button></Link>
         </div>
       </div>
     );
@@ -339,15 +340,33 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-moon-black py-8 sm:py-12 lg:py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        {/* 步驟引導 */}
+        <div className="flex justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-moon-accent text-moon-black text-xs flex items-center justify-center">1</span>
+            <span className="text-xs text-moon-muted hidden sm:inline">選商品</span>
+          </div>
+          <div className="w-8 h-px bg-moon-border self-center" />
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full border border-moon-accent text-moon-accent text-xs flex items-center justify-center">2</span>
+            <span className="text-xs text-moon-accent hidden sm:inline">填資料</span>
+          </div>
+          <div className="w-8 h-px bg-moon-border self-center" />
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full border border-moon-border text-moon-muted text-xs flex items-center justify-center">3</span>
+            <span className="text-xs text-moon-muted hidden sm:inline">確認訂單</span>
+          </div>
+        </div>
+
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-moon-accent text-center mb-8 sm:mb-12 lg:mb-16 tracking-wider">
-          CHECKOUT
+          填寫訂單
         </h1>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* 左側：訂單總覽 */}
           <div>
             <div className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 sticky top-24">
-              <h2 className="text-lg sm:text-xl font-light text-moon-accent mb-6 sm:mb-8 tracking-wider">ORDER SUMMARY</h2>
+              <h2 className="text-lg sm:text-xl font-light text-moon-accent mb-6 sm:mb-8 tracking-wider">訂單摘要</h2>
               {/* Product List */}
               <div className="space-y-4 mb-6">
                 {items.map((item) => (
@@ -367,15 +386,15 @@ export default function CheckoutPage() {
 
               {/* Totals */}
               <div className="space-y-2 pt-4 border-t border-moon-border">
-                <div className="flex justify-between text-moon-muted text-sm"><span>SUBTOTAL</span><span>${totalPrice}</span></div>
+                <div className="flex justify-between text-moon-muted text-sm"><span>小計</span><span>${totalPrice}</span></div>
                 {discountAmount > 0 && (
-                  <div className="flex justify-between text-moon-accent text-sm"><span>DISCOUNT</span><span>-${discountAmount}</span></div>
+                  <div className="flex justify-between text-moon-accent text-sm"><span>折扣</span><span>-${discountAmount}</span></div>
                 )}
                 {watchedDeliveryMethod === 'delivery' && (
-                  <div className="flex justify-between text-moon-muted text-sm"><span>SHIPPING</span><span>${deliveryFee}</span></div>
+                  <div className="flex justify-between text-moon-muted text-sm"><span>運費</span><span>${deliveryFee}</span></div>
                 )}
                 <div className="flex justify-between text-moon-accent text-xl pt-2 border-t border-moon-border mt-2">
-                  <span>TOTAL</span><span>${finalPrice}</span>
+                  <span>總計</span><span>${finalPrice}</span>
                 </div>
               </div>
             </div>
@@ -387,59 +406,71 @@ export default function CheckoutPage() {
 
               {/* Promo Code */}
               <div className="space-y-2">
-                <label className="text-xs tracking-widest text-moon-muted flex items-center gap-2"><Tag size={12} /> PROMO CODE</label>
+                <label className="text-xs tracking-widest text-moon-muted flex items-center gap-2"><Tag size={12} /> 優惠碼</label>
                 <div className="flex gap-2">
                   <input
                     value={promoInput}
                     onChange={e => setPromoInput(e.target.value)}
-                    className="flex-1 bg-moon-black border border-moon-border px-3 py-2 text-white uppercase text-sm focus:border-moon-accent outline-none"
-                    placeholder="Enter code"
+                    className="flex-1 bg-moon-black border border-moon-border px-3 py-2 text-white text-sm focus:border-moon-accent outline-none placeholder:text-gray-500"
+                    placeholder="若有優惠碼請輸入"
                   />
-                  <button type="button" onClick={handleValidatePromo} className="px-4 bg-moon-gray text-white text-xs hover:bg-white hover:text-black transition-colors">APPLY</button>
+                  <button type="button" onClick={handleValidatePromo} className="px-4 bg-moon-gray text-white text-xs hover:bg-white hover:text-black transition-colors">套用</button>
                 </div>
-                {promoCode && <p className="text-xs text-moon-accent">Applied: {promoCode}</p>}
+                {promoCode && <p className="text-xs text-moon-accent">已套用：{promoCode}</p>}
                 {promoError && <p className="text-xs text-red-400">{promoError}</p>}
               </div>
 
               {/* Personal Info */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-moon-border pb-2">
-                  <h3 className="text-sm font-light text-moon-accent">CONTACT INFO</h3>
+                  <h3 className="text-sm font-light text-moon-accent">聯絡資訊</h3>
                   {loggedInUser ? (
                     <span className="text-xs text-moon-accent bg-moon-accent/10 px-2 py-1 rounded flex items-center gap-1">
-                      <User size={12} /> 会員: {loggedInUser.email}
+                      <User size={12} /> 會員：{loggedInUser.email}
                     </span>
                   ) : (
                     <Link href="/auth/login" className="text-xs text-moon-muted hover:text-white flex items-center gap-1 underline decoration-dotted">
-                      <LogIn size={12} /> 已經是會員？登入
+                      <LogIn size={12} /> 已是會員？登入
                     </Link>
                   )}
                 </div>
                 <div>
-                  <label className="text-xs text-moon-muted block mb-1">NAME *</label>
-                  <input {...register('customer_name', { required: true })} className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none" />
+                  <label className="text-xs text-moon-muted block mb-1">姓名 <span className="text-moon-accent">*</span></label>
+                  <input
+                    {...register('customer_name', { required: '請填寫姓名' })}
+                    placeholder="例：王小明"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-500"
+                  />
+                  {errors.customer_name && <p className="text-xs text-red-400 mt-1">{errors.customer_name.message}</p>}
                 </div>
                 <div>
-                  <label className="text-xs text-moon-muted block mb-1">PHONE *</label>
-                  <input type="tel" {...register('phone', { required: true })} className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none" />
+                  <label className="text-xs text-moon-muted block mb-1">電話 <span className="text-moon-accent">*</span></label>
+                  <input
+                    type="tel"
+                    {...register('phone', { required: '請填寫聯絡電話' })}
+                    placeholder="例：0912-345-678"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-500"
+                  />
+                  {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone.message}</p>}
                 </div>
                 <div>
-                  <label className="text-xs text-moon-muted block mb-1">EMAIL <span className="text-moon-accent">*</span></label>
+                  <label className="text-xs text-moon-muted block mb-1">電子信箱 <span className="text-moon-accent">*</span></label>
                   <input
                     type="email"
-                    {...register('email', { required: true })}
-                    placeholder="請填寫正確 Email 以接收訂單確認信"
-                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-600"
+                    {...register('email', { required: '請填寫 Email' })}
+                    placeholder="例：example@gmail.com"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-500"
                   />
                   <p className="text-[10px] text-moon-muted mt-1">
-                    * 訂單確認信與匯款帳號將寄送至此信箱
+                    訂單確認與匯款資訊將寄至此信箱
                   </p>
+                  {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
                 </div>
               </div>
 
               {/* Delivery Method */}
               <div className="space-y-4">
-                <h3 className="text-sm font-light text-moon-accent border-b border-moon-border pb-2">DELIVERY METHOD</h3>
+                <h3 className="text-sm font-light text-moon-accent border-b border-moon-border pb-2">取貨方式</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <label className={`border p-4 cursor-pointer text-center transition-all ${watchedDeliveryMethod === 'pickup' ? 'border-moon-accent bg-moon-accent/10' : 'border-moon-border'}`}>
                     <input type="radio" value="pickup" {...register('delivery_method')} className="sr-only" />
@@ -457,7 +488,7 @@ export default function CheckoutPage() {
               {/* Date Selection */}
               <div className="space-y-4">
                 <label className="text-xs text-moon-muted block mb-1">
-                  {watchedDeliveryMethod === 'pickup' ? 'PICKUP DATE *' : 'DESIRED DELIVERY DATE *'}
+                  {watchedDeliveryMethod === 'pickup' ? '取貨日期' : '期望到貨日期'} <span className="text-moon-accent">*</span>
                 </label>
                 <input
                   type="date"
@@ -478,7 +509,7 @@ export default function CheckoutPage() {
 
                 {watchedDeliveryMethod === 'pickup' && (
                   <div>
-                    <label className="text-xs text-moon-muted block mb-1">PICKUP TIME *</label>
+                    <label className="text-xs text-moon-muted block mb-1">取貨時段 <span className="text-moon-accent">*</span></label>
                     <select {...register('pickup_time')} className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none">
                       <option value="12:00-13:00">12:00 - 13:00</option>
                       <option value="13:00-14:00">13:00 - 14:00</option>
@@ -494,7 +525,7 @@ export default function CheckoutPage() {
               {/* Address Section */}
               <div className="space-y-4">
                 <h3 className="text-sm font-light text-moon-accent border-b border-moon-border pb-2">
-                  {watchedDeliveryMethod === 'pickup' ? 'PICKUP ADDRESS' : 'SHIPPING ADDRESS'}
+                  {watchedDeliveryMethod === 'pickup' ? '自取地址' : '宅配地址'}
                 </h3>
 
                 {watchedDeliveryMethod === 'pickup' ? (
@@ -508,31 +539,40 @@ export default function CheckoutPage() {
                 ) : (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <select
-                        {...register('delivery_city', { required: true })}
-                        onChange={(e) => {
-                          setSelectedCity(e.target.value);
-                          setSelectedDistrict(''); // reset district
-                        }}
-                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                      >
-                        <option value="">選擇縣市</option>
-                        {TAIWAN_CITIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                      </select>
-                      <select
-                        {...register('delivery_district', { required: true })}
-                        onChange={(e) => setSelectedDistrict(e.target.value)}
-                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                      >
-                        <option value="">選擇區域</option>
-                        {districts.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
+                      <div>
+                        <select
+                          {...register('delivery_city', { required: watchedDeliveryMethod === 'delivery' ? '請選擇縣市' : false })}
+                          onChange={(e) => {
+                            setSelectedCity(e.target.value);
+                            setSelectedDistrict('');
+                          }}
+                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                        >
+                          <option value="">請選擇縣市</option>
+                          {TAIWAN_CITIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                        </select>
+                        {errors.delivery_city && <p className="text-xs text-red-400 mt-1">{errors.delivery_city.message}</p>}
+                      </div>
+                      <div>
+                        <select
+                          {...register('delivery_district', { required: watchedDeliveryMethod === 'delivery' ? '請選擇區域' : false })}
+                          onChange={(e) => setSelectedDistrict(e.target.value)}
+                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                        >
+                          <option value="">請選擇區域</option>
+                          {districts.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        {errors.delivery_district && <p className="text-xs text-red-400 mt-1">{errors.delivery_district.message}</p>}
+                      </div>
                     </div>
-                    <input
-                      {...register('delivery_address_detail', { required: true })}
-                      placeholder="請輸入詳細地址 (街道/巷弄/門牌)"
-                      className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                    />
+                    <div>
+                      <input
+                        {...register('delivery_address_detail', { required: watchedDeliveryMethod === 'delivery' ? '請輸入詳細地址' : false })}
+                        placeholder="例：中正路 123 號"
+                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-500"
+                      />
+                      {errors.delivery_address_detail && <p className="text-xs text-red-400 mt-1">{errors.delivery_address_detail.message}</p>}
+                    </div>
                     <textarea
                       {...register('delivery_notes')}
                       placeholder="備註 (選填)"
@@ -548,7 +588,7 @@ export default function CheckoutPage() {
                 disabled={isSubmitting}
                 className="w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-white transition-colors disabled:opacity-50"
               >
-                {isSubmitting ? 'PROCESSING...' : `PLACE ORDER • $${finalPrice}`}
+                {isSubmitting ? '處理中，請稍候...' : `送出訂單 · 總計 $${finalPrice}`}
               </button>
 
             </form>

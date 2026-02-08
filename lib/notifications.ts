@@ -186,7 +186,7 @@ export async function notifyNewOrder(data: {
       },
       { name: "\u200b", value: "\u200b", inline: false }, // Spacer
       {
-        name: "🍰 訂購商品",
+        name: "訂購商品",
         value: data.items.map(i => `• ${i.name} x${i.quantity}`).join('\n')
       }
     ],
@@ -206,6 +206,9 @@ export async function sendOrderStatusNotification(data: {
   oldStatus: string;
   newStatus: string;
   email?: string;
+  phone?: string;
+  pickupTime?: string;
+  deliveryMethod?: string;
 }): Promise<any> {
   // 簡單版：只發 Discord 通知給店家
   const message = `🔄 訂單狀態更新: ${data.orderId}\n${data.customerName} 的訂單從 ${data.oldStatus} 變更為 **${data.newStatus}**`;
@@ -215,7 +218,21 @@ export async function sendOrderStatusNotification(data: {
   return { success: true };
 }
 
-// 取貨提醒 (略，暫時不實作以免檔案過大，邏輯同上)
+// 取貨提醒 Email (略，暫時不實作)
 export async function sendPickupReminderEmail(data: any): Promise<boolean> {
   return false;
+}
+
+// 取貨提醒 → Discord（取代 LINE Notify）
+export async function sendPickupReminderLineNotify(data: {
+  orderId: string;
+  customerName: string;
+  phone?: string;
+  pickupTime: string;
+  items: any[];
+  deliveryMethod?: string;
+}): Promise<boolean> {
+  const itemsList = (data.items || []).map((i: any) => `• ${i.name} x${i.quantity}`).join('\n');
+  const message = `📦 明日取貨提醒\n訂單: ${data.orderId}\n客戶: ${data.customerName}\n電話: ${data.phone || '-'}\n時間: ${data.pickupTime}\n\n${itemsList}`;
+  return sendDiscordNotify(message);
 }

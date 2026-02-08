@@ -105,8 +105,8 @@ export default function HomePage() {
       <div className="min-h-screen bg-moon-black flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="animate-spin text-moon-accent mx-auto mb-4" size={48} />
-          <p className="text-sm text-moon-muted tracking-widest">LOADING...</p>
-          <p className="text-xs text-moon-muted mt-4">Connecting to database...</p>
+          <p className="text-sm text-moon-muted tracking-widest">載入中...</p>
+          <p className="text-xs text-moon-muted mt-4">正在載入甜點目錄，請稍候</p>
         </div>
       </div>
     );
@@ -122,14 +122,14 @@ export default function HomePage() {
         <div className="border border-moon-border bg-moon-dark p-12 max-w-md text-center">
           <AlertCircle className="text-moon-muted mx-auto mb-4" size={48} />
           <h2 className="text-xl font-light text-moon-accent mb-4 tracking-wide">
-            ERROR
+            無法載入
           </h2>
           <p className="text-sm text-moon-muted mb-6 leading-relaxed">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="border border-moon-border text-moon-text px-8 py-3 text-sm tracking-widest hover:bg-moon-border transition-colors"
           >
-            RELOAD PAGE
+            重新載入頁面
           </button>
         </div>
       </div>
@@ -240,6 +240,13 @@ export default function HomePage() {
         id="menu-section"
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16"
       >
+        {/* 選購引導（不擅長網路的人也能輕鬆跟上） */}
+        <div className="mb-8 sm:mb-12 p-4 sm:p-6 border border-moon-border/60 bg-moon-dark/30">
+          <p className="text-xs sm:text-sm text-moon-muted text-center leading-relaxed">
+            <span className="text-moon-accent">三步驟完成預訂：</span>① 選擇喜歡的甜點與規格 → ② 點「加入購物車」→ ③ 前往結帳填寫資料
+          </p>
+        </div>
+
         {/* MBTI 推薦區塊 - 卡片式展示 */}
         {mbtiType && recommendedItems.length > 0 && (
           <div className="mb-16 sm:mb-24">
@@ -276,6 +283,46 @@ export default function HomePage() {
                 或瀏覽所有商品
               </h2>
             </div>
+          </div>
+        )}
+
+        {/* 本季精選（無 MBTI 時顯示前幾項推薦或熱門） */}
+        {!mbtiType && menuItems.length > 0 && (
+          <div className="mb-16 sm:mb-24">
+            <div className="mb-8 sm:mb-12 text-center">
+              <div className="flex items-center justify-center gap-3 sm:gap-6 mb-3 sm:mb-4">
+                <div className="h-px bg-moon-border flex-1 max-w-[100px] sm:max-w-xs"></div>
+                <h2 className="text-xl sm:text-2xl font-light text-moon-accent tracking-widest">
+                  本季精選 · 人氣預訂
+                </h2>
+                <div className="h-px bg-moon-border flex-1 max-w-[100px] sm:max-w-xs"></div>
+              </div>
+              <p className="text-xs text-moon-muted tracking-widest px-4">
+                不確定選什麼？試試這些熱門品項
+              </p>
+            </div>
+            {/* 顯示前 4 個有規格可預訂的商品 */}
+            {(() => {
+              const featured = menuItems
+                .filter(i => i.is_available && i.variants?.length > 0 && !/drink|飲品|飲料/i.test(i.category || ''))
+                .slice(0, 4);
+              if (featured.length === 0) return null;
+              return (
+                <>
+                  <div className="md:hidden border border-moon-border bg-moon-dark">
+                    {featured.map(item => <ProductListItem key={item.id} item={item} />)}
+                  </div>
+                  <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {featured.map(item => <ProductCard key={item.id} item={item} />)}
+                  </div>
+                  <div className="mt-12 sm:mt-16 border-t border-moon-border pt-12 sm:pt-16">
+                    <h2 className="text-lg sm:text-xl font-light text-moon-muted text-center mb-8 sm:mb-12 tracking-wider px-4">
+                      瀏覽全部商品
+                    </h2>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -321,7 +368,7 @@ export default function HomePage() {
                       </h2>
                       <div className="h-px bg-moon-border flex-1"></div>
                       <span className="text-xs text-moon-muted tracking-wider">
-                        {categoryItems.length} ITEMS
+                        {categoryItems.length} 款
                       </span>
                     </div>
                   </div>
@@ -356,14 +403,9 @@ export default function HomePage() {
         {/* 如果沒有任何商品 */}
         {menuItems.length === 0 && !loading && (
           <div className="text-center py-32">
-            <div className="text-6xl mb-6 opacity-20">🍰</div>
-            <p className="text-sm text-moon-muted tracking-wider mb-4">NO ITEMS AVAILABLE</p>
-            <div className="text-xs text-moon-muted/60 max-w-md mx-auto space-y-2">
-              <p>請檢查：</p>
-              <p>1. Supabase menu_items 資料表是否有資料</p>
-              <p>2. menu_variants 資料表是否有價格</p>
-              <p>3. 瀏覽器 Console 是否有錯誤訊息</p>
-            </div>
+            <div className="text-2xl mb-6 opacity-20">—</div>
+            <p className="text-sm text-moon-muted tracking-wider mb-4">目前沒有可預訂的商品</p>
+            <p className="text-xs text-moon-muted/60 max-w-md mx-auto">請稍後再來看看，或聯繫我們了解更多</p>
           </div>
         )}
       </div>
@@ -461,7 +503,7 @@ export default function HomePage() {
 
           {/* 版權資訊 */}
           <p className="text-xs text-moon-muted tracking-widest mb-2">© 2024 MOON MOON DESSERT</p>
-          <p className="text-xs text-moon-muted/60">台南安南區療癒系甜點</p>
+          <p className="text-xs text-moon-muted/60">安南區本原街・果菜市場周邊療癒系甜點</p>
         </div>
       </footer>
     </div>

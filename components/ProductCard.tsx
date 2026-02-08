@@ -44,10 +44,10 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           ) : (
-            <span className="text-6xl opacity-30">🍰</span>
+            <span className="text-2xl opacity-30">—</span>
           )}
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-            <span className="text-moon-muted text-sm tracking-widest">SOLD OUT</span>
+            <span className="text-moon-muted text-sm tracking-widest">已售完</span>
           </div>
         </div>
         <h3 className="text-xl font-light text-moon-muted tracking-wide mb-2">
@@ -79,7 +79,7 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
         ) : null}
         {/* 預設圖示（無圖片或載入失敗時顯示）*/}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-6xl opacity-20">🍰</span>
+          <span className="text-2xl opacity-20">—</span>
         </div>
 
         {/* 分類標籤 */}
@@ -158,8 +158,7 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
               onClick={handleAddToCart}
               className="flex-1 bg-moon-accent text-moon-black py-2.5 sm:py-3 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors"
             >
-              <span className="hidden sm:inline">ADD TO CART</span>
-              <span className="sm:hidden">加入購物車</span>
+              加入購物車
             </button>
           </div>
         )}

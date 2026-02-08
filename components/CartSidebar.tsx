@@ -54,10 +54,10 @@ export default function CartSidebar() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg sm:text-xl font-light text-moon-accent tracking-wider mb-1">
-                YOUR CART
+                購物車
               </h2>
               <p className="text-xs sm:text-sm text-moon-muted tracking-wide">
-                {totalItems} {totalItems === 1 ? 'ITEM' : 'ITEMS'}
+                共 {totalItems} 件商品
               </p>
             </div>
             <button
@@ -75,13 +75,13 @@ export default function CartSidebar() {
             // 空購物車
             <div className="flex-1 flex flex-col items-center justify-center text-moon-muted p-8">
               <ShoppingBag size={64} strokeWidth={1} className="mb-4 opacity-30" />
-              <p className="text-sm tracking-wider mb-2">YOUR CART IS EMPTY</p>
-              <p className="text-xs text-moon-muted/60 mb-8">Add some desserts to get started</p>
+              <p className="text-sm tracking-wider mb-2">購物車是空的</p>
+              <p className="text-xs text-moon-muted/60 mb-8">加入甜點開始選購吧</p>
               <button
                 onClick={closeCart}
                 className="border border-moon-border text-moon-text px-8 py-3 text-sm tracking-widest hover:bg-moon-border transition-colors"
               >
-                CONTINUE SHOPPING
+                繼續選購
               </button>
             </div>
           ) : (
@@ -106,7 +106,7 @@ export default function CartSidebar() {
                           />
                         ) : (
                           <div className="flex items-center justify-center h-full text-2xl opacity-20">
-                            🍰
+                            —
                           </div>
                         )}
                       </div>
@@ -169,7 +169,7 @@ export default function CartSidebar() {
                 <div className="space-y-2 mb-4 sm:mb-6">
                   {/* 小計 */}
                   <div className="flex justify-between items-baseline text-moon-muted">
-                    <span className="text-xs tracking-widest">SUBTOTAL</span>
+                    <span className="text-xs tracking-widest">小計</span>
                     <span className="text-sm">${totalPrice}</span>
                   </div>
 
@@ -177,7 +177,7 @@ export default function CartSidebar() {
                   {promoCode && discountAmount > 0 && (
                     <div className="flex justify-between items-baseline text-moon-accent">
                       <span className="text-xs tracking-widest">
-                        DISCOUNT ({promoCode})
+                        折扣 ({promoCode})
                       </span>
                       <span className="text-sm">-${discountAmount}</span>
                     </div>
@@ -185,7 +185,7 @@ export default function CartSidebar() {
 
                   {/* 總計 */}
                   <div className="flex justify-between items-baseline pt-3 border-t border-moon-border">
-                    <span className="text-xs sm:text-sm tracking-widest text-moon-muted">TOTAL</span>
+                    <span className="text-xs sm:text-sm tracking-widest text-moon-muted">總計</span>
                     <span className="text-2xl sm:text-3xl font-light text-moon-accent tracking-wide">
                       <span className="text-lg sm:text-xl mr-1">$</span>{finalPrice}
                     </span>
@@ -195,8 +195,7 @@ export default function CartSidebar() {
                 {/* 結帳按鈕 */}
                 <Link href="/checkout" onClick={closeCart}>
                   <button className="w-full bg-moon-accent text-moon-black py-3 sm:py-4 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors">
-                    <span className="hidden sm:inline">PROCEED TO CHECKOUT</span>
-                    <span className="sm:hidden">前往結帳</span>
+                    前往結帳
                   </button>
                 </Link>
               </div>

@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup:discord": "bash scripts/setup-discord-env.sh",
+    "export:menu": "node scripts/export-menu-to-csv.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.39.0",
     "lucide-react": "^0.344.0",
     "next": "^14.2.0",

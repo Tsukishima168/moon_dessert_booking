@@ -37,11 +37,10 @@ export default function Banner() {
             if (!response.ok) throw new Error('Failed to fetch banners');
 
             const data = await response.json();
-            setBanners(data);
-
-            // 記錄顯示次數
-            data.forEach((banner: Banner) => {
-                trackBannerView(banner.id);
+            const list = Array.isArray(data) ? data : [];
+            setBanners(list);
+            list.forEach((b: Banner) => {
+                if (b.id && b.id !== 'demo') trackBannerView(b.id);
             });
         } catch (error) {
             console.error('取得 Banner 錯誤:', error);
@@ -81,18 +80,33 @@ export default function Banner() {
         localStorage.setItem('dismissedBanners', JSON.stringify(Array.from(newDismissed)));
     };
 
-    if (loading || banners.length === 0) {
+    if (loading) {
         return null;
     }
 
+    // 無 Banner 時顯示預覽用示範（僅供開發/預覽，正式上線前可從後台新增真實 Banner）
+    const demoBanner: Banner = {
+        id: 'demo',
+        title: '🌹 本季精選 · 草莓系列預訂中',
+        description: '即日起預訂享早鳥優惠，限量供應',
+        image_url: 'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png',
+        link_url: '#menu-section',
+        link_text: '逛逛甜點',
+        background_color: '#d4a574',
+        text_color: '#0a0a0a',
+        display_type: 'hero',
+    };
+
+    const displayBanners = banners.length > 0 ? banners : [demoBanner];
+
     // 過濾已關閉的 Banner
-    const visibleBanners = banners.filter(banner => !dismissedBanners.has(banner.id));
+    const visibleBanners = displayBanners.filter(banner => !dismissedBanners.has(banner.id));
 
     if (visibleBanners.length === 0) {
         return null;
     }
 
-    // 只顯示第一個 Banner (Phase 1)
+    // 只顯示第一個 Banner
     const banner = visibleBanners[0];
 
     return (
@@ -176,7 +190,13 @@ function HeroBanner({
                     {banner.link_url && (
                         <Link
                             href={banner.link_url}
-                            onClick={onLinkClick}
+                            onClick={(e) => {
+                                onLinkClick();
+                                if (banner.link_url?.startsWith('#')) {
+                                    e.preventDefault();
+                                    document.getElementById(banner.link_url!.slice(1))?.scrollIntoView({ behavior: 'smooth' });
+                                }
+                            }}
                             className="inline-block px-6 py-2 border transition-all hover:scale-105"
                             style={{
                                 backgroundColor: banner.background_color,

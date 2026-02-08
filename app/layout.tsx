@@ -9,11 +9,11 @@ import FacebookPixel from '@/components/FacebookPixel';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
-// 網站基本資訊
+// 網站基本資訊（計畫1：安南區・果菜市場・本原街在地）
 const siteConfig = {
   name: 'MOON MOON | 月島甜點',
-  title: 'MOON MOON | 月島甜點訂購',
-  description: '台南安南區療癒系甜點工作室。從情緒出發的甜點設計,結合 Kiwimu MBTI 人格分析,為你找到最適合當下的甜點。門市自取或宅配到府。',
+  title: '月島甜點 | 安南區果菜市場・本原街療癒系甜點預訂',
+  description: '安南區本原街・果菜市場周邊療癒系甜點工作室。從情緒出發的甜點設計，結合 Kiwimu MBTI，為你找到最適合當下的甜點。本原街自取或宅配到府。',
   url: 'https://dessert-booking.vercel.app', // 請替換為您的實際網址
   locale: 'zh_TW',
   type: 'website' as const, // Fix TypeScript type
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  keywords: ['台南甜點', '月島甜點', '安南區美食', 'MBTI甜點', '療癒甜點', '客製化甜點', '甜點訂購', 'MoonMoon Dessert'],
+  keywords: ['本原街甜點', '安南區果菜市場甜點', '果菜市場附近甜點', '安南區甜點', '月島甜點', '安南區美食', 'MBTI甜點', '療癒甜點', '甜點訂購', 'MoonMoon Dessert'],
   authors: [{ name: 'Moon Moon Dessert Studio' }],
   creator: 'Moon Moon Dessert Studio',
   publisher: 'Moon Moon Dessert Studio',
@@ -105,8 +105,8 @@ export default function RootLayout({
               telephone: process.env.STORE_PHONE || '',
               address: {
                 '@type': 'PostalAddress',
-                streetAddress: '台南市安南區',
-                addressLocality: '台南市',
+                streetAddress: '台南市安南區本原街一段97巷',
+                addressLocality: '安南區',
                 addressRegion: '台南市',
                 postalCode: '709',
                 addressCountry: 'TW',

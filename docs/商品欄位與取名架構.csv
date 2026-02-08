@@ -1,0 +1,22 @@
+表 (Table),欄位 (Field),型別 (Type),說明 (Note)
+menu_items,id,字串／數字,商品唯一識別
+menu_items,name,字串,品名（畫面上顯示；若無則用 title）
+menu_items,title,字串,品名備用欄位
+menu_items,description,字串,商品說明
+menu_items,category,字串,分類，需等於某個 menu_categories.id
+menu_items,category_id,字串,若用 FK 時程式會轉成字串當 category 用
+menu_items,image_url,字串,商品圖片網址（畫面上顯示）
+menu_items,image,字串,圖片網址備用欄位
+menu_items,is_available,布林,是否上架（false 時前端顯示為已售完）
+menu_variants,id,字串／數字,規格唯一識別
+menu_variants,menu_item_id,字串／數字,所屬商品 id
+menu_variants,variant_name,字串,規格名稱（如 6 吋、單片）
+menu_variants,spec,字串,規格備用欄位
+menu_variants,price,數字,該規格價格（程式會自動去掉 $、逗號等）
+,,,
+用途 (Usage),來源欄位 (Source),格式／說明 (Format / Note)
+畫面上分類名稱,menu_categories.name,依 sort_order 排序後顯示
+畫面上品名,menu_items.name 或 title,商品主標題
+畫面上規格,menu_variants.variant_name 或 spec,每個價位的選項名稱
+商品所屬分類,menu_items.category = menu_categories.id,用來分組、篩選
+照片檔名建議,{分類代碼}-{品名英文}.jpg,例 cake-strawberry-tart.jpg
