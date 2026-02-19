@@ -14,6 +14,7 @@ import Link from 'next/link';
 export default function HomePage() {
   const searchParams = useSearchParams();
   const mbtiType = searchParams?.get('mbti');
+  const searchParamsKey = searchParams?.toString() ?? '';
 
   const [menuItems, setMenuItems] = useState<MenuItemWithVariants[]>([]);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -68,6 +69,37 @@ export default function HomePage() {
 
   // 來源感知（from: moon-map / passport / lab）
   const fromSource = searchParams?.get('from');
+
+  // 保存來源與 UTM（供結帳使用）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const utm_source = searchParams?.get('utm_source') || null;
+    const utm_medium = searchParams?.get('utm_medium') || null;
+    const utm_campaign = searchParams?.get('utm_campaign') || null;
+    const utm_content = searchParams?.get('utm_content') || null;
+    const utm_term = searchParams?.get('utm_term') || null;
+
+    const hasAttribution = Boolean(
+      fromSource || mbtiType || utm_source || utm_medium || utm_campaign || utm_content || utm_term
+    );
+
+    if (hasAttribution) {
+      localStorage.setItem(
+        'moonmoon_attribution',
+        JSON.stringify({
+          from: fromSource || null,
+          mbti: mbtiType || null,
+          utm_source,
+          utm_medium,
+          utm_campaign,
+          utm_content,
+          utm_term,
+          landing_url: window.location.href,
+          captured_at: new Date().toISOString(),
+        })
+      );
+    }
+  }, [searchParamsKey, fromSource, mbtiType]);
 
   const getSourceMeta = () => {
     if (fromSource === 'moon-map') {

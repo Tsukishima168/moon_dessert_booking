@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sendOrderStatusNotification } from '@/lib/notifications';
+import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
 
 // PATCH /api/admin/orders/[orderId]/status - 更新訂單狀態
 export async function PATCH(
@@ -20,7 +21,7 @@ export async function PATCH(
             );
         }
 
-        // 先取得訂單資料（用於發送通知）
+        // 先取得訂單資料（用於發送通知 + n8n 同步）
         const { data: order, error: fetchError } = await supabase
             .from('orders')
             .select('*')
@@ -61,6 +62,24 @@ export async function PATCH(
             deliveryMethod: order.delivery_method || 'pickup',
         }).catch((err) => {
             console.error('發送狀態通知錯誤（不影響更新）:', err);
+        });
+
+        // 同步到 n8n（非同步，不阻塞回應）
+        void syncOrderEventToN8n('order.status_updated', {
+            order_id: order.order_id,
+            status,
+            customer_name: order.customer_name,
+            phone: order.phone,
+            email: order.email,
+            pickup_time: order.pickup_time,
+            delivery_method: order.delivery_method,
+            delivery_address: order.delivery_address,
+            total_price: order.total_price,
+            final_price: order.final_price,
+            promo_code: order.promo_code,
+            discount_amount: order.discount_amount,
+            items: Array.isArray(order.items) ? order.items : [],
+            updated_at: new Date().toISOString(),
         });
 
         console.log(`訂單 ${orderId} 狀態更新: ${oldStatus} → ${status}`);

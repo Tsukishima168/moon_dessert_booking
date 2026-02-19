@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createAuthClient } from '@/lib/supabase/server-auth';
 import { supabase } from '@/lib/supabase';
+
+async function ensureAdmin(request: NextRequest) {
+    const supabaseAuth = await createAuthClient();
+    const {
+        data: { session },
+        error,
+    } = await supabaseAuth.auth.getSession();
+
+    if (error || !session) return false;
+
+    const role = (session.user.app_metadata?.role || session.user.user_metadata?.role || '')
+        .toString()
+        .toLowerCase();
+
+    return role === 'admin';
+}
 
 // GET /api/admin/orders - 取得訂單列表
 export async function GET(request: NextRequest) {
+    const isAdmin = await ensureAdmin(request);
+    if (!isAdmin) {
+        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const searchParams = request.nextUrl.searchParams;
         const status = searchParams.get('status');

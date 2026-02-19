@@ -76,12 +76,15 @@ export default function CheckoutPage() {
   });
 
   // Auth State
-  const [loggedInUser, setLoggedInUser] = useState<{ email: string } | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<{ email: string; id: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setLoggedInUser({ email: session.user.email || '' });
+        setLoggedInUser({
+          email: session.user.email || '',
+          id: session.user.id
+        });
         setValue('email', session.user.email || '');
       }
     });
@@ -188,6 +191,15 @@ export default function CheckoutPage() {
   const deliveryFee = calculateDeliveryFee(deliveryMethod, totalPrice);
   const finalPrice = getFinalPrice() + deliveryFee;
 
+  const getAttribution = () => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(localStorage.getItem('moonmoon_attribution') || '{}');
+    } catch {
+      return {};
+    }
+  };
+
   useEffect(() => {
     normalizePrices();
   }, [normalizePrices]);
@@ -209,6 +221,20 @@ export default function CheckoutPage() {
       } else {
         finalAddress = '月島甜點店 台南市安南區本原街一段97巷';
       }
+
+      const attribution = getAttribution() as {
+        from?: string | null;
+        mbti?: string | null;
+        utm_source?: string | null;
+        utm_medium?: string | null;
+        utm_campaign?: string | null;
+        utm_content?: string | null;
+        utm_term?: string | null;
+        landing_url?: string | null;
+      };
+
+      const mbtiType = attribution?.mbti ? String(attribution.mbti) : null;
+      const sourceFrom = attribution?.from ? String(attribution.from) : null;
 
       const response = await fetch('/api/order', {
         method: 'POST',
@@ -234,6 +260,15 @@ export default function CheckoutPage() {
           delivery_address: finalAddress,
           delivery_fee: data.delivery_method === 'delivery' ? deliveryFee : 0,
           delivery_notes: data.delivery_notes,
+          mbti_type: mbtiType,
+          from_mbti_test: !!mbtiType,
+          source_from: sourceFrom,
+          utm_source: attribution?.utm_source || null,
+          utm_medium: attribution?.utm_medium || null,
+          utm_campaign: attribution?.utm_campaign || null,
+          utm_content: attribution?.utm_content || null,
+          utm_term: attribution?.utm_term || null,
+          user_id: loggedInUser?.id || null,
         }),
       });
 

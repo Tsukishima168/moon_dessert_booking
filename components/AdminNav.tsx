@@ -2,19 +2,27 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Package, BarChart3, Settings, Tag, Users, MessageSquare } from 'lucide-react';
+import { Package, BarChart3, Settings, Tag, Users, MessageSquare, Zap, BookOpen, TrendingUp, Mail, Radio } from 'lucide-react';
 
 export default function AdminNav() {
     const pathname = usePathname();
 
     const navItems = [
         { href: '/admin', label: '訂單管理', icon: Package },
-        { href: '/admin/banners', label: 'Banner 管理', icon: MessageSquare },
-        { href: '/admin/settings', label: '營業設定', icon: Settings },
-        // 未來功能
-        // { href: '/admin/products', label: '產品管理', icon: Tag },
-        { href: '/admin/promo-codes', label: '優惠碼', icon: Users },
-        // { href: '/admin/analytics', label: '數據分析', icon: BarChart3 },
+        { href: '/admin/menu', label: '菜單管理', icon: BarChart3 },
+        
+        // 行銷模組
+        { href: '/admin/campaigns', label: '行銷活動', icon: Zap },
+        { href: '/admin/email-templates', label: 'Email 模板', icon: Mail },
+        { href: '/admin/push-templates', label: '推送模板', icon: MessageSquare },
+        { href: '/admin/marketing-automation', label: '自動化行銷', icon: TrendingUp },
+        { href: '/admin/customer-analytics', label: '客戶分析', icon: Users },
+        
+        // 其他
+        { href: '/admin/discord-settings', label: 'Discord 通知', icon: Radio },
+        { href: '/admin/banners', label: 'Banner 管理', icon: BookOpen },
+        { href: '/admin/promo-codes', label: '優惠碼', icon: Tag },
+        { href: '/admin/settings', label: '業務設定', icon: Settings },
     ];
 
     return (

@@ -64,11 +64,18 @@ export interface Order {
   status: string;
   mbti_type?: string;
   from_mbti_test?: boolean;
+  source_from?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
   promo_code?: string;
   discount_amount?: number;
   original_price?: number;
   final_price?: number;
   created_at: string;
+  user_id?: string;
 }
 
 export interface MBTIRecommendation {
@@ -226,6 +233,12 @@ export async function createOrder(orderData: {
   total_price: number;
   mbti_type?: string;
   from_mbti_test?: boolean;
+  source_from?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
   promo_code?: string;
   discount_amount?: number;
   original_price?: number;
@@ -235,6 +248,7 @@ export async function createOrder(orderData: {
   delivery_address?: string;
   delivery_fee?: number;
   delivery_notes?: string;
+  user_id?: string;
 }): Promise<{ success: boolean; order_id: string }> {
   try {
     const order_id = `ORD${Date.now()}`;
@@ -249,6 +263,12 @@ export async function createOrder(orderData: {
       total_price: orderData.final_price || orderData.total_price,
       mbti_type: orderData.mbti_type,
       from_mbti_test: orderData.from_mbti_test || false,
+      source_from: orderData.source_from || null,
+      utm_source: orderData.utm_source || null,
+      utm_medium: orderData.utm_medium || null,
+      utm_campaign: orderData.utm_campaign || null,
+      utm_content: orderData.utm_content || null,
+      utm_term: orderData.utm_term || null,
       promo_code: orderData.promo_code || null,
       discount_amount: orderData.discount_amount || 0,
       original_price: orderData.original_price || orderData.total_price,
@@ -258,6 +278,7 @@ export async function createOrder(orderData: {
       delivery_address: orderData.delivery_address || null,
       delivery_fee: orderData.delivery_fee || 0,
       delivery_notes: orderData.delivery_notes || null,
+      user_id: orderData.user_id || null,
       status: 'pending',
     });
 
@@ -293,6 +314,7 @@ export async function getAllOrders(): Promise<Order[]> {
       mbti_type: order.mbti_type,
       from_mbti_test: order.from_mbti_test,
       created_at: order.created_at,
+      user_id: order.user_id,
     }));
   } catch (error) {
     console.error('讀取訂單錯誤:', error);
@@ -509,4 +531,3 @@ export async function validatePromoCode(
     };
   }
 }
-

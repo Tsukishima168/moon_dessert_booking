@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOrder, OrderItem } from '@/lib/supabase';
 import { sendCustomerEmail, notifyNewOrder } from '@/lib/notifications';
+import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
 
 // POST /api/order - 建立新訂單
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // 驗證必要欄位
-    const { 
-      customer_name, 
-      phone, 
-      email, 
-      pickup_time, 
-      items, 
+    const {
+      customer_name,
+      phone,
+      email,
+      pickup_time,
+      items,
       total_price,
       promo_code,
       discount_amount,
@@ -24,8 +25,17 @@ export async function POST(request: NextRequest) {
       delivery_address,
       delivery_fee,
       delivery_notes,
+      mbti_type,
+      from_mbti_test,
+      source_from,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      utm_term,
+      user_id,
     } = body;
-    
+
     if (!customer_name || !phone || !pickup_time || !items || !total_price) {
       return NextResponse.json(
         {
@@ -76,6 +86,15 @@ export async function POST(request: NextRequest) {
       delivery_address: delivery_address || null,
       delivery_fee: delivery_fee ? parseFloat(delivery_fee) : 0,
       delivery_notes: delivery_notes || null,
+      mbti_type: mbti_type || null,
+      from_mbti_test: !!from_mbti_test,
+      source_from: source_from || null,
+      utm_source: utm_source || null,
+      utm_medium: utm_medium || null,
+      utm_campaign: utm_campaign || null,
+      utm_content: utm_content || null,
+      utm_term: utm_term || null,
+      user_id: user_id || null,
     });
 
     // 發送通知（非同步，不阻塞回應）
@@ -101,7 +120,7 @@ export async function POST(request: NextRequest) {
         deliveryFee: delivery_fee ? parseFloat(delivery_fee) : 0,
         deliveryNotes: delivery_notes || null,
       }) : Promise.resolve(false),
-      
+
       // 2. LINE 通知店家
       notifyNewOrder({
         orderId: result.order_id,
@@ -119,6 +138,22 @@ export async function POST(request: NextRequest) {
         deliveryFee: delivery_fee ? parseFloat(delivery_fee) : 0,
         deliveryNotes: delivery_notes || null,
       }),
+      // 3. 同步到 n8n（由 n8n 寫入 Google Sheet 訂單總表）
+      syncOrderEventToN8n('order.created', {
+        order_id: result.order_id,
+        status: 'pending',
+        customer_name,
+        phone,
+        email: email || null,
+        pickup_time,
+        delivery_method: delivery_method || 'pickup',
+        delivery_address: delivery_address || null,
+        total_price: originalPriceValue,
+        final_price: finalPriceValue,
+        promo_code: promo_code || null,
+        discount_amount: discountAmountValue,
+        items: items as OrderItem[],
+      }),
     ]).catch((error) => {
       console.error('通知發送錯誤（不影響訂單）:', error);
     });
@@ -130,7 +165,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('API 錯誤 - 建立訂單:', error);
-    
+
     return NextResponse.json(
       {
         success: false,
