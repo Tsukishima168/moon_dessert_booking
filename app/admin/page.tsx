@@ -89,13 +89,13 @@ export default function AdminPage() {
             if (result.success) {
                 const orderList = result.data || [];
                 setOrders(orderList);
-                
+
                 // 計算統計數據
                 const today = new Date().toISOString().split('T')[0];
-                const todayOrders = orderList.filter((o: Order) => 
+                const todayOrders = orderList.filter((o: Order) =>
                     o.created_at.startsWith(today) && ['paid', 'preparing', 'ready', 'completed'].includes(o.status)
                 );
-                
+
                 const stats: DashboardStats = {
                     totalOrders: orderList.length,
                     totalRevenue: orderList.reduce((sum: number, o: Order) => sum + (o.final_price || o.total_price || 0), 0),
@@ -256,26 +256,24 @@ export default function AdminPage() {
                     <div className="flex gap-2">
                         <button
                             onClick={() => setShowDashboard(true)}
-                            className={`px-4 py-2 text-sm tracking-wider border transition-colors ${
-                                showDashboard
-                                    ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
-                                    : 'border-moon-border text-moon-muted hover:border-moon-muted'
-                            }`}
+                            className={`px-4 py-2 text-sm tracking-wider border transition-colors ${showDashboard
+                                ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
+                                : 'border-moon-border text-moon-muted hover:border-moon-muted'
+                                }`}
                         >
                             📊 儀表板
                         </button>
                         <button
                             onClick={() => setShowDashboard(false)}
-                            className={`px-4 py-2 text-sm tracking-wider border transition-colors ${
-                                !showDashboard
-                                    ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
-                                    : 'border-moon-border text-moon-muted hover:border-moon-muted'
-                            }`}
+                            className={`px-4 py-2 text-sm tracking-wider border transition-colors ${!showDashboard
+                                ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
+                                : 'border-moon-border text-moon-muted hover:border-moon-muted'
+                                }`}
                         >
                             📋 訂單看板
                         </button>
                     </div>
-                    
+
                     {/* Discord 狀態指示器 */}
                     <div className="flex items-center gap-2 px-4 py-2 border border-moon-border/50 rounded text-xs">
                         <div className={`w-2 h-2 rounded-full ${discordStatus.isConnected ? 'bg-green-400' : 'bg-gray-500'}`}></div>
@@ -380,146 +378,148 @@ export default function AdminPage() {
 
                 {/* 篩選器 */}
                 {!showDashboard && (
-                <div className="mb-6 flex flex-wrap gap-2">
-                    {['all', 'pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled'].map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => setStatusFilter(status)}
-                            className={`px-4 py-2 text-xs tracking-wider border transition-colors ${statusFilter === status
-                                ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
-                                : 'border-moon-border text-moon-muted hover:border-moon-muted'
-                                }`}
-                        >
-                            {status === 'all' ? '全部' : ORDER_STATUS[status as OrderStatus]?.label || status}
-                        </button>
-                    ))}
-                </div>
+                    <div className="mb-6 flex flex-wrap gap-2">
+                        {['all', 'pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled'].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-4 py-2 text-xs tracking-wider border transition-colors ${statusFilter === status
+                                    ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
+                                    : 'border-moon-border text-moon-muted hover:border-moon-muted'
+                                    }`}
+                            >
+                                {status === 'all' ? '全部' : ORDER_STATUS[status as OrderStatus]?.label || status}
+                            </button>
+                        ))}
+                    </div>
                 )}
 
                 {/* 統計 */}
                 {!showDashboard && (
-                <div className="mb-6 text-sm text-moon-muted">
-                    共 {orders.length} 筆訂單
-                </div>
+                    <div className="mb-6 text-sm text-moon-muted">
+                        共 {orders.length} 筆訂單
+                    </div>
                 )}
 
                 {/* 訂單看板 */}
                 {!showDashboard && (
-                {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="animate-spin text-moon-accent" size={32} />
-                    </div>
-                ) : orders.length === 0 ? (
-                    <div className="text-center py-20 text-moon-muted">
-                        <Package size={48} className="mx-auto mb-4 opacity-30" />
-                        <p>沒有訂單</p>
-                    </div>
-                ) : (
-                    <div className="-mx-2 overflow-x-auto">
-                        <div className="flex gap-4 min-w-[960px] px-2 pb-4">
-                            <DragDropContext onDragEnd={onDragEnd}>
-                                {columns.map((col) => (
-                                    <Droppable droppableId={col.key} key={col.key}>
-                                        {(provided, snapshot) => (
-                                            <div
-                                                ref={provided.innerRef}
-                                                {...provided.droppableProps}
-                                                className={`w-64 flex-shrink-0 border border-moon-border bg-moon-dark/70 p-3 rounded-sm transition-colors ${snapshot.isDraggingOver ? 'border-moon-accent/60 bg-moon-dark' : ''}`}
-                                            >
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-xs tracking-wide text-moon-muted">{col.title}</span>
-                                                    <span className="text-[10px] text-moon-muted bg-moon-border/30 px-2 py-0.5">{grouped[col.key].length}</span>
-                                                </div>
+                    <>
+                        {loading ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="animate-spin text-moon-accent" size={32} />
+                            </div>
+                        ) : orders.length === 0 ? (
+                            <div className="text-center py-20 text-moon-muted">
+                                <Package size={48} className="mx-auto mb-4 opacity-30" />
+                                <p>沒有訂單</p>
+                            </div>
+                        ) : (
+                            <div className="-mx-2 overflow-x-auto">
+                                <div className="flex gap-4 min-w-[960px] px-2 pb-4">
+                                    <DragDropContext onDragEnd={onDragEnd}>
+                                        {columns.map((col) => (
+                                            <Droppable droppableId={col.key} key={col.key}>
+                                                {(provided, snapshot) => (
+                                                    <div
+                                                        ref={provided.innerRef}
+                                                        {...provided.droppableProps}
+                                                        className={`w-64 flex-shrink-0 border border-moon-border bg-moon-dark/70 p-3 rounded-sm transition-colors ${snapshot.isDraggingOver ? 'border-moon-accent/60 bg-moon-dark' : ''}`}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <span className="text-xs tracking-wide text-moon-muted">{col.title}</span>
+                                                            <span className="text-[10px] text-moon-muted bg-moon-border/30 px-2 py-0.5">{grouped[col.key].length}</span>
+                                                        </div>
 
-                                                <div className="space-y-3 min-h-[60px]">
-                                                    {grouped[col.key].map((order, index) => {
-                                                        const statusConfig = ORDER_STATUS[order.status] || ORDER_STATUS.pending;
-                                                        const StatusIcon = statusConfig.icon;
-                                                        const nextStatus = getNextStatus(order.status);
+                                                        <div className="space-y-3 min-h-[60px]">
+                                                            {grouped[col.key].map((order, index) => {
+                                                                const statusConfig = ORDER_STATUS[order.status] || ORDER_STATUS.pending;
+                                                                const StatusIcon = statusConfig.icon;
+                                                                const nextStatus = getNextStatus(order.status);
 
-                                                        return (
-                                                            <Draggable draggableId={order.order_id} index={index} key={order.order_id}>
-                                                                {(provided, snapshot) => (
-                                                                    <div
-                                                                        ref={provided.innerRef}
-                                                                        {...provided.draggableProps}
-                                                                        {...provided.dragHandleProps}
-                                                                        className={`border border-moon-border bg-moon-black p-3 text-xs space-y-2 cursor-grab ${snapshot.isDragging ? 'ring-1 ring-moon-accent' : ''}`}
-                                                                    >
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="font-mono text-moon-accent text-[11px]">{order.order_id}</span>
-                                                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 ${statusConfig.bg} ${statusConfig.color}`}>
-                                                                                <StatusIcon size={10} />
-                                                                                {statusConfig.label}
-                                                                            </span>
-                                                                            {order.delivery_method === 'delivery' && (
-                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] bg-purple-400/10 text-purple-300">
-                                                                                    <Truck size={10} /> 宅配
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-
-                                                                        <div>
-                                                                            <p className="text-white text-sm leading-tight">{order.customer_name}</p>
-                                                                            <p className="text-moon-muted">{order.phone}</p>
-                                                                        </div>
-
-                                                                        <div className="text-moon-muted text-[11px]">
-                                                                            {order.delivery_method === 'delivery' ? '出貨' : '取貨'}：{order.pickup_time}
-                                                                        </div>
-
-                                                                        <div className="space-y-1 border-t border-moon-border/70 pt-2">
-                                                                            {order.items.slice(0, 3).map((item, idx) => (
-                                                                                <div key={idx} className="flex justify-between text-[11px] text-moon-text">
-                                                                                    <span>
-                                                                                        {item.name}
-                                                                                        {item.variant_name && <span className="text-moon-muted"> ({item.variant_name})</span>}
-                                                                                        <span className="text-moon-muted"> x{item.quantity}</span>
+                                                                return (
+                                                                    <Draggable draggableId={order.order_id} index={index} key={order.order_id}>
+                                                                        {(provided, snapshot) => (
+                                                                            <div
+                                                                                ref={provided.innerRef}
+                                                                                {...provided.draggableProps}
+                                                                                {...provided.dragHandleProps}
+                                                                                className={`border border-moon-border bg-moon-black p-3 text-xs space-y-2 cursor-grab ${snapshot.isDragging ? 'ring-1 ring-moon-accent' : ''}`}
+                                                                            >
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="font-mono text-moon-accent text-[11px]">{order.order_id}</span>
+                                                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 ${statusConfig.bg} ${statusConfig.color}`}>
+                                                                                        <StatusIcon size={10} />
+                                                                                        {statusConfig.label}
                                                                                     </span>
-                                                                                    <span className="text-moon-muted">${item.price * item.quantity}</span>
-                                                                                </div>
-                                                                            ))}
-                                                                            {order.items.length > 3 && (
-                                                                                <div className="text-[11px] text-moon-muted">+{order.items.length - 3} 更多品項</div>
-                                                                            )}
-                                                                        </div>
-
-                                                                        <div className="flex items-center justify-between pt-1">
-                                                                            <span className="text-moon-accent text-sm">${order.final_price || order.total_price}</span>
-                                                                            {nextStatus && (
-                                                                                <button
-                                                                                    onClick={() => updateStatus(order.order_id, nextStatus)}
-                                                                                    disabled={updating === order.order_id}
-                                                                                    className="flex items-center gap-1 px-2 py-1 bg-moon-accent text-moon-black text-[10px] tracking-wide hover:bg-white transition-colors disabled:opacity-60"
-                                                                                >
-                                                                                    {updating === order.order_id ? (
-                                                                                        <Loader2 size={12} className="animate-spin" />
-                                                                                    ) : (
-                                                                                        <>
-                                                                                            <CheckCircle size={12} />
-                                                                                            {ORDER_STATUS[nextStatus].label}
-                                                                                        </>
+                                                                                    {order.delivery_method === 'delivery' && (
+                                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] bg-purple-400/10 text-purple-300">
+                                                                                            <Truck size={10} /> 宅配
+                                                                                        </span>
                                                                                     )}
-                                                                                </button>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </Draggable>
-                                                        );
-                                                    })}
-                                                    {provided.placeholder}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </Droppable>
-                                ))}
-                            </DragDropContext>
-                        </div>
-                    </div>
-                )}
+                                                                                </div>
+
+                                                                                <div>
+                                                                                    <p className="text-white text-sm leading-tight">{order.customer_name}</p>
+                                                                                    <p className="text-moon-muted">{order.phone}</p>
+                                                                                </div>
+
+                                                                                <div className="text-moon-muted text-[11px]">
+                                                                                    {order.delivery_method === 'delivery' ? '出貨' : '取貨'}：{order.pickup_time}
+                                                                                </div>
+
+                                                                                <div className="space-y-1 border-t border-moon-border/70 pt-2">
+                                                                                    {order.items.slice(0, 3).map((item, idx) => (
+                                                                                        <div key={idx} className="flex justify-between text-[11px] text-moon-text">
+                                                                                            <span>
+                                                                                                {item.name}
+                                                                                                {item.variant_name && <span className="text-moon-muted"> ({item.variant_name})</span>}
+                                                                                                <span className="text-moon-muted"> x{item.quantity}</span>
+                                                                                            </span>
+                                                                                            <span className="text-moon-muted">${item.price * item.quantity}</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                    {order.items.length > 3 && (
+                                                                                        <div className="text-[11px] text-moon-muted">+{order.items.length - 3} 更多品項</div>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                <div className="flex items-center justify-between pt-1">
+                                                                                    <span className="text-moon-accent text-sm">${order.final_price || order.total_price}</span>
+                                                                                    {nextStatus && (
+                                                                                        <button
+                                                                                            onClick={() => updateStatus(order.order_id, nextStatus)}
+                                                                                            disabled={updating === order.order_id}
+                                                                                            className="flex items-center gap-1 px-2 py-1 bg-moon-accent text-moon-black text-[10px] tracking-wide hover:bg-white transition-colors disabled:opacity-60"
+                                                                                        >
+                                                                                            {updating === order.order_id ? (
+                                                                                                <Loader2 size={12} className="animate-spin" />
+                                                                                            ) : (
+                                                                                                <>
+                                                                                                    <CheckCircle size={12} />
+                                                                                                    {ORDER_STATUS[nextStatus].label}
+                                                                                                </>
+                                                                                            )}
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </Draggable>
+                                                                );
+                                                            })}
+                                                            {provided.placeholder}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </Droppable>
+                                        ))}
+                                    </DragDropContext>
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </main>
-        </div>
+        </div >
     );
 }

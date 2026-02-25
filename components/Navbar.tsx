@@ -38,7 +38,7 @@ export default function Navbar() {
           {/* 中間導航 - 月島網絡 */}
           <div className="hidden md:flex items-center gap-6">
             <a
-              href="https://moonisland-map.vercel.app"
+              href="https://map.kiwimu.com"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors flex items-center gap-1"
@@ -46,7 +46,7 @@ export default function Navbar() {
               品牌地圖
             </a>
             <a
-              href="https://kiwimu-mbti.vercel.app"
+              href="https://kiwimu.com"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors flex items-center gap-1"

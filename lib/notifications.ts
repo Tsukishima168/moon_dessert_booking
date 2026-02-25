@@ -105,7 +105,7 @@ export async function sendCustomerEmail(data: {
 
     <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px dashed #ccc;">
       <p>想隨時查詢訂單狀態？</p>
-      <a href="https://dessert-booking.vercel.app/auth/login?email=${data.to}" 
+      <a href="https://shop.kiwimu.com/auth/login?email=${data.to}"
          style="background-color: #d4a574; color: black; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
          啟用會員 / 查詢訂單
       </a>

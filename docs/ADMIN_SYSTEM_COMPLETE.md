@@ -205,7 +205,7 @@ CREATE TABLE menu_items (
 1. 打開 `https://your-app.vercel.app/admin`
 2. 使用 admin 帳號登入
 3. 自動進入儀表板
-
+ㄏㄞ
 ### 管理訂單
 1. 點擊「📋 訂單看板」
 2. 拖曳訂單卡片到下一欄位

@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 
 import { useSearchParams } from 'next/navigation';
-import ProductCard from '@/components/ProductCard';
 import ProductListItem from '@/components/ProductListItem';
+import ProductRow from '@/components/ProductRow';
 import Banner from '@/components/Banner';
 import { MenuItemWithVariants, MenuCategory } from '@/lib/supabase';
 import { Loader2, AlertCircle, Sparkles } from 'lucide-react';
@@ -231,7 +231,7 @@ export default function HomePage() {
             {/* 三入口：逛展 / 測驗 / 直接預訂 */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
               <Link
-                href="https://moon-map-original.vercel.app"
+                href="https://map.kiwimu.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 sm:flex-none sm:min-w-[180px] border border-moon-border text-moon-text px-4 py-3 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/60 transition-colors text-center"
@@ -240,7 +240,7 @@ export default function HomePage() {
               </Link>
 
               <Link
-                href="https://moonmoon-dessert-passport.vercel.app"
+                href="https://passport.kiwimu.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 sm:flex-none sm:min-w-[200px] border border-moon-border/80 text-moon-text px-4 py-3 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/40 transition-colors text-center"
@@ -303,10 +303,10 @@ export default function HomePage() {
                 <ProductListItem key={item.id} item={item} />
               ))}
             </div>
-            {/* Desktop: Grid */}
-            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {recommendedItems.map((item) => (
-                <ProductCard key={item.id} item={item} />
+            {/* Desktop: Row List */}
+            <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
+              {recommendedItems.map((item, i) => (
+                <ProductRow key={item.id} item={item} index={i} />
               ))}
             </div>
 
@@ -344,8 +344,8 @@ export default function HomePage() {
                   <div className="md:hidden border border-moon-border bg-moon-dark">
                     {featured.map(item => <ProductListItem key={item.id} item={item} />)}
                   </div>
-                  <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {featured.map(item => <ProductCard key={item.id} item={item} />)}
+                  <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
+                    {featured.map((item, i) => <ProductRow key={item.id} item={item} index={i} />)}
                   </div>
                   <div className="mt-12 sm:mt-16 border-t border-moon-border pt-12 sm:pt-16">
                     <h2 className="text-lg sm:text-xl font-light text-moon-muted text-center mb-8 sm:mb-12 tracking-wider px-4">
@@ -367,10 +367,10 @@ export default function HomePage() {
                 <ProductListItem key={item.id} item={item} />
               ))}
             </div>
-            {/* Desktop: 卡片 Grid */}
-            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {menuItems.map((item) => (
-                <ProductCard key={item.id} item={item} />
+            {/* Desktop: Row List */}
+            <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
+              {menuItems.map((item, i) => (
+                <ProductRow key={item.id} item={item} index={i} />
               ))}
             </div>
           </>
@@ -416,13 +416,14 @@ export default function HomePage() {
                     ))}
                   </div>
 
-                  {/* 商品列表 - Desktop (Grid) */}
-                  <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
-                    {categoryItems.map((item) => (
-                      <ProductCard
+                  {/* 商品列表 - Desktop (Row List) */}
+                  <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
+                    {categoryItems.map((item, i) => (
+                      <ProductRow
                         key={item.id}
                         item={item}
                         displayOnly={isDrinkCategory}
+                        index={i}
                       />
                     ))}
                   </div>
@@ -480,7 +481,7 @@ export default function HomePage() {
               </p>
 
               <Link
-                href="https://kiwimu-mbti.vercel.app"
+                href="https://kiwimu.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 border border-moon-border/80 px-4 py-2 text-[11px] sm:text-xs tracking-[0.25em] text-moon-text hover:bg-moon-border/40 transition-colors"
@@ -510,7 +511,7 @@ export default function HomePage() {
           {/* 導航連結 */}
           <div className="mb-6 sm:mb-8">
             <a
-              href="https://moon-map-original.vercel.app"
+              href="https://map.kiwimu.com"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-xs sm:text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors"

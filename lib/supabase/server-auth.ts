@@ -16,7 +16,10 @@ export async function createAuthClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                domain: '.kiwimu.com', // 跨子網域共享 session
+              })
             );
           } catch {
             // Server Component 中呼叫 setAll 可忽略

@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-    const baseUrl = 'https://dessert-booking.vercel.app'; // 請替換為您的實際網址
+    const baseUrl = 'https://shop.kiwimu.com';
 
     return {
         rules: [

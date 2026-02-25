@@ -14,7 +14,7 @@ const siteConfig = {
   name: 'MOON MOON | 月島甜點',
   title: '月島甜點 | 安南區果菜市場・本原街療癒系甜點預訂',
   description: '安南區本原街・果菜市場周邊療癒系甜點工作室。從情緒出發的甜點設計，結合 Kiwimu MBTI，為你找到最適合當下的甜點。本原街自取或宅配到府。',
-  url: 'https://dessert-booking.vercel.app', // 請替換為您的實際網址
+  url: 'https://shop.kiwimu.com',
   locale: 'zh_TW',
   type: 'website' as const, // Fix TypeScript type
   image: 'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png', // OG 分享圖
