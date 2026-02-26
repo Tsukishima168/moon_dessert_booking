@@ -1,18 +1,31 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// 環境變數驗證
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('缺少 NEXT_PUBLIC_SUPABASE_URL 環境變數');
-}
-if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error('缺少 NEXT_PUBLIC_SUPABASE_ANON_KEY 環境變數');
+// 惰性初始化：避免在建置期間因環境變數尚未注入而導致崩潰
+let _supabase: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+  if (_supabase) return _supabase;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error('缺少 NEXT_PUBLIC_SUPABASE_URL 環境變數');
+  }
+  if (!supabaseAnonKey) {
+    throw new Error('缺少 NEXT_PUBLIC_SUPABASE_ANON_KEY 環境變數');
+  }
+
+  _supabase = createClient(supabaseUrl, supabaseAnonKey);
+  return _supabase;
 }
 
-// 建立 Supabase Client
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+// 向後相容的 getter：確保現有程式碼無需修改
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabaseClient() as any)[prop];
+  },
+});
 
 // 型別定義
 export interface MenuItem {
