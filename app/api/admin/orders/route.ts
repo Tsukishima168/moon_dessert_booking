@@ -15,7 +15,14 @@ async function ensureAdmin(request: NextRequest) {
         .toString()
         .toLowerCase();
 
-    return role === 'admin';
+    // 雙重驗證：Supabase role=admin 或 ADMIN_EMAILS 白名單
+    const adminEmails = (process.env.ADMIN_EMAILS || '')
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+    const userEmail = (session.user.email || '').toLowerCase();
+
+    return role === 'admin' || adminEmails.includes(userEmail);
 }
 
 // GET /api/admin/orders - 取得訂單列表

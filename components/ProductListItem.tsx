@@ -102,10 +102,11 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                   e.currentTarget.style.display = 'none';
                 }}
               />
-            ) : null}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xl opacity-20">—</span>
-            </div>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xl opacity-20">—</span>
+              </div>
+            )}
           </div>
 
           {/* 商品描述 */}

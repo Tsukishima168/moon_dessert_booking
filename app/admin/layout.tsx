@@ -23,15 +23,23 @@ export default async function AdminLayout({
     data: { session },
   } = await supabase.auth.getSession();
 
-  const role = (session?.user?.app_metadata?.role || session?.user?.user_metadata?.role || '')
-    .toString()
-    .toLowerCase();
-
   if (!session) {
     redirect(`/auth/login?redirect=${encodeURIComponent('/admin')}`);
   }
 
-  if (role !== 'admin') {
+  const role = (session?.user?.app_metadata?.role || session?.user?.user_metadata?.role || '')
+    .toString()
+    .toLowerCase();
+
+  // 雙重驗證：Supabase role=admin 或 ADMIN_EMAILS 白名單（兩者擇一即可）
+  const adminEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const userEmail = (session?.user?.email || '').toLowerCase();
+  const isAdmin = role === 'admin' || adminEmails.includes(userEmail);
+
+  if (!isAdmin) {
     redirect('/');
   }
 

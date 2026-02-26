@@ -47,6 +47,7 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState('');
   const [confirmedName, setConfirmedName] = useState('');
   const [confirmedAmount, setConfirmedAmount] = useState(0);
+  const [linePayUrl, setLinePayUrl] = useState('');
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
@@ -306,14 +307,10 @@ export default function CheckoutPage() {
         msg += `\n付款完成後請回傳「後五碼」\n`;
         msg += `   （轉帳通知中的後五碼數字）`;
 
-        // 7. Redirect to LINE (oaMessage)
+        // 7. 建立 LINE 連結（改為手動按鈕，不自動跳轉）
         const encodedMsg = encodeURIComponent(msg);
         const lineUrl = `https://line.me/R/oaMessage/@931cxefd/?text=${encodedMsg}`;
-
-        // 成功後直接跳轉 LINE OA
-        setTimeout(() => {
-          window.location.href = lineUrl;
-        }, 1500);
+        setLinePayUrl(lineUrl);
 
       } else {
         alert(`訂單失敗：${result.message}`);
@@ -347,14 +344,62 @@ export default function CheckoutPage() {
     finally { setPromoLoading(false); }
   };
 
-  // 成功畫面 (雖然會快速跳轉，但還是保留 UI)
+  // 成功畫面：顯示訂單資訊 + 手動前往 LINE 按鈕
   if (orderSuccess) {
     return (
       <div className="min-h-screen bg-moon-black flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <Loader2 className="animate-spin w-12 h-12 text-moon-accent mx-auto" />
-          <h2 className="text-xl text-moon-accent tracking-wider">正在前往 LINE 完成訂單確認...</h2>
-          <p className="text-moon-muted text-sm">如果沒有自動跳轉，請<a href="https://line.me/R/ti/p/@838jomhj" className="underline text-white">點擊這裡</a></p>
+        <div className="w-full max-w-md space-y-6">
+          {/* 標題 */}
+          <div className="text-center space-y-2">
+            <CheckCircle className="w-12 h-12 text-moon-accent mx-auto" />
+            <h2 className="text-xl text-moon-accent tracking-widest">訂單成立</h2>
+            <p className="text-xs text-moon-muted tracking-wider">ORDER CONFIRMED</p>
+          </div>
+
+          {/* 訂單摘要 */}
+          <div className="border border-moon-border/30 p-5 space-y-3 bg-moon-dark/40">
+            <div className="flex justify-between text-sm">
+              <span className="text-moon-muted">訂單編號</span>
+              <span className="text-moon-accent font-mono tracking-widest">{orderId}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-moon-muted">訂購人</span>
+              <span className="text-moon-text">{confirmedName}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-moon-muted">應付金額</span>
+              <span className="text-moon-accent font-light">NT$ {confirmedAmount}</span>
+            </div>
+          </div>
+
+          {/* 付款說明 */}
+          <div className="border border-moon-border/20 p-4 space-y-2 bg-moon-dark/20">
+            <p className="text-xs text-moon-muted tracking-wider mb-2">— 付款方式 —</p>
+            <p className="text-sm text-moon-text">LINE Bank（824）連線商業銀行</p>
+            <p className="text-sm text-moon-text">帳號：111007479473</p>
+            <p className="text-xs text-moon-muted mt-2">
+              轉帳備註請填寫訂單編號：<span className="text-moon-accent font-mono">{orderId}</span>
+            </p>
+            <p className="text-xs text-moon-muted">完成後請在 LINE 回傳後五碼</p>
+          </div>
+
+          {/* LINE 按鈕（手動觸發） */}
+          {linePayUrl && (
+            <a
+              href={linePayUrl}
+              className="flex items-center justify-center gap-2 w-full bg-[#00B900] hover:bg-[#00a000] text-white py-4 tracking-widest text-sm transition-colors"
+            >
+              前往 LINE 完成確認 →
+            </a>
+          )}
+
+          <p className="text-center text-xs text-moon-muted/60">
+            訂單確認信已發送至您的信箱（若有填寫）
+          </p>
+
+          <Link href="/" className="block text-center text-xs text-moon-muted underline underline-offset-4">
+            返回首頁
+          </Link>
         </div>
       </div>
     );

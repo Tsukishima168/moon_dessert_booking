@@ -144,6 +144,8 @@ export async function notifyNewOrder(data: {
   deliveryAddress?: string;
   deliveryFee?: number;
   deliveryNotes?: string;
+  orderSource?: string; // 來源子站：map / passport / gacha / direct
+  utmSource?: string;
 }): Promise<boolean> {
 
   // 準備 Embed 欄位
@@ -155,10 +157,15 @@ export async function notifyNewOrder(data: {
 
   const isDelivery = data.deliveryMethod === 'delivery';
 
+  // 來源標籤
+  const sourceLabel = data.orderSource
+    ? { map: '月島地圖 🗺️', passport: '甜點護照 🎫', gacha: '扭蛋 🎰', direct: '直接訪問' }[data.orderSource] || data.orderSource
+    : '直接訪問';
+
   // 建立 Discord Embed
   const embed = {
     title: "🔔 新訂單通知 (New Order)",
-    description: `訂單編號: **${data.orderId}**`,
+    description: `訂單編號: **${data.orderId}**\n來源：${sourceLabel}`,
     color: 0xd4a574, // Moon Accent Color (#d4a574)
     fields: [
       {
@@ -192,7 +199,7 @@ export async function notifyNewOrder(data: {
     ],
     timestamp: new Date().toISOString(),
     footer: {
-      text: "Moon Moon Dessert Booking System"
+      text: `Moon Moon Dessert | ${data.utmSource || 'shop.kiwimu.com'}`
     }
   };
 
