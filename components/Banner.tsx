@@ -91,7 +91,7 @@ export default function Banner() {
         description: '即日起預訂享早鳥優惠，限量供應',
         image_url: 'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png',
         link_url: '#menu-section',
-        link_text: '逛逛甜點',
+        link_text: '立即預訂',
         background_color: '#d4a574',
         text_color: '#0a0a0a',
         display_type: 'hero',
@@ -140,7 +140,7 @@ function HeroBanner({
 }) {
     return (
         <div
-            className="relative border border-moon-border p-6 mb-8 group"
+            className="relative border border-moon-border p-4 sm:p-6 mb-6 sm:mb-8 group w-full overflow-hidden"
             style={{
                 backgroundColor: `${banner.background_color}10`,
                 borderColor: banner.background_color
@@ -149,29 +149,29 @@ function HeroBanner({
             {/* 關閉按鈕 */}
             <button
                 onClick={onDismiss}
-                className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-3 right-3 opacity-60 hover:opacity-100 transition-opacity"
                 style={{ color: banner.text_color }}
                 aria-label="關閉"
             >
-                <X size={20} />
+                <X size={18} />
             </button>
 
-            <div className="flex items-start gap-6">
-                {/* 圖片 (如果有) */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 pr-6">
+                {/* 圖片 */}
                 {banner.image_url && (
-                    <div className="hidden md:block flex-shrink-0">
+                    <div className="flex-shrink-0">
                         <img
                             src={banner.image_url}
                             alt={banner.title}
-                            className="w-24 h-24 object-cover"
+                            className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
                         />
                     </div>
                 )}
 
                 {/* 內容 */}
-                <div className="flex-1">
+                <div className="flex-1 text-center sm:text-left">
                     <h3
-                        className="text-lg md:text-xl tracking-wider mb-2 font-light"
+                        className="text-base sm:text-lg tracking-wider mb-1 sm:mb-2 font-light"
                         style={{ color: banner.text_color }}
                     >
                         {banner.title}
@@ -179,7 +179,7 @@ function HeroBanner({
 
                     {banner.description && (
                         <p
-                            className="text-sm md:text-base mb-4 opacity-90"
+                            className="text-xs sm:text-sm mb-3 sm:mb-4 opacity-90"
                             style={{ color: banner.text_color }}
                         >
                             {banner.description}
@@ -197,10 +197,10 @@ function HeroBanner({
                                     document.getElementById(banner.link_url!.slice(1))?.scrollIntoView({ behavior: 'smooth' });
                                 }
                             }}
-                            className="inline-block px-6 py-2 border transition-all hover:scale-105"
+                            className="inline-block px-4 sm:px-6 py-2 border transition-colors text-xs sm:text-sm tracking-wider"
                             style={{
                                 backgroundColor: banner.background_color,
-                                color: banner.text_color === '#0a0a0a' ? '#ffffff' : '#0a0a0a',
+                                color: '#ffffff',
                                 borderColor: banner.background_color
                             }}
                         >
