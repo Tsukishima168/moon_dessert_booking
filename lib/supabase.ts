@@ -16,7 +16,45 @@ function getSupabaseClient(): SupabaseClient {
     throw new Error('缺少 NEXT_PUBLIC_SUPABASE_ANON_KEY 環境變數');
   }
 
-  _supabase = createClient(supabaseUrl, supabaseAnonKey);
+  let storageOptions = {};
+  if (typeof window !== 'undefined') {
+    const COOKIE_DOMAIN = '.kiwimu.com';
+
+    const getCookie = (name: string): string | null => {
+      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    };
+
+    const setCookie = (name: string, value: string, maxAgeSec = 60 * 60 * 24 * 365) => {
+      document.cookie = [
+        `${name}=${encodeURIComponent(value)}`,
+        `domain=${COOKIE_DOMAIN}`,
+        `path=/`,
+        `max-age=${maxAgeSec}`,
+        'SameSite=Lax',
+      ].join('; ');
+    };
+
+    const deleteCookie = (name: string) => {
+      document.cookie = `${name}=; domain=${COOKIE_DOMAIN}; path=/; max-age=0`;
+    };
+
+    storageOptions = {
+      storage: {
+        getItem: (key: string) => getCookie(key),
+        setItem: (key: string, value: string) => setCookie(key, value),
+        removeItem: (key: string) => deleteCookie(key),
+      }
+    };
+  }
+
+  _supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      detectSessionInUrl: true,
+      ...storageOptions
+    }
+  });
   return _supabase;
 }
 
