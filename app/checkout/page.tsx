@@ -13,6 +13,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { TAIWAN_CITIES } from '@/lib/taiwan-data';
 import { supabase } from '@/lib/supabase'; // Import Supabase
+import liff from '@line/liff';
 
 interface CheckoutFormData {
   customer_name: string;
@@ -89,6 +90,22 @@ export default function CheckoutPage() {
         setValue('email', session.user.email || '');
       }
     });
+
+    // Initialize LINE LIFF
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+    if (liffId) {
+      liff.init({ liffId })
+        .then(() => {
+          if (liff.isLoggedIn()) {
+            liff.getProfile()
+              .then((profile) => {
+                setValue('customer_name', profile.displayName);
+              })
+              .catch(err => console.error('LIFF getProfile Error:', err));
+          }
+        })
+        .catch((err) => console.error('LIFF init Error:', err));
+    }
   }, [setValue]);
 
   // 載入預訂規則
