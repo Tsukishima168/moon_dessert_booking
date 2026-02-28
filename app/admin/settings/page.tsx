@@ -140,8 +140,8 @@ export default function SettingsPage() {
                 {/* Message */}
                 {message && (
                     <div className={`mb-6 p-4 border ${message.includes('✅')
-                            ? 'border-green-500/30 bg-green-500/10 text-green-400'
-                            : 'border-red-500/30 bg-red-500/10 text-red-400'
+                        ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                        : 'border-red-500/30 bg-red-500/10 text-red-400'
                         }`}>
                         {message}
                     </div>
@@ -269,17 +269,90 @@ export default function SettingsPage() {
                             </p>
                         </div>
 
-                        <div className="bg-moon-black/40 border border-moon-border/30 p-4">
-                            <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-moon-black/40 border border-moon-border/30 p-4 rounded-lg">
+                            <div className="flex items-center gap-2 mb-4">
                                 <DollarSign size={16} className="text-moon-accent" />
-                                <span className="text-sm text-moon-text">特殊日期設定</span>
+                                <span className="text-sm text-moon-text font-bold">滿單與特休日期鎖定 (特殊日期設定)</span>
                             </div>
-                            <p className="text-xs text-moon-muted/60">
-                                目前設定: {Object.keys(settings.daily_capacity.special_dates).length} 個特殊日期
+                            <p className="text-xs text-moon-muted/80 mb-4">
+                                在這裡加入你想要**關閉預訂**的日期。這些日期會同步到 Map 與 Shop 的前台日曆，變成灰色不可點擊的狀態。
                             </p>
-                            <p className="text-xs text-moon-muted/60 mt-2">
-                                💡 未來版本將支援圖形化設定情人節、母親節等特殊日期的產能
-                            </p>
+
+                            {/* 加入新日期的 UI */}
+                            <div className="flex gap-2 mb-6">
+                                <input
+                                    type="date"
+                                    id="new-special-date"
+                                    className="bg-moon-black border border-moon-border px-3 py-2 text-sm text-moon-text focus:outline-none focus:border-moon-accent rounded"
+                                />
+                                <button
+                                    onClick={() => {
+                                        const dateInput = document.getElementById('new-special-date') as HTMLInputElement;
+                                        const newDate = dateInput.value;
+                                        if (!newDate) return;
+
+                                        if (settings.daily_capacity.special_dates[newDate] !== undefined) {
+                                            alert('這個日期已經在清單中了！');
+                                            return;
+                                        }
+
+                                        const updatedSpecialDates = {
+                                            ...settings.daily_capacity.special_dates,
+                                            [newDate]: 0 // 產能設為 0 代表關閉預訂
+                                        };
+
+                                        setSettings({
+                                            ...settings,
+                                            daily_capacity: {
+                                                ...settings.daily_capacity,
+                                                special_dates: updatedSpecialDates
+                                            }
+                                        });
+                                        dateInput.value = ''; // 清空欄位
+                                    }}
+                                    className="bg-moon-white text-moon-black px-4 py-2 text-sm font-bold rounded hover:bg-moon-accent transition-colors"
+                                >
+                                    新增鎖定日期
+                                </button>
+                            </div>
+
+                            {/* 已鎖定日期列表 */}
+                            {Object.keys(settings.daily_capacity.special_dates).length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {Object.entries(settings.daily_capacity.special_dates)
+                                        .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+                                        .map(([date, limit]) => (
+                                            <div key={date} className="flex items-center justify-between bg-moon-dark px-3 py-2 border border-moon-border rounded">
+                                                <div>
+                                                    <span className="text-moon-text text-sm block">{date}</span>
+                                                    <span className="text-red-400 text-xs">產能: {limit} (關閉)</span>
+                                                </div>
+                                                <button
+                                                    className="text-moon-muted hover:text-red-500 transition-colors p-1"
+                                                    onClick={() => {
+                                                        const updatedSpecialDates = { ...settings.daily_capacity.special_dates };
+                                                        delete updatedSpecialDates[date];
+
+                                                        setSettings({
+                                                            ...settings,
+                                                            daily_capacity: {
+                                                                ...settings.daily_capacity,
+                                                                special_dates: updatedSpecialDates
+                                                            }
+                                                        });
+                                                    }}
+                                                    title="移除此日期鎖定"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-6 border border-dashed border-moon-border/50 text-moon-muted text-sm rounded">
+                                    尚無設定特殊鎖定日期
+                                </div>
+                            )}
                         </div>
 
                         <button
