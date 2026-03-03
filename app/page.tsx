@@ -102,7 +102,7 @@ export default function HomePage() {
   }, [searchParamsKey, fromSource, mbtiType]);
 
   const getSourceMeta = () => {
-    if (fromSource === 'moon-map') {
+    if (fromSource === 'moon-map' || fromSource === 'map') {
       return {
         label: 'FROM MOON MAP',
         title: '你剛從展覽地圖，走進月島裡負責做甜點的這一格房間。',

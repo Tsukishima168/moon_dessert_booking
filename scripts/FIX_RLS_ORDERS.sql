@@ -13,6 +13,10 @@ DROP POLICY IF EXISTS "允許建立訂單" ON orders;
 DROP POLICY IF EXISTS "Allow anonymous to create orders" ON orders;
 DROP POLICY IF EXISTS "anon_insert_orders" ON orders;
 DROP POLICY IF EXISTS "Enable insert for anonymous users" ON orders;
+DROP POLICY IF EXISTS "anon_can_insert_orders" ON orders;
+DROP POLICY IF EXISTS "authenticated_can_select_orders" ON orders;
+DROP POLICY IF EXISTS "authenticated_can_update_orders" ON orders;
+DROP POLICY IF EXISTS "anon_can_select_own_order" ON orders;
 
 -- Step 2: 確認 RLS 已啟用（若未啟用，此步驟就是無效的）
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
