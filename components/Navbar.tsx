@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ShoppingCart, User } from 'lucide-react';
+import { ShoppingCart, User, LogOut } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import Link from 'next/link';
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export default function Navbar() {
   const { getTotalItems, toggleCart } = useCartStore();
+  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
 
   // 避免伺服器與瀏覽器初始內容不一致（Hydration error）
   // 先假設數量為 0，等到 client 端完成 hydration 再讀取實際購物車數量
@@ -15,6 +18,16 @@ export default function Navbar() {
 
   useEffect(() => {
     setHasHydrated(true);
+
+    // 取得當前登入狀態
+    supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user ?? null));
+
+    // 監聽登入/登出事件
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const totalItems = hasHydrated ? getTotalItems() : 0;
@@ -62,14 +75,31 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* 購物車按鈕 */}
+          {/* 右側按鈕區 */}
           <div className="flex items-center gap-2">
-            <Link
-              href="/auth/login"
-              className="bg-moon-black border border-moon-border p-3 sm:p-4 hover:bg-moon-border transition-all group"
-            >
-              <User size={18} className="text-moon-text sm:w-5 sm:h-5 group-hover:text-moon-accent transition-colors" />
-            </Link>
+            {currentUser ? (
+              // 已登入：顯示 email 縮寫 + 登出按鈕
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-moon-muted hidden sm:block truncate max-w-[120px]">
+                  {currentUser.email?.split('@')[0]}
+                </span>
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="bg-moon-black border border-moon-border p-3 sm:p-4 hover:bg-moon-border transition-all group"
+                  title="登出"
+                >
+                  <LogOut size={18} className="text-moon-text sm:w-5 sm:h-5 group-hover:text-moon-accent transition-colors" />
+                </button>
+              </div>
+            ) : (
+              // 未登入：User icon 指向登入頁
+              <Link
+                href="/auth/login"
+                className="bg-moon-black border border-moon-border p-3 sm:p-4 hover:bg-moon-border transition-all group"
+              >
+                <User size={18} className="text-moon-text sm:w-5 sm:h-5 group-hover:text-moon-accent transition-colors" />
+              </Link>
+            )}
 
             <button
               onClick={toggleCart}

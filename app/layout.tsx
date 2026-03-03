@@ -73,10 +73,10 @@ export const metadata: Metadata = {
     },
   },
 
-  // Verification (之後可以加入 Google Search Console 驗證碼)
-  // verification: {
-  //   google: 'your-google-verification-code',
-  // },
+  // Verification (Google Search Console)
+  verification: {
+    google: '2RFBMYJ30DsIGKJ9nRS1286s4lbJNFMOsK7s_QDQhSs',
+  },
 };
 
 export default function RootLayout({

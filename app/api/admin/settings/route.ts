@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
+import { ensureAdmin } from '@/app/api/admin/_utils/ensureAdmin';
 
 export const dynamic = 'force-dynamic';
 
 // GET - 取得所有營業設定
 export async function GET() {
     try {
+        const isAdmin = await ensureAdmin();
+        if (!isAdmin) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const supabase = createClient();
 
         const { data: settings, error } = await supabase
@@ -34,6 +40,11 @@ export async function GET() {
 // PUT - 更新營業設定
 export async function PUT(request: NextRequest) {
     try {
+        const isAdmin = await ensureAdmin();
+        if (!isAdmin) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
         const { setting_key, setting_value } = body;
 

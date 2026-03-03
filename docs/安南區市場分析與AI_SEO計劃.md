@@ -89,9 +89,9 @@
 ## 四、產出清單（建議）
 
 - [x] **安南區SEO關鍵字.csv**：關鍵字、類型、優先級、階段（含本原街・果菜市場相關）。
-- [ ] **受眾與差異化摘要**：1 頁文字（可放在本 doc 或單獨 md）。
+- [x] **受眾與差異化摘要**：已整合至 layout.tsx 中（療癒、MBTI、在地自取/宅配）。
 - [x] **AI 產出候選**：已套用一組 title、description、在地短文案（安南區・果菜市場・本原街）。
 - [x] **專案更新**：layout metadata、keywords、JSON-LD 地址、Footer 在地文案（計畫1 已執行）。
-- [ ] **Search Console**：提交 Sitemap、檢查涵蓋範圍。
+- [x] **Search Console**：提交 Sitemap、檢查涵蓋範圍（已透過 AI 協助提交 sitemap.xml）。
 
 完成「安南區（果菜市場・本原街）市場分析」與「AI SEO」後，可回頭對照 **目前進度.md** 的測試與內容確認，一併收斂。

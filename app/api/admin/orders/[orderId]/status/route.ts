@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sendOrderStatusNotification } from '@/lib/notifications';
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
+import { ensureAdmin } from '@/app/api/admin/_utils/ensureAdmin';
 
 // PATCH /api/admin/orders/[orderId]/status - 更新訂單狀態
 export async function PATCH(
@@ -9,6 +10,11 @@ export async function PATCH(
     { params }: { params: { orderId: string } }
 ) {
     try {
+        const isAdmin = await ensureAdmin();
+        if (!isAdmin) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
         const { orderId } = params;
         const { status } = await request.json();
 
