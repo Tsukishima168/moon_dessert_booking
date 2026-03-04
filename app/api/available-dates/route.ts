@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { getAvailableDates } from '@/lib/supabase';
 
 // GET /api/available-dates - 取得可預訂日期列表
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('API 錯誤 - 取得可預訂日期:', error);
-    
+
     return NextResponse.json(
       {
         success: false,
