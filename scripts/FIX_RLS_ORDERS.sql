@@ -21,11 +21,17 @@ DROP POLICY IF EXISTS "anon_can_select_own_order" ON orders;
 -- Step 2: 確認 RLS 已啟用（若未啟用，此步驟就是無效的）
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
--- Step 3: 重新建立能讓匿名使用者（前台客戶）新增訂單的政策
+-- Step 3: 重新建立能讓匿名使用者與登入會員新增訂單的政策
 CREATE POLICY "anon_can_insert_orders"
   ON orders
   FOR INSERT
   TO anon
+  WITH CHECK (true);
+
+CREATE POLICY "authenticated_can_insert_orders"
+  ON orders
+  FOR INSERT
+  TO authenticated
   WITH CHECK (true);
 
 -- Step 4: 確認已認證用戶（管理員）能讀取和更新訂單（確保管理後台正常）

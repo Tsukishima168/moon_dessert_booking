@@ -3,9 +3,10 @@
 import Script from 'next/script';
 
 export default function GoogleAnalytics() {
-    const GA_ID = process.env.NEXT_PUBLIC_GA4_ID;
+    // Use the new Kiwimu-Core GA4 ID for unified funnel tracking
+    const GA_ID = process.env.NEXT_PUBLIC_GA4_ID || 'G-DM6F27KL8B';
 
-    // 只在生產環境且有設定 GA4 ID 時載入
+    // 只在生產環境載入
     if (!GA_ID || process.env.NODE_ENV !== 'production') {
         return null;
     }

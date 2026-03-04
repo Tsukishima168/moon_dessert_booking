@@ -80,15 +80,19 @@ export default function Navbar() {
             {currentUser ? (
               // 已登入：顯示 email 縮寫 + 登出按鈕
               <div className="flex items-center gap-2">
-                <span className="text-xs text-moon-muted hidden sm:block truncate max-w-[120px]">
-                  {currentUser.email?.split('@')[0]}
-                </span>
+                <div className="flex items-center gap-1.5 px-3">
+                  <User size={14} className="text-moon-accent" />
+                  <span className="text-xs text-moon-muted hidden sm:block truncate max-w-[120px]">
+                    {currentUser.email?.split('@')[0]}
+                  </span>
+                </div>
                 <button
                   onClick={() => supabase.auth.signOut()}
-                  className="bg-moon-black border border-moon-border p-3 sm:p-4 hover:bg-moon-border transition-all group"
+                  className="bg-moon-black border border-moon-border p-3 sm:py-3 sm:px-4 hover:bg-moon-border transition-all group flex items-center gap-2"
                   title="登出"
                 >
-                  <LogOut size={18} className="text-moon-text sm:w-5 sm:h-5 group-hover:text-moon-accent transition-colors" />
+                  <span className="text-xs text-moon-text hidden sm:block group-hover:text-moon-accent transition-colors tracking-widest font-bold">登出</span>
+                  <LogOut size={16} className="text-moon-text group-hover:text-moon-accent transition-colors" />
                 </button>
               </div>
             ) : (

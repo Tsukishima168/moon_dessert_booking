@@ -15,6 +15,12 @@ import { TAIWAN_CITIES } from '@/lib/taiwan-data';
 import { supabase } from '@/lib/supabase'; // Import Supabase
 import liff from '@line/liff';
 
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+  }
+}
+
 interface CheckoutFormData {
   customer_name: string;
   phone: string;
@@ -81,6 +87,7 @@ export default function CheckoutPage() {
   const [loggedInUser, setLoggedInUser] = useState<{ email: string; id: string } | null>(null);
 
   useEffect(() => {
+    // 1. 立即讀取當前 session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setLoggedInUser({
@@ -91,7 +98,20 @@ export default function CheckoutPage() {
       }
     });
 
-    // Initialize LINE LIFF
+    // 2. 監聽 Auth 狀態變更（例如 Magic Link / Google OAuth 後跳回來）
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setLoggedInUser({
+          email: session.user.email || '',
+          id: session.user.id
+        });
+        setValue('email', session.user.email || '');
+      } else {
+        setLoggedInUser(null);
+      }
+    });
+
+    // 3. Initialize LINE LIFF
     const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
     if (liffId) {
       liff.init({ liffId })
@@ -106,6 +126,8 @@ export default function CheckoutPage() {
         })
         .catch((err) => console.error('LIFF init Error:', err));
     }
+
+    return () => subscription.unsubscribe();
   }, [setValue]);
 
   // 載入預訂規則
@@ -297,6 +319,22 @@ export default function CheckoutPage() {
         setOrderId(newOrderId);
         setOrderSuccess(true);
         clearCart();
+
+        // 追蹤 GA4 purchase 事件
+        if (typeof window !== 'undefined' && window.gtag) {
+          window.gtag('event', 'purchase', {
+            transaction_id: newOrderId,
+            value: finalPrice,
+            currency: 'TWD',
+            items: items.map(item => ({
+              item_name: item.name,
+              item_id: item.id,
+              price: item.price,
+              quantity: item.quantity,
+              item_variant: item.variant_name || '單一規格',
+            }))
+          });
+        }
 
         // 6. Build LINE message with payment info (Referencing moon_map_original)
         let msg = `【月島甜點訂單確認】\n`;

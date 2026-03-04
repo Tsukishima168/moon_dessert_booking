@@ -16,45 +16,16 @@ function getSupabaseClient(): SupabaseClient {
     throw new Error('缺少 NEXT_PUBLIC_SUPABASE_ANON_KEY 環境變數');
   }
 
-  let storageOptions = {};
-  if (typeof window !== 'undefined') {
-    const COOKIE_DOMAIN = '.kiwimu.com';
-
-    const getCookie = (name: string): string | null => {
-      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-      return match ? decodeURIComponent(match[2]) : null;
-    };
-
-    const setCookie = (name: string, value: string, maxAgeSec = 60 * 60 * 24 * 365) => {
-      document.cookie = [
-        `${name}=${encodeURIComponent(value)}`,
-        `domain=${COOKIE_DOMAIN}`,
-        `path=/`,
-        `max-age=${maxAgeSec}`,
-        'SameSite=Lax',
-      ].join('; ');
-    };
-
-    const deleteCookie = (name: string) => {
-      document.cookie = `${name}=; domain=${COOKIE_DOMAIN}; path=/; max-age=0`;
-    };
-
-    storageOptions = {
-      storage: {
-        getItem: (key: string) => getCookie(key),
-        setItem: (key: string, value: string) => setCookie(key, value),
-        removeItem: (key: string) => deleteCookie(key),
-      }
-    };
-  }
-
+  // 使用 createClient（同型，可在 Server/Client 兩端使用）
+  // 注意：此 client 以 localStorage 儲存 session（適用於非 SSR 的 client component）
   _supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       detectSessionInUrl: true,
-      ...storageOptions
-    }
+      autoRefreshToken: true,
+    },
   });
+
   return _supabase;
 }
 
