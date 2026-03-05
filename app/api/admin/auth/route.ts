@@ -52,7 +52,17 @@ export async function POST(request: NextRequest) {
 
         if (secureCompare(password, adminPassword)) {
             clearAuthFailures(clientId);
-            return NextResponse.json({ success: true });
+            // 設定 admin_token cookie（SHA256 of password）讓 server layout 驗證
+            const token = createHash('sha256').update(adminPassword).digest('hex');
+            const response = NextResponse.json({ success: true });
+            response.cookies.set('admin_token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 60 * 60 * 24 * 7, // 7 天
+            });
+            return response;
         }
 
         const failureStatus = registerAuthFailure(clientId);

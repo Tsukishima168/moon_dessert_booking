@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { createAuthClient } from '@/lib/supabase/server-auth';
+import { cookies } from 'next/headers';
+import { createHash } from 'crypto';
+import AdminLoginGate from '@/components/AdminLoginGate';
 
 // 後台 SEO - 完全不被搜尋引擎索引
 export const metadata: Metadata = {
@@ -12,36 +13,28 @@ export const metadata: Metadata = {
   },
 };
 
-// 伺服器端守門：僅允許 Supabase role=admin 的使用者進入 /admin 區域
+// 驗證 admin token（與 /api/admin/auth 的密碼比對）
+function isValidAdminToken(token: string): boolean {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) return false;
+  const expectedToken = createHash('sha256').update(adminPassword).digest('hex');
+  return token === expectedToken;
+}
+
+// 伺服器端守門：檢查 cookie 中的 admin_token
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createAuthClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const cookieStore = await cookies();
+  const adminToken = cookieStore.get('admin_token')?.value;
 
-  if (!session) {
-    redirect(`/auth/login?redirect=${encodeURIComponent('/admin')}`);
-  }
-
-  const role = (session?.user?.app_metadata?.role || session?.user?.user_metadata?.role || '')
-    .toString()
-    .toLowerCase();
-
-  // 雙重驗證：Supabase role=admin 或 ADMIN_EMAILS 白名單（兩者擇一即可）
-  const adminEmails = (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  const userEmail = (session?.user?.email || '').toLowerCase();
-  const isAdmin = role === 'admin' || adminEmails.includes(userEmail);
-
-  if (!isAdmin) {
-    redirect('/');
+  // 無 token 或 token 無效 → 顯示密碼登入頁
+  if (!adminToken || !isValidAdminToken(adminToken)) {
+    return <AdminLoginGate />;
   }
 
   return children;
 }
+
