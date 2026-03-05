@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 建立訂單
+    // 建立訂單（來源標記為 shop）
     const result = await createOrder({
       customer_name,
       phone,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       delivery_notes: delivery_notes || null,
       mbti_type: mbti_type || null,
       from_mbti_test: !!from_mbti_test,
-      source_from: source_from || null,
+      source_from: source_from || 'shop', // 設定訂單來源為 shop
       utm_source: utm_source || null,
       utm_medium: utm_medium || null,
       utm_campaign: utm_campaign || null,
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         deliveryNotes: delivery_notes || null,
       }) : Promise.resolve(false),
 
-      // 2. LINE 通知店家
+      // 2. LINE & Discord 通知店家
       notifyNewOrder({
         orderId: result.order_id,
         customerName: customer_name,
@@ -137,6 +137,7 @@ export async function POST(request: NextRequest) {
         deliveryAddress: delivery_address || null,
         deliveryFee: delivery_fee ? parseFloat(delivery_fee) : 0,
         deliveryNotes: delivery_notes || null,
+        orderSource: 'shop', // 標記訂單來源為 shop
       }),
       // 3. 同步到 n8n（由 n8n 寫入 Google Sheet 訂單總表）
       syncOrderEventToN8n('order.created', {
