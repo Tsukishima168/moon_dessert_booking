@@ -1,26 +1,12 @@
-import { createAuthClient } from '@/lib/supabase/server-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureAdmin } from '../_utils/ensureAdmin';
+import { supabase } from '@/lib/supabase';
 
 // GET - 取得 Discord 設定狀態
 export async function GET(req: NextRequest) {
     try {
-        const supabase = await createAuthClient();
-        const {
-            data: { session },
-            error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError || !session) {
-            return NextResponse.json({ error: '未授權' }, { status: 401 });
-        }
-
-        // 檢查是否為管理員
-        const role = (session.user.app_metadata?.role || session.user.user_metadata?.role || '')
-            .toString()
-            .toLowerCase();
-
-        if (role !== 'admin') {
-            return NextResponse.json({ error: '無權限' }, { status: 403 });
+        if (!(await ensureAdmin())) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         // 從環境變數獲取 URL 狀態（不返回實際 URL）
@@ -41,23 +27,8 @@ export async function GET(req: NextRequest) {
 // POST - 儲存 Discord 設定（開發用，生產環境應通過環境變數）
 export async function POST(req: NextRequest) {
     try {
-        const supabase = await createAuthClient();
-        const {
-            data: { session },
-            error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError || !session) {
-            return NextResponse.json({ error: '未授權' }, { status: 401 });
-        }
-
-        // 檢查是否為管理員
-        const role = (session.user.app_metadata?.role || session.user.user_metadata?.role || '')
-            .toString()
-            .toLowerCase();
-
-        if (role !== 'admin') {
-            return NextResponse.json({ error: '無權限' }, { status: 403 });
+        if (!(await ensureAdmin())) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { webhookUrl } = await req.json();
@@ -97,7 +68,7 @@ export async function POST(req: NextRequest) {
         // 記錄到資料庫（可選）
         try {
             await supabase.from('audit_logs').insert({
-                user_id: session.user.id,
+                user_id: 'admin_manual',
                 action: 'discord_webhook_updated',
                 details: {
                     timestamp: new Date().toISOString(),

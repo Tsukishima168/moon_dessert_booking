@@ -16,13 +16,15 @@ function getSupabaseClient(): SupabaseClient {
     throw new Error('缺少 NEXT_PUBLIC_SUPABASE_ANON_KEY 環境變數');
   }
 
-  // 使用 createClient（同型，可在 Server/Client 兩端使用）
-  // 注意：此 client 以 localStorage 儲存 session（適用於非 SSR 的 client component）
+  const isBrowser = typeof window !== 'undefined';
+
+  // 瀏覽器環境才 persist session（localStorage），
+  // Server 環境（API Route / SSR）不做 persist，避免 crash
   _supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-      persistSession: true,
-      detectSessionInUrl: true,
-      autoRefreshToken: true,
+      persistSession: isBrowser,
+      detectSessionInUrl: isBrowser,
+      autoRefreshToken: isBrowser,
     },
   });
 

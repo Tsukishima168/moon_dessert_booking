@@ -1,14 +1,12 @@
-import { createAuthClient } from '@/lib/supabase/server-auth';
+import { ensureAdmin } from '../_utils/ensureAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
 // GET - 取得所有菜單項目或特定項目
 export async function GET(req: NextRequest) {
     try {
-        const supabase = await createAuthClient();
-        
-        // 檢查認證
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        // 檢查認證 (改用獨立密碼 cookie)
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -19,9 +17,9 @@ export async function GET(req: NextRequest) {
 
         if (error) throw error;
 
-        return NextResponse.json({ 
-            success: true, 
-            items: data 
+        return NextResponse.json({
+            success: true,
+            items: data
         });
     } catch (error) {
         console.error('GET /api/admin/menu error:', error);
@@ -35,17 +33,13 @@ export async function GET(req: NextRequest) {
 // POST - 建立新菜單項目
 export async function POST(req: NextRequest) {
     try {
-        const supabase = await createAuthClient();
-        
         // 檢查認證
-        const { data: { session } } = await supabase.auth.getSession();
-        const role = (session?.user?.app_metadata?.role || '').toString().toLowerCase();
-        if (!session || role !== 'admin') {
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const body = await req.json();
-        
+
         // 驗證必要欄位
         if (!body.name || !body.category || body.price === undefined) {
             return NextResponse.json(
@@ -85,12 +79,8 @@ export async function POST(req: NextRequest) {
 // PUT - 更新菜單項目
 export async function PUT(req: NextRequest) {
     try {
-        const supabase = await createAuthClient();
-        
         // 檢查認證
-        const { data: { session } } = await supabase.auth.getSession();
-        const role = (session?.user?.app_metadata?.role || '').toString().toLowerCase();
-        if (!session || role !== 'admin') {
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -129,12 +119,8 @@ export async function PUT(req: NextRequest) {
 // DELETE - 刪除菜單項目
 export async function DELETE(req: NextRequest) {
     try {
-        const supabase = await createAuthClient();
-        
         // 檢查認證
-        const { data: { session } } = await supabase.auth.getSession();
-        const role = (session?.user?.app_metadata?.role || '').toString().toLowerCase();
-        if (!session || role !== 'admin') {
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

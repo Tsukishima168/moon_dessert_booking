@@ -1,28 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAuthClient } from '@/lib/supabase/server-auth';
-
-// 驗證管理員身分（與 orders route 相同邏輯）
-async function ensureAdmin() {
-  const supabase = await createAuthClient();
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) return false;
-
-  const role = (session.user.app_metadata?.role || session.user.user_metadata?.role || '')
-    .toString()
-    .toLowerCase();
-
-  const adminEmails = (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  const userEmail = (session.user.email || '').toLowerCase();
-
-  return role === 'admin' || adminEmails.includes(userEmail);
-}
+import { ensureAdmin } from '../_utils/ensureAdmin';
 
 /**
  * POST /api/admin/upload

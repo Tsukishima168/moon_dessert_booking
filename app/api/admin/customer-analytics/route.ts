@@ -1,14 +1,11 @@
-import { createAuthClient } from '@/lib/supabase/server-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureAdmin } from '../_utils/ensureAdmin';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
     try {
-        const supabase = await createAuthClient();
-
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

@@ -1,27 +1,13 @@
 import { sendDiscordNotify } from '@/lib/notifications';
-import { createAuthClient } from '@/lib/supabase/server-auth';
+import { ensureAdmin } from '../_utils/ensureAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
 // POST - 發送測試通知到 Discord
 export async function POST(req: NextRequest) {
     try {
-        const supabase = await createAuthClient();
-        const {
-            data: { session },
-            error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError || !session) {
-            return NextResponse.json({ error: '未授權' }, { status: 401 });
-        }
-
-        // 檢查是否為管理員
-        const role = (session.user.app_metadata?.role || session.user.user_metadata?.role || '')
-            .toString()
-            .toLowerCase();
-
-        if (role !== 'admin') {
-            return NextResponse.json({ error: '無權限' }, { status: 403 });
+        if (!(await ensureAdmin())) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { message } = await req.json();
@@ -54,7 +40,7 @@ export async function POST(req: NextRequest) {
         // 記錄審計日誌
         try {
             await supabase.from('audit_logs').insert({
-                user_id: session.user.id,
+                user_id: 'admin_manual',
                 action: 'discord_test_sent',
                 details: {
                     message,

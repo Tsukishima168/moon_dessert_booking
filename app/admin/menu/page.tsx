@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Plus, Edit2, Trash2, ToggleRight, ToggleLeft, Search, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import AdminNav from '@/components/AdminNav';
 import Image from 'next/image';
@@ -40,6 +40,7 @@ export default function MenuAdminPage() {
     const [items, setItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [searching, setSearching] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [showForm, setShowForm] = useState(false);
@@ -47,6 +48,8 @@ export default function MenuAdminPage() {
     const [form, setForm] = useState({ ...EMPTY_FORM });
     const [categories, setCategories] = useState<string[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchMenuItems();
@@ -106,6 +109,42 @@ export default function MenuAdminPage() {
                 : [{ variant_name: '一般', price: item.price }],
         });
         setShowForm(true);
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            alert('請選擇圖片檔案');
+            return;
+        }
+        
+        setUploadingImage(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'moon-dessert/menu');
+        
+        try {
+            const response = await fetch('/api/admin/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '上傳失敗');
+            }
+            
+            const data = await response.json();
+            setForm({ ...form, image_url: data.url });
+            alert('圖片上傳成功');
+        } catch (error) {
+            console.error('圖片上傳錯誤:', error);
+            alert(`上傳失敗: ${error instanceof Error ? error.message : '請重試'}`);
+        } finally {
+            setUploadingImage(false);
+        }
     };
 
     const handleSave = async () => {
@@ -410,16 +449,36 @@ export default function MenuAdminPage() {
 
                             {/* 圖片 URL */}
                             <div>
-                                <label className="block text-xs text-moon-muted tracking-wider mb-1">
-                                    圖片網址（Cloudinary URL）
+                                <label className="block text-xs text-moon-muted tracking-wider mb-2">
+                                    圖片（Cloudinary）
                                 </label>
-                                <input
-                                    type="text"
-                                    value={form.image_url}
-                                    onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-                                    placeholder="https://res.cloudinary.com/..."
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
-                                />
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={form.image_url}
+                                        onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                                        placeholder="https://res.cloudinary.com/..."
+                                        className="flex-1 px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    />
+                                    <div className="relative">
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageUpload}
+                                            disabled={uploadingImage}
+                                            className="hidden"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadingImage}
+                                            className="px-3 py-2 bg-moon-accent text-moon-black font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                        >
+                                            {uploadingImage ? '上傳中...' : '上傳圖片'}
+                                        </button>
+                                    </div>
+                                </div>
                                 {form.image_url && (
                                     <div className="mt-2 w-20 h-20 border border-moon-border overflow-hidden">
                                         <img src={form.image_url} alt="preview" className="w-full h-full object-cover" />

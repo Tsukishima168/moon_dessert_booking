@@ -1,33 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAuthClient } from '@/lib/supabase/server-auth';
+import { ensureAdmin } from '../_utils/ensureAdmin';
 import { supabase } from '@/lib/supabase';
-
-async function ensureAdmin(request: NextRequest) {
-    const supabaseAuth = await createAuthClient();
-    const {
-        data: { session },
-        error,
-    } = await supabaseAuth.auth.getSession();
-
-    if (error || !session) return false;
-
-    const role = (session.user.app_metadata?.role || session.user.user_metadata?.role || '')
-        .toString()
-        .toLowerCase();
-
-    // 雙重驗證：Supabase role=admin 或 ADMIN_EMAILS 白名單
-    const adminEmails = (process.env.ADMIN_EMAILS || '')
-        .split(',')
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-    const userEmail = (session.user.email || '').toLowerCase();
-
-    return role === 'admin' || adminEmails.includes(userEmail);
-}
 
 // GET /api/admin/orders - 取得訂單列表
 export async function GET(request: NextRequest) {
-    const isAdmin = await ensureAdmin(request);
+    const isAdmin = await ensureAdmin();
     if (!isAdmin) {
         return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }

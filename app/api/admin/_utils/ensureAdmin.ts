@@ -1,25 +1,15 @@
-import { createAuthClient } from '@/lib/supabase/server-auth';
+import { cookies } from 'next/headers';
+import { createHash } from 'crypto';
 
 export async function ensureAdmin(): Promise<boolean> {
-    const supabase = await createAuthClient();
-    const {
-        data: { session },
-        error,
-    } = await supabase.auth.getSession();
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) return false;
 
-    if (error || !session) {
-        return false;
-    }
+    const cookieStore = await cookies();
+    const adminToken = cookieStore.get('admin_token')?.value;
+    if (!adminToken) return false;
 
-    const role = (session.user.app_metadata?.role || session.user.user_metadata?.role || '')
-        .toString()
-        .toLowerCase();
-
-    const adminEmails = (process.env.ADMIN_EMAILS || '')
-        .split(',')
-        .map((email) => email.trim().toLowerCase())
-        .filter(Boolean);
-    const userEmail = (session.user.email || '').toLowerCase();
-
-    return role === 'admin' || adminEmails.includes(userEmail);
+    const expectedToken = createHash('sha256').update(adminPassword).digest('hex');
+    return adminToken === expectedToken;
 }
+

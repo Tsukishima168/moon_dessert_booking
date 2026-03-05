@@ -1,5 +1,6 @@
-import { createAuthClient } from '@/lib/supabase/server-auth';
+import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
 // PATCH - 更新菜單項目（如切換上/下架）
 export async function PATCH(
@@ -7,12 +8,8 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = await createAuthClient();
-        
         // 檢查認證
-        const { data: { session } } = await supabase.auth.getSession();
-        const role = (session?.user?.app_metadata?.role || '').toString().toLowerCase();
-        if (!session || role !== 'admin') {
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -47,12 +44,8 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = await createAuthClient();
-        
         // 檢查認證
-        const { data: { session } } = await supabase.auth.getSession();
-        const role = (session?.user?.app_metadata?.role || '').toString().toLowerCase();
-        if (!session || role !== 'admin') {
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

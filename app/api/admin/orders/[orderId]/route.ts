@@ -1,30 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAuthClient } from '@/lib/supabase/server-auth';
+import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { supabase } from '@/lib/supabase';
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
 
 const ALLOWED_STATUS = ['pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled'];
 
-async function ensureAdmin() {
-  const supabaseAuth = await createAuthClient();
-  const {
-    data: { session },
-    error,
-  } = await supabaseAuth.auth.getSession();
-
-  if (error || !session) return false;
-
-  const role = (session.user.app_metadata?.role || session.user.user_metadata?.role || '')
-    .toString()
-    .toLowerCase();
-
-  return role === 'admin';
-}
-
 // PATCH /api/admin/orders/[orderId]
 export async function PATCH(request: NextRequest, { params }: { params: { orderId: string } }) {
-  const isAdmin = await ensureAdmin();
-  if (!isAdmin) {
+  if (!(await ensureAdmin())) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 

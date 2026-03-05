@@ -1,4 +1,4 @@
-import { createAuthClient } from '@/lib/supabase/server-auth';
+import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function PATCH(
@@ -6,12 +6,7 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = await createAuthClient();
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        const role = (session?.user?.app_metadata?.role || '').toString().toLowerCase();
-        
-        if (!session || role !== 'admin') {
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -32,12 +27,7 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = await createAuthClient();
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        const role = (session?.user?.app_metadata?.role || '').toString().toLowerCase();
-        
-        if (!session || role !== 'admin') {
+        if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
