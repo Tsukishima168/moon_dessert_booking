@@ -147,7 +147,7 @@ using (auth.jwt() ->> 'role' = 'admin');
 ### 步驟 2️⃣ : 推送程式碼
 
 ```bash
-cd /Users/pensoair/Desktop/Dessert-Booking
+cd /Users/penstudio/Desktop/Dessert-Booking
 git add .
 git commit -m "feat: Complete admin system v2.0 with menu management"
 git push origin main

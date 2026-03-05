@@ -14,6 +14,7 @@ DROP POLICY IF EXISTS "Allow anonymous to create orders" ON orders;
 DROP POLICY IF EXISTS "anon_insert_orders" ON orders;
 DROP POLICY IF EXISTS "Enable insert for anonymous users" ON orders;
 DROP POLICY IF EXISTS "anon_can_insert_orders" ON orders;
+DROP POLICY IF EXISTS "authenticated_can_insert_orders" ON orders;
 DROP POLICY IF EXISTS "authenticated_can_select_orders" ON orders;
 DROP POLICY IF EXISTS "authenticated_can_update_orders" ON orders;
 DROP POLICY IF EXISTS "anon_can_select_own_order" ON orders;

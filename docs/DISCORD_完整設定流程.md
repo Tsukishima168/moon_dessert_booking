@@ -32,7 +32,7 @@
 在專案目錄執行（把 URL 換成你複製的）：
 
 ```bash
-cd /Users/pensoair/Desktop/Dessert-Booking
+cd /Users/penstudio/Desktop/Dessert-Booking
 npm run setup:discord -- "https://discord.com/api/webhooks/你的ID/你的Token"
 ```
 
@@ -60,7 +60,7 @@ MBTI Bot 負責 `/verify`、`/state` 與身份組發放，需要**持續運行**
 ### 執行方式
 
 ```bash
-cd /Users/pensoair/Desktop/color-of-kiwimu-mbti-lab-v5/discord-bot
+cd /Users/penstudio/Desktop/color-of-kiwimu-mbti-lab-v5/discord-bot
 npm install
 ```
 

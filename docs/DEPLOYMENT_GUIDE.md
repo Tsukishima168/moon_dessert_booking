@@ -4,7 +4,7 @@
 
 ```bash
 # 進入專案目錄
-cd /Users/pensoair/Desktop/Dessert-Booking
+cd /Users/penstudio/Desktop/Dessert-Booking
 
 # 初始化 Git
 git init
@@ -223,4 +223,4 @@ A: 社群平台需要時間更新快取,可以用 [Facebook Debugger](https://de
 
 ---
 
-需要協助嗎?參考 [walkthrough.md](file:///Users/pensoair/.gemini/antigravity/brain/2affbcbd-1d23-4dd4-abca-613ca7a85c81/walkthrough.md) 的詳細驗證步驟!
+需要協助嗎?參考 [walkthrough.md](file:///Users/penstudio/.gemini/antigravity/brain/2affbcbd-1d23-4dd4-abca-613ca7a85c81/walkthrough.md) 的詳細驗證步驟!

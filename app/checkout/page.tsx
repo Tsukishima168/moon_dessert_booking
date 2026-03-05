@@ -63,6 +63,7 @@ export default function CheckoutPage() {
   const [reservationRules, setReservationRules] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [dateValidation, setDateValidation] = useState<{ valid: boolean; reason: string } | null>(null);
+  const [calendarDates, setCalendarDates] = useState<Array<{ date: string; label: string; dayName: string; disabled: boolean; reason: string }>>([]);
 
   // 地址選擇狀態
   const [selectedCity, setSelectedCity] = useState('');
@@ -146,11 +147,39 @@ export default function CheckoutPage() {
     loadReservationRules();
   }, []);
 
-  // 監聽取貨方式變化
+  // 監聽取貨方式變化（必須在 useEffect 使用前宣告）
   const watchedDeliveryMethod = watch('delivery_method') as 'pickup' | 'delivery';
   useEffect(() => {
     setDeliveryMethod(watchedDeliveryMethod || 'pickup');
   }, [watchedDeliveryMethod]);
+
+  // 產生格子日期列表（今天 + minDays 開始，顯示 30 天）
+  useEffect(() => {
+    const minDays = reservationRules?.min_advance_days || 3;
+    const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+    const dates: typeof calendarDates = [];
+    for (let i = minDays; i <= minDays + 29; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const day = d.getDay();
+      let disabled = false;
+      let reason = '';
+      if (watchedDeliveryMethod === 'pickup' && day === 1) { disabled = true; reason = '週一公休'; }
+      if (watchedDeliveryMethod === 'delivery' && (day === 0 || day === 1)) { disabled = true; reason = '不配送'; }
+      const [, mm, dd] = dateStr.split('-');
+      dates.push({ date: dateStr, label: `${mm}/${dd}`, dayName: dayNames[day], disabled, reason });
+    }
+    setCalendarDates(dates);
+    // 若已選日期在新列表中已被禁用，清除
+    if (selectedDate) {
+      const found = dates.find(d => d.date === selectedDate);
+      if (!found || found.disabled) {
+        setSelectedDate('');
+        setValue('pickup_date', '');
+      }
+    }
+  }, [reservationRules, watchedDeliveryMethod]);
 
   const totalPrice = getTotalPrice();
 
@@ -283,7 +312,9 @@ export default function CheckoutPage() {
           customer_name: data.customer_name,
           phone: data.phone,
           email: data.email,
-          pickup_time: data.pickup_date ? `${data.pickup_date} ${data.pickup_time}` : `${data.pickup_date} 00:00`,
+          pickup_time: data.pickup_date
+            ? `${data.pickup_date} ${data.pickup_time || '12:00-13:00'}`
+            : new Date().toISOString().split('T')[0] + ' 12:00-13:00',
           items: items.map((item) => ({
             id: item.id,
             name: item.name,
@@ -620,39 +651,71 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Date Selection */}
-              <div className="space-y-4">
-                <label className="text-xs text-moon-muted block mb-1">
+              {/* Date Selection — 格子選單 */}
+              <div className="space-y-3">
+                <label className="text-xs text-moon-muted block">
                   {watchedDeliveryMethod === 'pickup' ? '取貨日期' : '期望到貨日期'} <span className="text-moon-accent">*</span>
                 </label>
-                <input
-                  type="date"
-                  {...register('pickup_date', {
-                    required: true,
-                    validate: () => dateValidation?.valid || dateValidation?.reason
-                  })}
-                  min={getMinPickupDate()} // Enforce today + 3
-                  max={getMaxPickupDate()}
-                  className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                />
-
-                {/* Date Validation Hints */}
-                {dateValidation && !dateValidation.valid && <p className="text-xs text-red-400 mt-1">{dateValidation.reason}</p>}
-                {!dateValidation && <p className="text-xs text-moon-muted mt-1">
+                <p className="text-[10px] text-moon-muted">
                   {watchedDeliveryMethod === 'pickup' ? '週一公休' : '週日、週一不配送'} • 需提前 3 天預訂
-                </p>}
+                </p>
+
+                {/* 隱藏 input 用於 react-hook-form 驗證 */}
+                <input type="hidden" {...register('pickup_date', { required: '請選擇日期' })} />
+
+                <div className="grid grid-cols-5 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                  {calendarDates.map(({ date, label, dayName, disabled, reason }) => (
+                    <button
+                      key={date}
+                      type="button"
+                      disabled={disabled}
+                      title={disabled ? reason : date}
+                      onClick={() => {
+                        setSelectedDate(date);
+                        setValue('pickup_date', date);
+                        validateSelectedDate(date);
+                      }}
+                      className={`flex flex-col items-center py-2 px-1 border text-center transition-all text-xs
+                        ${selectedDate === date
+                          ? 'border-moon-accent bg-moon-accent/20 text-moon-accent'
+                          : disabled
+                            ? 'border-moon-border/30 text-moon-muted/30 cursor-not-allowed bg-transparent'
+                            : 'border-moon-border text-moon-text hover:border-moon-accent hover:text-moon-accent'
+                        }`}
+                    >
+                      <span className="text-[10px] opacity-70">{dayName}</span>
+                      <span className="font-light">{label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {selectedDate && <p className="text-xs text-moon-accent">已選：{selectedDate}</p>}
+                {errors.pickup_date && <p className="text-xs text-red-400">{errors.pickup_date.message}</p>}
+                {dateValidation && !dateValidation.valid && <p className="text-xs text-red-400">{dateValidation.reason}</p>}
 
                 {watchedDeliveryMethod === 'pickup' && (
                   <div>
                     <label className="text-xs text-moon-muted block mb-1">取貨時段 <span className="text-moon-accent">*</span></label>
-                    <select {...register('pickup_time')} className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none">
-                      <option value="12:00-13:00">12:00 - 13:00</option>
-                      <option value="13:00-14:00">13:00 - 14:00</option>
-                      <option value="14:00-15:00">14:00 - 15:00</option>
-                      <option value="15:00-16:00">15:00 - 16:00</option>
-                      <option value="16:00-17:00">16:00 - 17:00</option>
-                      <option value="17:00-18:00">17:00 - 18:00</option>
-                    </select>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'].map(slot => {
+                        const watched = watch('pickup_time');
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            onClick={() => setValue('pickup_time', slot)}
+                            className={`border py-2 text-xs transition-all ${watched === slot
+                              ? 'border-moon-accent bg-moon-accent/20 text-moon-accent'
+                              : 'border-moon-border text-moon-muted hover:border-moon-accent'
+                              }`}
+                          >
+                            {slot}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <input type="hidden" {...register('pickup_time', { required: watchedDeliveryMethod === 'pickup' ? '請選擇時段' : false })} />
+                    {errors.pickup_time && <p className="text-xs text-red-400 mt-1">{errors.pickup_time.message}</p>}
                   </div>
                 )}
               </div>

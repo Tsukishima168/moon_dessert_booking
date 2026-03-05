@@ -180,4 +180,4 @@ WHERE id = 'banner-id';
 
 ---
 
-需要協助?參考完整的 [banner_implementation_plan.md](file:///Users/pensoair/.gemini/antigravity/brain/2affbcbd-1d23-4dd4-abca-613ca7a85c81/banner_implementation_plan.md)
+需要協助?參考完整的 [banner_implementation_plan.md](file:///Users/penstudio/.gemini/antigravity/brain/2affbcbd-1d23-4dd4-abca-613ca7a85c81/banner_implementation_plan.md)
