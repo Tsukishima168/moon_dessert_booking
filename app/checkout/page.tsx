@@ -87,26 +87,36 @@ export default function CheckoutPage() {
   // Auth State
   const [loggedInUser, setLoggedInUser] = useState<{ email: string; id: string } | null>(null);
 
+  // 從 profiles 表載入用戶資料
+  const loadUserProfile = async (userId: string, email: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', userId)
+        .single();
+      if (profile?.full_name) setValue('customer_name', profile.full_name);
+      if (profile?.phone) setValue('phone', profile.phone);
+    } catch { }
+    setValue('email', email);
+  };
+
   useEffect(() => {
     // 1. 立即讀取當前 session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setLoggedInUser({
-          email: session.user.email || '',
-          id: session.user.id
-        });
-        setValue('email', session.user.email || '');
+        const { id, email } = session.user;
+        setLoggedInUser({ email: email || '', id });
+        loadUserProfile(id, email || '');
       }
     });
 
-    // 2. 監聽 Auth 狀態變更（例如 Magic Link / Google OAuth 後跳回來）
+    // 2. 監聽 Auth 狀態變更
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setLoggedInUser({
-          email: session.user.email || '',
-          id: session.user.id
-        });
-        setValue('email', session.user.email || '');
+        const { id, email } = session.user;
+        setLoggedInUser({ email: email || '', id });
+        loadUserProfile(id, email || '');
       } else {
         setLoggedInUser(null);
       }
@@ -348,6 +358,15 @@ export default function CheckoutPage() {
       if (result.success) {
         const newOrderId = result.order_id;
         setOrderId(newOrderId);
+        // 儲存姓名電話到 profiles（登入用戶）
+        if (loggedInUser?.id) {
+          supabase.from('profiles').upsert({
+            id: loggedInUser.id,
+            full_name: data.customer_name,
+            phone: data.phone,
+            updated_at: new Date().toISOString(),
+          }).then(() => { });
+        }
         setOrderSuccess(true);
         clearCart();
 
