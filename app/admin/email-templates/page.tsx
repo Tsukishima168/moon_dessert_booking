@@ -306,7 +306,7 @@ export default function EmailTemplatesPage() {
                                                 setEditingTemplate(template);
                                                 setForm({
                                                     name: template.name,
-                                                    type: template.type,
+                                                    type: template.type as 'custom',
                                                     subject: template.subject,
                                                     preview_text: template.preview_text || '',
                                                     html_content: template.html_content,
