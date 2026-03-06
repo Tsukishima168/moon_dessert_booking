@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase-server';
 import { createOrder, OrderItem } from '@/lib/supabase';
 import { sendCustomerEmail, notifyNewOrder } from '@/lib/notifications';
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
@@ -7,6 +8,12 @@ import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const supabaseServer = createClient();
+
+    // 嘗試取得當前用戶
+    const {
+      data: { user: currentUser },
+    } = await supabaseServer.auth.getUser();
 
     // 驗證必要欄位
     const {
@@ -69,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 建立訂單（來源標記為 shop）
+    // 建立訂單（來源標記為 shop，自動關聯登入用戶）
     const result = await createOrder({
       customer_name,
       phone,
@@ -94,7 +101,7 @@ export async function POST(request: NextRequest) {
       utm_campaign: utm_campaign || null,
       utm_content: utm_content || null,
       utm_term: utm_term || null,
-      user_id: user_id || null,
+      user_id: user_id || currentUser?.id || null, // 優先使用當前登入用戶
     });
 
     // 發送通知（非同步，不阻塞回應）

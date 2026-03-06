@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Package, CheckCircle, Clock, Truck, XCircle, RefreshCw, LogOut, TrendingUp, AlertCircle, Eye, DollarSign, Tag, Settings } from 'lucide-react';
 import Image from 'next/image';
-import AdminNav from '@/components/AdminNav';
 import { DragDropContext, Draggable, Droppable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '@/lib/supabase';
 
@@ -245,9 +244,6 @@ export default function AdminPage() {
                     </div>
                 </div>
             </header>
-
-            {/* Admin Navigation */}
-            <AdminNav />
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">

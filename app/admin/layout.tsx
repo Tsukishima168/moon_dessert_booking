@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { createHash } from 'crypto';
 import AdminLoginGate from '@/components/AdminLoginGate';
+import AdminSidebar from '@/components/AdminSidebar';
 
 // 後台 SEO - 完全不被搜尋引擎索引
 export const metadata: Metadata = {
@@ -35,6 +36,13 @@ export default async function AdminLayout({
     return <AdminLoginGate />;
   }
 
-  return children;
+  return (
+    <div className="flex h-screen bg-moon-dark">
+      <AdminSidebar />
+      <main className="flex-1 overflow-auto">
+        {children}
+      </main>
+    </div>
+  );
 }
 
