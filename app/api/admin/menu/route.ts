@@ -24,8 +24,13 @@ export async function GET(req: NextRequest) {
         });
     } catch (error) {
         console.error('GET /api/admin/menu error:', error);
+        const errorMessage = error instanceof Error
+            ? error.message
+            : (error && typeof error === 'object' && 'message' in error)
+                ? String(error.message)
+                : 'Failed to fetch menu items';
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to fetch menu items' },
+            { error: errorMessage },
             { status: 500 }
         );
     }
