@@ -93,6 +93,7 @@ const navItems: NavItem[] = [
 export default function AdminSidebar() {
   const pathname = usePathname() || '';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -114,17 +115,18 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`flex items-center gap-3 px-4 py-3 transition-all ${
                 isActive
-                  ? 'bg-moon-accent text-moon-black font-semibold shadow-lg'
+                  ? 'bg-moon-accent text-moon-black font-semibold'
                   : 'text-moon-muted hover:text-moon-text hover:bg-moon-black/50'
               }`}
               onClick={() => setIsMobileOpen(false)}
+              title={isCollapsed ? item.label : ''}
             >
               <span className="flex-shrink-0">{item.icon}</span>
-              <span className="flex-1">{item.label}</span>
-              {item.badge && (
-                <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
+              {!isCollapsed && <span className="flex-1">{item.label}</span>}
+              {!isCollapsed && item.badge && (
+                <span className="px-2 py-1 text-xs bg-red-500 text-white">
                   {item.badge}
                 </span>
               )}
@@ -138,18 +140,33 @@ export default function AdminSidebar() {
   return (
     <>
       {/* 桌面版側邊欄 */}
-      <aside className="hidden md:flex flex-col w-64 bg-moon-black border-r border-moon-border h-screen sticky top-0">
-        {/* Logo */}
-        <div className="px-6 py-6 border-b border-moon-border">
-          <Link href="/admin" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-moon-accent flex items-center justify-center">
+      <aside className={`hidden md:flex flex-col bg-moon-black border-r border-moon-border h-screen sticky top-0 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+        {/* Logo 區域 */}
+        <div className={`px-4 py-6 border-b border-moon-border flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+          {!isCollapsed && (
+            <Link href="/admin" className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-moon-accent flex items-center justify-center">
+                <span className="text-moon-black font-bold">🌙</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="font-bold text-moon-accent text-sm">管理後台</h1>
+                <p className="text-xs text-moon-muted truncate">MoonMoon Dessert</p>
+              </div>
+            </Link>
+          )}
+          {isCollapsed && (
+            <Link href="/admin" className="flex items-center justify-center w-10 h-10 bg-moon-accent">
               <span className="text-moon-black font-bold">🌙</span>
-            </div>
-            <div className="flex-1">
-              <h1 className="font-bold text-moon-accent">管理後台</h1>
-              <p className="text-xs text-moon-muted">MoonMoon Dessert</p>
-            </div>
-          </Link>
+            </Link>
+          )}
+          {/* 收起按鈕 */}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1 text-moon-muted hover:text-moon-text hover:bg-moon-black/50 transition-all"
+            title={isCollapsed ? '展開' : '收起'}
+          >
+            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </button>
         </div>
 
         {/* 導航菜單 */}
@@ -159,10 +176,11 @@ export default function AdminSidebar() {
         <div className="px-4 py-4 border-t border-moon-border">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-all font-semibold"
+            className={`w-full flex items-center gap-3 px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all font-semibold ${isCollapsed ? 'justify-center' : ''}`}
+            title={isCollapsed ? '登出' : ''}
           >
             <LogOut size={20} />
-            <span>登出</span>
+            {!isCollapsed && <span>登出</span>}
           </button>
         </div>
       </aside>
@@ -175,7 +193,7 @@ export default function AdminSidebar() {
         </Link>
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="p-2 hover:bg-moon-border rounded-lg transition"
+          className="p-2 hover:bg-moon-border transition"
         >
           {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -192,7 +210,7 @@ export default function AdminSidebar() {
             <div className="px-4 py-4 border-t border-moon-border">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-all font-semibold"
+                className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all font-semibold"
               >
                 <LogOut size={20} />
                 <span>登出</span>
