@@ -1,6 +1,6 @@
 import { ensureAdmin } from '../_utils/ensureAdmin';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 // GET - 取得所有菜單項目或特定項目
 export async function GET(req: NextRequest) {
@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { data, error } = await supabase
+        const adminClient = createAdminClient();
+        const { data, error } = await adminClient
             .from('menu_items')
             .select('*')
             .order('category, name');
@@ -48,7 +49,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { data, error } = await supabase
+        const adminClient = createAdminClient();
+        const { data, error } = await adminClient
             .from('menu_items')
             .insert([{
                 name: body.name,
@@ -94,7 +96,8 @@ export async function PUT(req: NextRequest) {
             );
         }
 
-        const { data, error } = await supabase
+        const adminClient = createAdminClient();
+        const { data, error } = await adminClient
             .from('menu_items')
             .update({
                 ...updateData,
@@ -134,7 +137,8 @@ export async function DELETE(req: NextRequest) {
             );
         }
 
-        const { error } = await supabase
+        const adminClient = createAdminClient();
+        const { error } = await adminClient
             .from('menu_items')
             .delete()
             .eq('id', id);

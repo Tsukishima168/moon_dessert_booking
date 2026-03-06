@@ -1,6 +1,6 @@
 import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 // PATCH - 更新菜單項目（如切換上/下架）
 export async function PATCH(
@@ -16,7 +16,8 @@ export async function PATCH(
         const body = await req.json();
         const id = params.id;
 
-        const { data, error } = await supabase
+        const adminClient = createAdminClient();
+        const { data, error } = await adminClient
             .from('menu_items')
             .update({
                 ...body,
@@ -51,7 +52,8 @@ export async function DELETE(
 
         const id = params.id;
 
-        const { error } = await supabase
+        const adminClient = createAdminClient();
+        const { error } = await adminClient
             .from('menu_items')
             .delete()
             .eq('id', id);

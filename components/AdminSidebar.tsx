@@ -18,6 +18,8 @@ import {
   Tag,
   Image as ImageIcon,
   Megaphone,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface NavItem {
@@ -115,11 +117,10 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 transition-all ${
-                isActive
+              className={`flex items-center gap-3 px-4 py-3 transition-all ${isActive
                   ? 'bg-moon-accent text-moon-black font-semibold'
                   : 'text-moon-muted hover:text-moon-text hover:bg-moon-black/50'
-              }`}
+                }`}
               onClick={() => setIsMobileOpen(false)}
               title={isCollapsed ? item.label : ''}
             >
