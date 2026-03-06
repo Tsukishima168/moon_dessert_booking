@@ -14,13 +14,20 @@ export async function GET(req: NextRequest) {
         const { data, error } = await adminClient
             .from('menu_items')
             .select('*')
-            .order('category, name');
+            .order('name');
 
         if (error) throw error;
 
+        // 欄位對齊：處理 category 與 image_url 的兼容性
+        const mappedItems = (data || []).map(item => ({
+            ...item,
+            category: item.category || item.category_id?.toString() || '',
+            image_url: item.image_url || item.image || '',
+        }));
+
         return NextResponse.json({
             success: true,
-            items: data
+            items: mappedItems
         });
     } catch (error) {
         console.error('GET /api/admin/menu error:', error);
@@ -59,13 +66,12 @@ export async function POST(req: NextRequest) {
             .from('menu_items')
             .insert([{
                 name: body.name,
-                category: body.category,
+                category_id: body.category_id || body.category, // 支援新舊欄位傳入
                 description: body.description || null,
-                price: body.price,
-                image_url: body.image_url || null,
-                is_active: body.is_active !== false,
-                variants: body.variants || null,
-                created_at: new Date().toISOString(),
+                prices: body.prices || body.variants || [], // 對齊資料庫的 prices 欄位
+                image: body.image || body.image_url || null, // 對齊資料庫的 image 欄位
+                is_available: body.is_available !== false,
+                sort_order: body.sort_order || 0,
                 updated_at: new Date().toISOString(),
             }])
             .select()
@@ -102,12 +108,22 @@ export async function PUT(req: NextRequest) {
         }
 
         const adminClient = createAdminClient();
+        
+        // 準備更新資料，移除不相符的舊欄位名稱
+        const { id: _, category, image_url, price, variants, is_active, ...cleanData } = updateData;
+        
+        const finalUpdateData = {
+            ...cleanData,
+            category_id: updateData.category_id || category,
+            image: updateData.image || image_url,
+            prices: updateData.prices || variants || [],
+            is_available: updateData.is_available !== undefined ? updateData.is_available : is_active,
+            updated_at: new Date().toISOString(),
+        };
+
         const { data, error } = await adminClient
             .from('menu_items')
-            .update({
-                ...updateData,
-                updated_at: new Date().toISOString(),
-            })
+            .update(finalUpdateData)
             .eq('id', id)
             .select()
             .single();

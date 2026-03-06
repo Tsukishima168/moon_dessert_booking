@@ -17,12 +17,22 @@ export async function PATCH(
         const id = params.id;
 
         const adminClient = createAdminClient();
+        
+        // 準備更新資料，對齊資料庫真實欄位
+        const { id: _, category, image_url, price, variants, is_active, ...cleanData } = body;
+        
+        const finalUpdateData = {
+            ...cleanData,
+            category_id: body.category_id || category,
+            image: body.image || image_url,
+            prices: body.prices || variants || [],
+            is_available: body.is_available !== undefined ? body.is_available : is_active,
+            updated_at: new Date().toISOString(),
+        };
+
         const { data, error } = await adminClient
             .from('menu_items')
-            .update({
-                ...body,
-                updated_at: new Date().toISOString(),
-            })
+            .update(finalUpdateData)
             .eq('id', id)
             .select()
             .single();
