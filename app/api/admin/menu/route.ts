@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     } catch (error) {
         console.error('GET /api/admin/menu error:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch menu items' },
+            { error: error instanceof Error ? error.message : 'Failed to fetch menu items' },
             { status: 500 }
         );
     }
