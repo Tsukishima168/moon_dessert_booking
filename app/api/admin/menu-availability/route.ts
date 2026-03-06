@@ -1,12 +1,16 @@
-import { createClient } from '@/lib/supabase-server';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../_utils/ensureAdmin';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
+    if (!(await ensureAdmin())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const { data, error } = await supabase
+    const adminClient = createAdminClient();
+
+    const { data, error } = await adminClient
       .from('menu_item_availability')
       .select('*');
 
@@ -45,10 +49,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = createClient();
+    const adminClient = createAdminClient();
 
     // 使用 upsert 來新增或更新
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from('menu_item_availability')
       .upsert(
         {
