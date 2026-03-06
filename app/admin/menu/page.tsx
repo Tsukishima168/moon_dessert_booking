@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Plus, Edit2, Trash2, ToggleRight, ToggleLeft, Search, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
-import AdminNav from '@/components/AdminNav';
+import { Plus, Edit2, Trash2, ToggleRight, ToggleLeft, Search, X, ChevronDown, ChevronUp, Loader2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
 interface Variant {
@@ -49,6 +48,7 @@ export default function MenuAdminPage() {
     const [categories, setCategories] = useState<string[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [error, setError] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -58,15 +58,27 @@ export default function MenuAdminPage() {
     const fetchMenuItems = async () => {
         try {
             setLoading(true);
+            setError('');
+            
             const response = await fetch('/api/admin/menu');
-            if (!response.ok) throw new Error('Failed to fetch');
             const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `API 錯誤: ${response.status}`);
+            }
+            
             const list: MenuItem[] = data.items || [];
             setItems(list);
+            
+            // 自動提取分類
             const cats = Array.from(new Set(list.map((i) => i.category).filter(Boolean))) as string[];
             setCategories(cats);
+            
+            console.log(`✅ 成功載入 ${list.length} 件商品`);
         } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : '無法載入菜單';
             console.error('載入菜單錯誤:', error);
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -214,8 +226,6 @@ export default function MenuAdminPage() {
 
     return (
         <div className="min-h-screen bg-moon-black">
-            <AdminNav />
-
             <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -231,6 +241,23 @@ export default function MenuAdminPage() {
                         新增商品
                     </button>
                 </div>
+
+                {/* 錯誤訊息 */}
+                {error && (
+                    <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 flex items-start gap-3">
+                        <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={18} />
+                        <div>
+                            <p className="text-red-300 text-sm font-medium">載入錯誤</p>
+                            <p className="text-red-200/70 text-xs mt-1">{error}</p>
+                            <button
+                                onClick={fetchMenuItems}
+                                className="mt-2 text-xs text-red-300 hover:text-red-200 underline"
+                            >
+                                重新嘗試
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* 搜尋 + 篩選 */}
                 <div className="mb-6 flex flex-col sm:flex-row gap-3">
