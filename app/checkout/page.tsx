@@ -145,7 +145,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     const loadReservationRules = async () => {
       try {
-        const response = await fetch('/api/admin/settings');
+        const response = await fetch('/api/settings');
         if (response.ok) {
           const settings = await response.json();
           setReservationRules(settings.reservation_rules);

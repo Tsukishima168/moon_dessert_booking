@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Package, CheckCircle, Clock, Truck, XCircle, RefreshCw, LogOut, TrendingUp, AlertCircle, Eye, DollarSign, Tag, Settings } from 'lucide-react';
+import { Loader2, Package, CheckCircle, Clock, Truck, RefreshCw, LogOut, TrendingUp, AlertCircle, Eye, DollarSign, Tag, Settings } from 'lucide-react';
 import Image from 'next/image';
 import { DragDropContext, Draggable, Droppable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '@/lib/supabase';
@@ -10,10 +10,8 @@ import { supabase } from '@/lib/supabase';
 const ORDER_STATUS = {
     pending: { label: '待付款', color: 'text-yellow-400', bg: 'bg-yellow-400/10', icon: Clock },
     paid: { label: '已付款', color: 'text-blue-400', bg: 'bg-blue-400/10', icon: CheckCircle },
-    preparing: { label: '製作中', color: 'text-orange-400', bg: 'bg-orange-400/10', icon: Package },
     ready: { label: '可取貨', color: 'text-green-400', bg: 'bg-green-400/10', icon: Truck },
     completed: { label: '已完成', color: 'text-moon-muted', bg: 'bg-moon-muted/10', icon: CheckCircle },
-    cancelled: { label: '已取消', color: 'text-red-400', bg: 'bg-red-400/10', icon: XCircle },
 };
 
 type OrderStatus = keyof typeof ORDER_STATUS;
@@ -50,7 +48,7 @@ interface DashboardStats {
     todayOrders: number;
     todayRevenue: number;
     pendingCount: number;
-    preparingCount: number;
+    readyCount: number;
 }
 
 interface DiscordStatus {
@@ -92,7 +90,7 @@ export default function AdminPage() {
                 // 計算統計數據
                 const today = new Date().toISOString().split('T')[0];
                 const todayOrders = orderList.filter((o: Order) =>
-                    o.created_at.startsWith(today) && ['paid', 'preparing', 'ready', 'completed'].includes(o.status)
+                    o.created_at.startsWith(today) && ['paid', 'ready', 'completed'].includes(o.status)
                 );
 
                 const stats: DashboardStats = {
@@ -101,7 +99,7 @@ export default function AdminPage() {
                     todayOrders: todayOrders.length,
                     todayRevenue: todayOrders.reduce((sum: number, o: Order) => sum + (o.final_price || o.total_price || 0), 0),
                     pendingCount: orderList.filter((o: Order) => o.status === 'pending' || o.status === 'paid').length,
-                    preparingCount: orderList.filter((o: Order) => o.status === 'preparing' || o.status === 'ready').length,
+                    readyCount: orderList.filter((o: Order) => o.status === 'ready').length,
                 };
                 setStats(stats);
             }
@@ -164,10 +162,8 @@ export default function AdminPage() {
     const columns: { key: OrderStatus; title: string }[] = [
         { key: 'pending', title: 'Pending / 待付款' },
         { key: 'paid', title: 'Paid / 已付款' },
-        { key: 'preparing', title: 'Preparing / 製作中' },
         { key: 'ready', title: 'Ready / 可取貨' },
         { key: 'completed', title: 'Completed / 已完成' },
-        { key: 'cancelled', title: 'Cancelled / 已取消' },
     ];
 
     // 依欄位分組
@@ -175,14 +171,17 @@ export default function AdminPage() {
         const map: Record<OrderStatus, Order[]> = {
             pending: [],
             paid: [],
-            preparing: [],
             ready: [],
             completed: [],
-            cancelled: [],
         };
         orders.forEach((o) => {
             const k = (o.status || 'pending') as OrderStatus;
-            map[k] = [...(map[k] || []), o];
+            if (k in map) {
+                map[k] = [...(map[k] || []), o];
+            } else {
+                // 舊狀態（preparing/cancelled）歸入 pending
+                map['pending'] = [...map['pending'], o];
+            }
         });
         return map;
     }, [orders]);
@@ -201,11 +200,9 @@ export default function AdminPage() {
     const getNextStatus = (currentStatus: OrderStatus): OrderStatus | null => {
         const flow: Record<OrderStatus, OrderStatus | null> = {
             pending: 'paid',
-            paid: 'preparing',
-            preparing: 'ready',
+            paid: 'ready',
             ready: 'completed',
             completed: null,
-            cancelled: null,
         };
         return flow[currentStatus];
     };
@@ -310,13 +307,13 @@ export default function AdminPage() {
                                 </div>
                             </div>
 
-                            {/* 製作中 */}
+                            {/* 可取貨 */}
                             <div className="border border-moon-border bg-moon-dark/70 p-6 group cursor-pointer hover:border-orange-400/50 transition-colors">
                                 <div className="flex items-start justify-between">
                                     <div>
-                                        <p className="text-moon-muted text-sm mb-1">製作中 / 可取貨</p>
-                                        <p className="text-3xl font-light text-orange-400">{stats?.preparingCount || 0}</p>
-                                        <p className="text-xs text-moon-muted mt-2">正在進行中</p>
+                                        <p className="text-moon-muted text-sm mb-1">可取貨</p>
+                                        <p className="text-3xl font-light text-orange-400">{stats?.readyCount || 0}</p>
+                                        <p className="text-xs text-moon-muted mt-2">等待取貨中</p>
                                     </div>
                                     <TrendingUp className="text-orange-400/30 group-hover:text-orange-400/60 transition-colors" size={32} />
                                 </div>
@@ -375,7 +372,7 @@ export default function AdminPage() {
                 {/* 篩選器 */}
                 {!showDashboard && (
                     <div className="mb-6 flex flex-wrap gap-2">
-                        {['all', 'pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled'].map((status) => (
+                        {['all', 'pending', 'paid', 'ready', 'completed'].map((status) => (
                             <button
                                 key={status}
                                 onClick={() => setStatusFilter(status)}

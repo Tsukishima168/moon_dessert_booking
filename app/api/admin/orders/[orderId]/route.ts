@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
-import { supabase } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
 
-const ALLOWED_STATUS = ['pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled'];
+const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed'];
 
 // PATCH /api/admin/orders/[orderId]
 export async function PATCH(request: NextRequest, { params }: { params: { orderId: string } }) {
@@ -23,7 +23,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { orderI
       return NextResponse.json({ success: false, message: '無效狀態' }, { status: 400 });
     }
 
-    const { data: updatedOrder, error } = await supabase
+    const adminClient = createAdminClient();
+    const { data: updatedOrder, error } = await adminClient
       .from('orders')
       .update({ status })
       .eq('order_id', orderId)

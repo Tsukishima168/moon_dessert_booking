@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../_utils/ensureAdmin';
-import { supabase } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 // GET /api/admin/orders - 取得訂單列表
 export async function GET(request: NextRequest) {
@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
         const status = searchParams.get('status');
         const limit = parseInt(searchParams.get('limit') || '100');
 
-        let query = supabase
+        const adminClient = createAdminClient();
+        let query = adminClient
             .from('orders')
             .select('*')
             .order('created_at', { ascending: false })

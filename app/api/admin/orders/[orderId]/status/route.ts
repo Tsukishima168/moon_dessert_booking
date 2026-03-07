@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { sendOrderStatusNotification } from '@/lib/notifications';
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
 import { ensureAdmin } from '@/app/api/admin/_utils/ensureAdmin';
@@ -19,7 +19,7 @@ export async function PATCH(
         const { status } = await request.json();
 
         // 驗證狀態值
-        const validStatuses = ['pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled'];
+        const validStatuses = ['pending', 'paid', 'ready', 'completed'];
         if (!validStatuses.includes(status)) {
             return NextResponse.json(
                 { success: false, message: '無效的狀態值' },
@@ -27,8 +27,10 @@ export async function PATCH(
             );
         }
 
+        const adminClient = createAdminClient();
+
         // 先取得訂單資料（用於發送通知 + n8n 同步）
-        const { data: order, error: fetchError } = await supabase
+        const { data: order, error: fetchError } = await adminClient
             .from('orders')
             .select('*')
             .eq('order_id', orderId)
@@ -44,7 +46,7 @@ export async function PATCH(
         const oldStatus = order.status;
 
         // 更新狀態
-        const { error: updateError } = await supabase
+        const { error: updateError } = await adminClient
             .from('orders')
             .update({
                 status,
