@@ -3,7 +3,7 @@ import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
 
-const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed'];
+const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed', 'cancelled'];
 
 // PATCH /api/admin/orders/[orderId]
 export async function PATCH(request: NextRequest, { params }: { params: { orderId: string } }) {

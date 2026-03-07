@@ -19,7 +19,7 @@ export async function PATCH(
         const { status } = await request.json();
 
         // 驗證狀態值
-        const validStatuses = ['pending', 'paid', 'ready', 'completed'];
+        const validStatuses = ['pending', 'paid', 'ready', 'completed', 'cancelled'];
         if (!validStatuses.includes(status)) {
             return NextResponse.json(
                 { success: false, message: '無效的狀態值' },
