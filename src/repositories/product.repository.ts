@@ -31,6 +31,35 @@ export async function checkDailyCapacity(
   return (data?.[0] as CapacityResult) ?? null
 }
 
+export interface ReservationValidation {
+  valid: boolean
+  reason: string
+  min_date: string | null
+  max_date: string | null
+}
+
+/**
+ * 呼叫 Supabase RPC 驗證預訂日期是否符合規則
+ * @param date - ISO 日期字串，格式 YYYY-MM-DD
+ * @param isRushOrder - 是否為急單
+ * @returns ReservationValidation，RPC 無回傳時為 null
+ */
+export async function validateReservationDate(
+  date: string,
+  isRushOrder: boolean
+): Promise<ReservationValidation | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('validate_reservation', {
+    pickup_date: date,
+    is_rush_order: isRushOrder,
+  })
+  if (error) {
+    console.error('validateReservationDate error:', error)
+    throw error
+  }
+  return (data?.[0] as ReservationValidation) ?? null
+}
+
 /**
  * 查詢所有上架中的菜單品項
  * @returns MenuItem 陣列（含分類、變體）

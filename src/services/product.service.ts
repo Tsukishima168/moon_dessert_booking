@@ -1,7 +1,12 @@
 import type { MenuItemWithVariants, MenuCategory } from '@/lib/supabase'
-import { checkDailyCapacity, type CapacityResult } from '@/src/repositories/product.repository'
+import {
+  checkDailyCapacity,
+  validateReservationDate,
+  type CapacityResult,
+  type ReservationValidation,
+} from '@/src/repositories/product.repository'
 
-export type { CapacityResult }
+export type { CapacityResult, ReservationValidation }
 
 export interface MenuCatalog {
   categories: MenuCategory[]
@@ -15,6 +20,25 @@ export interface MenuCatalog {
 export async function getMenuCatalog(): Promise<MenuCatalog> {
   // TODO: implement
   throw new Error('Not implemented')
+}
+
+/**
+ * 驗證預訂日期是否符合規則，RPC 無回傳時給予寬鬆預設值
+ * @param date - ISO 日期字串，格式 YYYY-MM-DD
+ * @param isRushOrder - 是否為急單，預設 false
+ * @returns ReservationValidation
+ */
+export async function validateReservation(
+  date: string,
+  isRushOrder: boolean = false
+): Promise<ReservationValidation> {
+  const result = await validateReservationDate(date, isRushOrder)
+  return result ?? {
+    valid: true,
+    reason: '符合預訂規則',
+    min_date: null,
+    max_date: null,
+  }
 }
 
 /**
