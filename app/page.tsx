@@ -262,7 +262,7 @@ export default function HomePage() {
               </button>
             </div>
 
-            <div className="w-12 sm:w-16 h-px bg-moon-border mx-auto mt-8 sm:mt-10"></div>
+            <div className="w-16 sm:w-20 h-px bg-moon-border mx-auto mt-8 sm:mt-10"></div>
           </div>
         </div>
       </div>
