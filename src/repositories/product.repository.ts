@@ -60,6 +60,34 @@ export async function validateReservationDate(
   return (data?.[0] as ReservationValidation) ?? null
 }
 
+export interface MenuItemAvailability {
+  available: boolean
+  reason: string
+}
+
+/**
+ * 呼叫 Supabase RPC 查詢菜單品項在指定日期的可用性
+ * @param date - 配送/取貨日期 ISO 字串
+ * @param menuItemId - 指定品項 UUID，null 表示查詢全部
+ * @returns RPC 回傳的可用性資料（未知結構，呼叫端自行處理）
+ */
+export async function checkMenuItemAvailability(
+  date: string,
+  menuItemId: string | null
+): Promise<unknown> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('check_menu_item_availability', {
+    menu_item_id_param: menuItemId,
+    delivery_date: date,
+    current_time: new Date().toISOString(),
+  })
+  if (error) {
+    console.error('checkMenuItemAvailability error:', error)
+    throw error
+  }
+  return data
+}
+
 /**
  * 查詢所有上架中的菜單品項
  * @returns MenuItem 陣列（含分類、變體）
