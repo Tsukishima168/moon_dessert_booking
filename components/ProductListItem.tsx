@@ -129,13 +129,13 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
               <label className="text-xs text-moon-muted tracking-wider mb-2 block">
                 選擇規格
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 {item.variants.map((variant) => (
                   <button
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant)}
                     className={`
-                      flex-1 py-2 px-3 text-xs tracking-wider border transition-all
+                      w-full sm:flex-1 py-2 px-2 sm:px-3 text-xs tracking-wider border transition-all
                       ${selectedVariant.id === variant.id
                         ? 'border-moon-accent bg-moon-accent text-moon-black'
                         : 'border-moon-border text-moon-muted hover:border-moon-muted'
