@@ -154,14 +154,14 @@ function HeroBanner({
                 <X size={18} />
             </button>
 
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 pr-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-6 pr-6">
                 {/* 圖片 */}
                 {banner.image_url && (
                     <div className="flex-shrink-0">
                         <img
                             src={banner.image_url}
                             alt={banner.title}
-                            className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                            className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
                         />
                     </div>
                 )}
