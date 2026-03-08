@@ -85,3 +85,29 @@ export async function countConfirmedOrdersByDate(date: string): Promise<number> 
   // TODO: implement
   throw new Error('Not implemented')
 }
+
+/**
+ * 查詢訂單列表（後台用），支援狀態篩選與筆數上限
+ * @param status - 狀態篩選，'all' 或 undefined 表示不篩選
+ * @param limit - 回傳筆數上限，預設 100
+ * @returns Order 陣列
+ */
+export async function findOrders(
+  status?: string,
+  limit: number = 100
+): Promise<Order[]> {
+  const adminClient = createAdminClient()
+  let query = adminClient
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (status && status !== 'all') {
+    query = query.eq('status', status)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data || []) as Order[]
+}

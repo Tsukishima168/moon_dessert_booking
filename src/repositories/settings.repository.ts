@@ -23,3 +23,27 @@ export async function fetchBusinessSettings(): Promise<Record<string, unknown>> 
   })
   return result
 }
+
+/**
+ * 更新單一設定值（upsert by setting_key）
+ * @param settingKey - 設定鍵名
+ * @param settingValue - 新設定值
+ * @returns 更新後的 row
+ */
+export async function updateBusinessSetting(
+  settingKey: string,
+  settingValue: unknown
+): Promise<{ setting_key: string; setting_value: unknown }> {
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient
+    .from('business_settings')
+    .update({ setting_value: settingValue, updated_at: new Date().toISOString() })
+    .eq('setting_key', settingKey)
+    .select()
+    .single()
+  if (error) {
+    console.error('updateBusinessSetting error:', error)
+    throw error
+  }
+  return data as { setting_key: string; setting_value: unknown }
+}
