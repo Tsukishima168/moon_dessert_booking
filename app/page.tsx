@@ -395,11 +395,11 @@ export default function HomePage() {
                     <div className="flex items-center gap-4 mb-2">
                       {/* 裝飾線 - 左 */}
                       <div className="hidden sm:block h-px bg-moon-border w-8"></div>
-                      <h2 className="text-lg sm:text-xl font-light text-moon-accent tracking-widest whitespace-nowrap">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-light text-moon-accent tracking-widest break-words">
                         {category.name.toUpperCase()}
                       </h2>
                       <div className="h-px bg-moon-border flex-1"></div>
-                      <span className="text-xs text-moon-muted tracking-wider">
+                      <span className="text-xs text-moon-muted tracking-wider shrink-0">
                         {categoryItems.length} 款
                       </span>
                     </div>
