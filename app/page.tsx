@@ -199,14 +199,14 @@ export default function HomePage() {
             <Banner />
 
             {/* 主敘事文字 */}
-            <div className="max-w-3xl mx-auto mb-6 sm:mb-8">
+            <div className="max-w-3xl mx-auto mb-6 sm:mb-8 px-4 sm:px-0">
               <h1 className="text-base sm:text-lg lg:text-xl font-light text-moon-accent tracking-[0.25em] mb-3 sm:mb-4">
                 DESSERT STUDIO
               </h1>
-              <p className="text-sm sm:text-base text-moon-text/90 leading-relaxed sm:leading-relaxed">
+              <p className="text-sm sm:text-base text-moon-text/90 leading-loose sm:leading-relaxed">
                 {sourceMeta.title}
               </p>
-              <p className="mt-3 text-[11px] sm:text-xs text-moon-muted/80 leading-relaxed">
+              <p className="mt-4 sm:mt-5 text-[11px] sm:text-xs text-moon-muted/80 leading-loose sm:leading-relaxed">
                 {sourceMeta.desc}
               </p>
             </div>
