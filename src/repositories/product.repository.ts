@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
-import type { MenuItem, MenuItemWithVariants, MenuCategory } from '@/lib/supabase'
+import type { MenuItem, MenuItemWithVariants, MenuCategory, DateAvailability } from '@/lib/supabase'
 
 export interface CapacityResult {
   date: string
@@ -126,4 +126,36 @@ export async function findAllCategories(): Promise<MenuCategory[]> {
 export async function findMenuItemsByIds(itemIds: string[]): Promise<MenuItem[]> {
   // TODO: implement
   throw new Error('Not implemented')
+}
+
+/**
+ * 查詢指定日期範圍與取貨方式的可預訂日期清單（使用 server client）
+ * @param startDate - 起始日期 YYYY-MM-DD
+ * @param endDate - 結束日期 YYYY-MM-DD
+ * @param deliveryMethod - 取貨方式 'pickup' | 'delivery'
+ * @returns DateAvailability 陣列
+ */
+export async function findAvailableDates(
+  startDate: string,
+  endDate: string,
+  deliveryMethod: 'pickup' | 'delivery'
+): Promise<DateAvailability[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('get_available_dates', {
+    start_date: startDate,
+    end_date: endDate,
+    delivery_method_param: deliveryMethod,
+  })
+  if (error) {
+    console.error('findAvailableDates error:', error)
+    throw error
+  }
+  return (data || []).map((item: Record<string, unknown>) => ({
+    date: item.date as string,
+    available: item.available as boolean,
+    reason: item.reason as string | undefined,
+    type: item.type as string | undefined,
+    current_count: item.current_count as number | undefined,
+    limit_count: item.limit_count as number | undefined,
+  }))
 }

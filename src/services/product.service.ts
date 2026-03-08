@@ -1,8 +1,9 @@
-import type { MenuItemWithVariants, MenuCategory } from '@/lib/supabase'
+import type { MenuItemWithVariants, MenuCategory, DateAvailability } from '@/lib/supabase'
 import {
   checkDailyCapacity,
   validateReservationDate,
   checkMenuItemAvailability,
+  findAvailableDates,
   type CapacityResult,
   type ReservationValidation,
 } from '@/src/repositories/product.repository'
@@ -88,5 +89,25 @@ export async function getAvailableCapacity(
     capacity_limit: 5,
     available: true,
     reason: '可以預訂',
+  }
+}
+
+/**
+ * 取得指定日期範圍的可預訂日期清單
+ * 錯誤時回傳空陣列，不阻擋前台顯示
+ * @param startDate - 起始日期 YYYY-MM-DD
+ * @param endDate - 結束日期 YYYY-MM-DD
+ * @param deliveryMethod - 取貨方式，預設 'pickup'
+ * @returns DateAvailability 陣列
+ */
+export async function getAvailableDateRange(
+  startDate: string,
+  endDate: string,
+  deliveryMethod: 'pickup' | 'delivery' = 'pickup'
+): Promise<DateAvailability[]> {
+  try {
+    return await findAvailableDates(startDate, endDate, deliveryMethod)
+  } catch {
+    return []
   }
 }
