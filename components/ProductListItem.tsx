@@ -97,7 +97,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 alt={item.name}
                 fill
                 className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="(max-width: 640px) calc(100vw - 32px), (max-width: 768px) 100vw, 50vw"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                 }}
