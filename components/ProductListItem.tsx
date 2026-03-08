@@ -152,7 +152,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
 
           {/* 數量和加入購物車（僅可預訂的商品才顯示） */}
           {!isDisplayOnly && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch">
               {/* 數量選擇 */}
               <div className="flex items-center border border-moon-border">
                 <button
@@ -161,7 +161,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 >
                   <Minus size={14} className="text-moon-text" />
                 </button>
-                <span className="px-4 text-sm text-moon-text">{quantity}</span>
+                <span className="px-4 text-sm text-moon-text flex-1 text-center">{quantity}</span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
                   className="p-2 hover:bg-moon-border transition-colors"
@@ -170,10 +170,10 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 </button>
               </div>
 
-              {/* 加入購物車按鈴 */}
+              {/* 加入購物車按鈕 */}
               <button
                 onClick={handleAddToCart}
-                className="flex-1 bg-moon-accent text-moon-black py-2.5 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors"
+                className="w-full sm:flex-1 bg-moon-accent text-moon-black py-2.5 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors"
               >
                 加入購物車 ${selectedVariant?.price ? selectedVariant.price * quantity : ''}
               </button>
