@@ -213,15 +213,15 @@ export default function HomePage() {
 
             {/* MBTI 個性化標語（若有） */}
             {mbtiType && (
-              <div className="mb-6 sm:mb-8">
-                <div className="inline-flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 border border-moon-border/80 bg-moon-black/40">
-                  <div className="inline-flex items-center gap-2">
+              <div className="mb-6 sm:mb-8 w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 border border-moon-border/80 bg-moon-black/40">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Sparkles size={14} className="text-moon-accent sm:w-4 sm:h-4" />
-                    <span className="text-[11px] sm:text-xs tracking-[0.25em] text-moon-accent">
+                    <span className="text-[10px] sm:text-xs tracking-[0.25em] text-moon-accent whitespace-nowrap">
                       FOR {mbtiType}
                     </span>
                   </div>
-                  <p className="text-[11px] sm:text-xs text-moon-muted tracking-wide">
+                  <p className="text-[10px] sm:text-xs text-moon-muted tracking-wide">
                     已為你整理 {recommendedItems.length} 款較貼近你狀態的甜點作品。
                   </p>
                 </div>
