@@ -17,6 +17,7 @@ import { EventBus } from './event-bus';
 
 // ─── Commerce Core Handlers ─────────────────────────────────────────────────
 import { handleOrderCreated } from '@/src/handlers/reward.handler';
+import { handleOrderCreatedN8n } from '@/src/modules/notifications/n8n.handler';
 // import { handleOrderCreated as handleOrderBadge } from '@/src/modules/gamification/badge.handler';
 // import { handleOrderPaid } from '@/src/modules/marketing/promo.handler';
 // import { handleOrderCompleted } from '@/src/modules/passport/stamp.handler';
@@ -43,6 +44,7 @@ export function registerAllEventHandlers(): void {
 
   // ─── Commerce Core ──────────────────────────────────────────────
   EventBus.on('order.created', handleOrderCreated);   // → 加積分
+  EventBus.on('order.created', handleOrderCreatedN8n); // → N8N 訂單同步
   // EventBus.on('order.created', handleOrderBadge);     // → 觸發勳章解鎖檢查
   // EventBus.on('order.paid', handleOrderPaid);         // → 發優惠碼
   // EventBus.on('order.completed', handleOrderCompleted); // → 到店集章
