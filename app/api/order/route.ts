@@ -191,7 +191,9 @@ export async function POST(request: NextRequest) {
     const message =
       error instanceof Error
         ? error.message
-        : (error as any)?.message || '建立訂單失敗，請稍後再試';
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as Record<string, unknown>).message)
+          : '建立訂單失敗，請稍後再試';
 
     return NextResponse.json(
       {

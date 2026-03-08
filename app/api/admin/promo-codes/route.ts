@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { ensureAdmin } from '@/app/api/admin/_utils/ensureAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const supabase = createClient();
+        const supabase = createAdminClient();
 
         const { data: promoCodes, error } = await supabase
             .from('promo_codes')
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const supabase = createClient();
+        const supabase = createAdminClient();
 
         // 基本驗證
         if (!body.code || !body.discount_type || body.discount_value === undefined) {
@@ -94,7 +94,7 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: '缺少優惠碼 ID' }, { status: 400 });
         }
 
-        const supabase = createClient();
+        const supabase = createAdminClient();
 
         // 如果有更新 code，強制大寫
         if (updateData.code) {
@@ -138,7 +138,7 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: '缺少優惠碼 ID' }, { status: 400 });
         }
 
-        const supabase = createClient();
+        const supabase = createAdminClient();
 
         const { error } = await supabase
             .from('promo_codes')
