@@ -90,8 +90,6 @@ export default function Banner() {
         title: '🌹 本季精選 · 草莓系列預訂中',
         description: '即日起預訂享早鳥優惠，限量供應',
         image_url: 'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png',
-        link_url: '#menu-section',
-        link_text: '立即預訂',
         background_color: '#d4a574',
         text_color: '#0a0a0a',
         display_type: 'hero',

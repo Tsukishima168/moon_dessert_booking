@@ -234,7 +234,7 @@ export default function HomePage() {
                 href="https://map.kiwimu.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 sm:flex-none sm:min-w-[180px] border border-moon-border text-moon-text px-4 py-3 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/60 transition-colors text-center"
+                className="min-w-0 sm:flex-none sm:min-w-[180px] border border-moon-border text-moon-text px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/60 transition-colors text-center"
               >
                 逛展覽地圖
               </Link>
@@ -243,7 +243,7 @@ export default function HomePage() {
                 href="https://passport.kiwimu.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 sm:flex-none sm:min-w-[200px] border border-moon-border/80 text-moon-text px-4 py-3 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/40 transition-colors text-center"
+                className="min-w-0 sm:flex-none sm:min-w-[200px] border border-moon-border/80 text-moon-text px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/40 transition-colors text-center"
               >
                 甜點護照 · 快速測驗
               </Link>
@@ -256,7 +256,7 @@ export default function HomePage() {
                     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }
                 }}
-                className="flex-1 sm:flex-none sm:min-w-[180px] bg-moon-accent text-moon-black px-4 py-3 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-text transition-colors"
+                className="min-w-0 sm:flex-none sm:min-w-[180px] bg-moon-accent text-moon-black px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-text transition-colors"
               >
                 直接預訂本季甜點
               </button>

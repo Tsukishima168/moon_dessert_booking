@@ -21,7 +21,7 @@ INSERT INTO banners (
   '即日起預訂享早鳥優惠，限量供應',
   'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png',
   '/',
-  '逛逛甜點',
+  NULL,
   '#d4a574',
   '#0a0a0a',
   true,
