@@ -61,7 +61,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm sm:text-base text-moon-accent font-light tracking-wide truncate">
+            <h3 className="text-sm sm:text-base text-moon-accent font-light tracking-wide line-clamp-2 leading-snug">
               {item.name}
             </h3>
             <p className="text-xs sm:text-sm text-moon-muted mt-1 line-clamp-2">
