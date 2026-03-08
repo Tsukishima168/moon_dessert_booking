@@ -6,6 +6,10 @@ import Navbar from '@/components/Navbar';
 import CartSidebar from '@/components/CartSidebar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import FacebookPixel from '@/components/FacebookPixel';
+import { registerAllEventHandlers } from '@/src/lib/event-registry';
+
+// 啟動 EventBus 所有監聽器（Server Component 啟動時執行一次）
+registerAllEventHandlers();
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 

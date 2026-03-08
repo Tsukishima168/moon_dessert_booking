@@ -2,6 +2,7 @@ import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
 import { sendCustomerEmail, notifyNewOrder } from '@/lib/notifications'
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n'
+import { EventBus } from '@/src/lib/event-bus'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -68,7 +69,7 @@ export async function createOrder(
 
   const orderId = `ORD${Date.now()}`
 
-  await insertOrder({
+  const orderData = {
     order_id: orderId,
     customer_name: input.customer_name,
     phone: input.phone,
@@ -95,67 +96,23 @@ export async function createOrder(
     utm_term: input.utm_term ?? null,
     user_id: input.user_id ?? authUserId,
     status: 'pending',
-  })
+  } as const
+
+  await insertOrder(orderData)
 
   console.log(`成功建立訂單: ${orderId}`)
 
-  // 通知觸發（fire-and-forget，不阻塞回應）
-  // Phase 2: 改為 emit("order.created") event bus
-  Promise.all([
-    input.email
-      ? sendCustomerEmail({
-          to: input.email,
-          customerName: input.customer_name,
-          orderId,
-          items: input.items,
-          totalPrice: finalPrice,
-          pickupTime: input.pickup_time,
-          promoCode: input.promo_code,
-          discountAmount,
-          originalPrice,
-          paymentDate: input.payment_date,
-          deliveryMethod: (input.delivery_method as 'pickup' | 'delivery') ?? 'pickup',
-          deliveryAddress: input.delivery_address ?? undefined,
-          deliveryFee,
-          deliveryNotes: input.delivery_notes ?? undefined,
-        })
-      : Promise.resolve(false),
-
-    notifyNewOrder({
-      orderId,
-      customerName: input.customer_name,
-      phone: input.phone,
-      totalPrice: finalPrice,
-      pickupTime: input.pickup_time,
-      items: input.items,
-      promoCode: input.promo_code,
-      discountAmount,
-      originalPrice,
-      paymentDate: input.payment_date,
-      deliveryMethod: (input.delivery_method as 'pickup' | 'delivery') ?? 'pickup',
-      deliveryAddress: input.delivery_address ?? undefined,
-      deliveryFee,
-      deliveryNotes: input.delivery_notes ?? undefined,
-      orderSource: 'shop',
-    }),
-
-    syncOrderEventToN8n('order.created', {
-      order_id: orderId,
-      status: 'pending',
-      customer_name: input.customer_name,
-      phone: input.phone,
-      email: input.email ?? null,
-      pickup_time: input.pickup_time,
-      delivery_method: input.delivery_method ?? 'pickup',
-      delivery_address: input.delivery_address ?? null,
-      total_price: originalPrice,
-      final_price: finalPrice,
-      promo_code: input.promo_code ?? null,
-      discount_amount: discountAmount,
-      items: input.items,
-    }),
-  ]).catch((error) => {
-    console.error('通知發送錯誤（不影響訂單）:', error)
+  // Phase 2: emit("order.created") event bus
+  // 所有後續副作用（加點、通知、integration）都由 event handlers 處理
+  // 此處改為 fire-and-forget emit，不阻塞回應
+  EventBus.emit('order.created', {
+    order: orderData,
+    metadata: {
+      createdAt: new Date().toISOString(),
+      source: 'shop',
+    },
+  }).catch((error) => {
+    console.error('事件發送錯誤（不影響訂單）:', error)
   })
 
   return { orderId, finalPrice }
