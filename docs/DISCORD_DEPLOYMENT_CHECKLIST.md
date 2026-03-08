@@ -117,7 +117,7 @@ vercel deploy --prod
 #### 驗證生產部署
 ```bash
 # 檢查部署狀態
-curl https://dessert-booking.vercel.app/api/admin/discord-settings
+curl https://shop.kiwimu.com/api/admin/discord-settings
 # 應返回 { "isConfigured": true, "status": "connected" }
 ```
 

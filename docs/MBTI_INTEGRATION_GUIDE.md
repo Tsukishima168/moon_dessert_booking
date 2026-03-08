@@ -168,7 +168,7 @@ function handleOrderClick(mbtiType) {
   localStorage.setItem('user_mbti', mbtiType);
   
   // 跳轉到訂購網站
-  const orderUrl = new URL('https://dessert-booking.vercel.app');
+  const orderUrl = new URL('https://shop.kiwimu.com');
   orderUrl.searchParams.set('mbti', mbtiType);
   orderUrl.searchParams.set('from', 'mbti-test');
   

@@ -102,7 +102,7 @@ Vercel 會自動部署。部署完成後，進行測試：
 
 ```bash
 # 測試訂單提交
-curl -X POST https://moon-dessert-booking.vercel.app/api/order \
+curl -X POST https://shop.kiwimu.com/api/order \
   -H "Content-Type: application/json" \
   -d '{
     "customer_name": "測試客戶",
