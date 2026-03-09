@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { createAdminClient } from '@/lib/supabase-admin';
 
+const ALLOWED_TYPES   = ['email', 'push', 'sms'];
+const ALLOWED_STATUS  = ['draft', 'scheduled', 'active', 'completed', 'paused'];
+
 export async function PATCH(
     req: NextRequest,
     { params }: { params: { id: string } }
@@ -15,37 +18,40 @@ export async function PATCH(
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
         const body = await req.json();
-        const { title, trigger_type, delay_minutes, channels, is_active } = body;
+        const { title, description, type, status, target_audience, scheduled_at } = body;
 
-        const ALLOWED_TRIGGERS = ['order', 'birthday', 'inactive'];
-        if (trigger_type !== undefined && !ALLOWED_TRIGGERS.includes(trigger_type)) {
-            return NextResponse.json({ error: 'Invalid trigger_type' }, { status: 400 });
+        if (type && !ALLOWED_TYPES.includes(type)) {
+            return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+        }
+        if (status && !ALLOWED_STATUS.includes(status)) {
+            return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
         }
 
         const payload: Record<string, unknown> = {};
         if (title           !== undefined) payload.title           = title;
-        if (trigger_type    !== undefined) payload.trigger_type    = trigger_type;
-        if (delay_minutes   !== undefined) payload.delay_minutes   = delay_minutes;
-        if (channels        !== undefined) payload.channels        = channels;
-        if (is_active       !== undefined) payload.is_active       = is_active;
+        if (description     !== undefined) payload.description     = description;
+        if (type            !== undefined) payload.type            = type;
+        if (status          !== undefined) payload.status          = status;
+        if (target_audience !== undefined) payload.target_audience = target_audience;
+        if (scheduled_at    !== undefined) payload.scheduled_at    = scheduled_at;
 
         const db = createAdminClient();
         const { data, error } = await db
-            .from('marketing_automation_rules')
+            .from('campaigns')
             .update(payload)
             .eq('id', id)
             .select()
             .single();
 
         if (error) {
-            console.error('PATCH /api/admin/marketing-automation/[id] error:', error);
+            console.error('PATCH /api/admin/campaigns/[id] error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
         return NextResponse.json({ success: true, data });
     } catch (error) {
-        console.error('PATCH /api/admin/marketing-automation/[id] error:', error);
-        return NextResponse.json({ error: 'Failed to update rule' }, { status: 500 });
+        console.error('PATCH /api/admin/campaigns/[id] error:', error);
+        return NextResponse.json({ error: 'Failed to update campaign' }, { status: 500 });
     }
 }
 
@@ -63,18 +69,18 @@ export async function DELETE(
 
         const db = createAdminClient();
         const { error } = await db
-            .from('marketing_automation_rules')
+            .from('campaigns')
             .delete()
             .eq('id', id);
 
         if (error) {
-            console.error('DELETE /api/admin/marketing-automation/[id] error:', error);
+            console.error('DELETE /api/admin/campaigns/[id] error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('DELETE /api/admin/marketing-automation/[id] error:', error);
-        return NextResponse.json({ error: 'Failed to delete rule' }, { status: 500 });
+        console.error('DELETE /api/admin/campaigns/[id] error:', error);
+        return NextResponse.json({ error: 'Failed to delete campaign' }, { status: 500 });
     }
 }
