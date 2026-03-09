@@ -207,3 +207,14 @@ MIT License
 ---
 
 **Designed with 🖤 in 2024**
+
+---
+
+## Phase 1 Gate (Current)
+**Goal: Validate traffic funnel**
+
+### Metrics
+- MBTI completions: 1000
+- Orders: 200
+- AOV: NT
+- Monthly revenue: NTk
