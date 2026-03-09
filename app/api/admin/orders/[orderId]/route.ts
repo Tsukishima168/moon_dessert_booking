@@ -1,41 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
-import { createAdminClient } from '@/lib/supabase-admin';
+import { findOrderById, updateOrder } from '@/src/repositories/order.repository';
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
 
 const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed', 'cancelled'];
+const ALLOWED_PAYMENT_METHOD = ['cash', 'transfer', 'line_pay'];
+
+// GET /api/admin/orders/[orderId]
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: { orderId: string } }
+) {
+  if (!(await ensureAdmin())) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
+  try {
+    const order = await findOrderById(params.orderId);
+    if (!order) {
+      return NextResponse.json({ success: false, message: '訂單不存在' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, data: order });
+  } catch (error) {
+    console.error('取得訂單錯誤:', error);
+    return NextResponse.json({ success: false, message: '取得訂單失敗' }, { status: 500 });
+  }
+}
 
 // PATCH /api/admin/orders/[orderId]
-export async function PATCH(request: NextRequest, { params }: { params: { orderId: string } }) {
+// 支援欄位：pickup_time, items, promo_code, discount_amount, final_price,
+//           original_price, total_price, status, admin_notes, payment_method
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { orderId: string } }
+) {
   if (!(await ensureAdmin())) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const { status } = await request.json();
+    const body = await request.json();
     const orderId = params.orderId;
 
-    if (!orderId || !status) {
-      return NextResponse.json({ success: false, message: '缺少訂單或狀態' }, { status: 400 });
-    }
-
-    if (!ALLOWED_STATUS.includes(status)) {
+    // 驗證 status（若傳入）
+    if (body.status !== undefined && !ALLOWED_STATUS.includes(body.status)) {
       return NextResponse.json({ success: false, message: '無效狀態' }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
-    const { data: updatedOrder, error } = await adminClient
-      .from('orders')
-      .update({ status })
-      .eq('order_id', orderId)
-      .select(
-        'order_id,status,customer_name,phone,email,pickup_time,delivery_method,delivery_address,total_price,final_price,promo_code,discount_amount,items,updated_at'
-      )
-      .maybeSingle();
+    // 驗證 payment_method（若傳入）
+    if (
+      body.payment_method !== undefined &&
+      body.payment_method !== null &&
+      !ALLOWED_PAYMENT_METHOD.includes(body.payment_method)
+    ) {
+      return NextResponse.json({ success: false, message: '無效付款方式' }, { status: 400 });
+    }
 
-    if (error) throw error;
+    // 只取允許更新的欄位
+    const payload: Record<string, unknown> = {};
+    const allowed = [
+      'pickup_time', 'items', 'total_price', 'original_price',
+      'final_price', 'discount_amount', 'promo_code',
+      'payment_method', 'status', 'admin_notes',
+    ];
+    for (const key of allowed) {
+      if (key in body) payload[key] = body[key];
+    }
 
-    if (updatedOrder) {
+    if (Object.keys(payload).length === 0) {
+      return NextResponse.json({ success: false, message: '沒有要更新的欄位' }, { status: 400 });
+    }
+
+    const updatedOrder = await updateOrder(orderId, payload);
+
+    // 狀態變更時同步 N8N
+    if (body.status !== undefined) {
       void syncOrderEventToN8n('order.status_updated', {
         order_id: updatedOrder.order_id,
         status: updatedOrder.status,
@@ -50,13 +88,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { orderI
         promo_code: updatedOrder.promo_code,
         discount_amount: updatedOrder.discount_amount,
         items: Array.isArray(updatedOrder.items) ? updatedOrder.items : [],
-        updated_at: updatedOrder.updated_at,
+        updated_at: updatedOrder.updated_at ?? undefined,
       });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data: updatedOrder });
   } catch (error) {
-    console.error('更新訂單狀態錯誤:', error);
+    console.error('更新訂單錯誤:', error);
     return NextResponse.json({ success: false, message: '更新失敗' }, { status: 500 });
   }
 }
