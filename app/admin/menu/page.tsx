@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Plus, Edit2, Trash2, ToggleRight, ToggleLeft, Search, X, ChevronDown, ChevronUp, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, ToggleRight, ToggleLeft, Search, X, Loader2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
 interface Variant {
@@ -307,7 +307,8 @@ export default function MenuAdminPage() {
                                     {catItems.map((item) => (
                                         <div
                                             key={item.id}
-                                            className={`border border-moon-border bg-moon-dark/70 flex flex-col hover:border-moon-accent/40 transition-colors ${!item.is_active ? 'opacity-50' : ''}`}
+                                            onClick={() => openEdit(item)}
+                                            className={`border border-moon-border bg-moon-dark/70 flex flex-col cursor-pointer hover:border-moon-accent/70 hover:bg-moon-dark transition-colors group ${!item.is_active ? 'opacity-50' : ''}`}
                                         >
                                             {/* 商品圖片 */}
                                             <div className="relative aspect-square bg-moon-gray overflow-hidden">
@@ -360,7 +361,7 @@ export default function MenuAdminPage() {
                                             {/* 操作列 */}
                                             <div className="border-t border-moon-border/50 p-2 flex items-center justify-between gap-1">
                                                 <button
-                                                    onClick={() => toggleActive(item.id, item.is_active)}
+                                                    onClick={(e) => { e.stopPropagation(); toggleActive(item.id, item.is_active); }}
                                                     className={`p-1.5 rounded transition-colors ${item.is_active
                                                         ? 'text-green-400 hover:bg-green-400/10'
                                                         : 'text-red-400 hover:bg-red-400/10'
@@ -371,15 +372,7 @@ export default function MenuAdminPage() {
                                                 </button>
 
                                                 <button
-                                                    onClick={() => openEdit(item)}
-                                                    className="p-1.5 text-moon-muted hover:text-moon-accent hover:bg-moon-accent/10 rounded transition-colors"
-                                                    title="編輯"
-                                                >
-                                                    <Edit2 size={16} />
-                                                </button>
-
-                                                <button
-                                                    onClick={() => deleteItem(item.id)}
+                                                    onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
                                                     className="p-1.5 text-moon-muted hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
                                                     title="刪除"
                                                 >
