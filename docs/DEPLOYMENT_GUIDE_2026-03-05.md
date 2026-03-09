@@ -82,22 +82,22 @@ vercel --prod
 ## 🔗 部署結果
 
 ### 預期 URL
-- **主網站**: https://moon-dessert-booking.vercel.app
-- **API**: https://moon-dessert-booking.vercel.app/api/*
-- **後台**: https://moon-dessert-booking.vercel.app/admin
+- **主網站**: https://shop.kiwimu.com
+- **API**: https://shop.kiwimu.com/api/*
+- **後台**: https://shop.kiwimu.com/admin
 
 ### 驗證部署成功
 
 部署後訪問:
 ```bash
 # 測試 Menu API
-curl https://moon-dessert-booking.vercel.app/api/menu
+curl https://shop.kiwimu.com/api/menu
 
 # 測試結帳頁面
-https://moon-dessert-booking.vercel.app/checkout
+https://shop.kiwimu.com/checkout
 
 # 進入後台
-https://moon-dessert-booking.vercel.app/admin
+https://shop.kiwimu.com/admin
 ```
 
 ---
@@ -180,13 +180,13 @@ $$;
 ### API 檢查
 ```bash
 # 測試 Menu API (應返回 36 項)
-curl https://moon-dessert-booking.vercel.app/api/menu
+curl https://shop.kiwimu.com/api/menu
 
 # 測試容量檢查 (SQL 修復後應返回 200)
-curl 'https://moon-dessert-booking.vercel.app/api/check-capacity?date=2026-03-15'
+curl 'https://shop.kiwimu.com/api/check-capacity?date=2026-03-15'
 
 # 測試訂單提交 (SQL 修復後應返回 201)
-curl -X POST https://moon-dessert-booking.vercel.app/api/order \
+curl -X POST https://shop.kiwimu.com/api/order \
   -H "Content-Type: application/json" \
   -d '{...}'
 ```

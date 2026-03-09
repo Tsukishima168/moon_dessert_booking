@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
         const paidStatuses = ['paid', 'ready', 'completed'];
 
         // 所有下過訂單的 phone
-        const allPhones = [...new Set(rows.map(o => o.phone).filter(Boolean))];
+        const allPhones = [...new Set(rows.map(o => o.phone).filter((p): p is string => !!p))];
         const total_customers = allPhones.length;
 
         // 今日新客（今天有第一筆訂單）

@@ -90,8 +90,6 @@ export default function Banner() {
         title: '🌹 本季精選 · 草莓系列預訂中',
         description: '即日起預訂享早鳥優惠，限量供應',
         image_url: 'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png',
-        link_url: '#menu-section',
-        link_text: '立即預訂',
         background_color: '#d4a574',
         text_color: '#0a0a0a',
         display_type: 'hero',
@@ -156,14 +154,14 @@ function HeroBanner({
                 <X size={18} />
             </button>
 
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 pr-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-6 pr-6">
                 {/* 圖片 */}
                 {banner.image_url && (
                     <div className="flex-shrink-0">
                         <img
                             src={banner.image_url}
                             alt={banner.title}
-                            className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                            className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
                         />
                     </div>
                 )}

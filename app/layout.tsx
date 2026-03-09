@@ -6,7 +6,6 @@ import Navbar from '@/components/Navbar';
 import CartSidebar from '@/components/CartSidebar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import FacebookPixel from '@/components/FacebookPixel';
-
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 // 網站基本資訊（計畫1：安南區・果菜市場・本原街在地）

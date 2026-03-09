@@ -69,7 +69,7 @@ Dessert-Booking/
 - 📏 **細邊框**（取代陰影）
 - ✨ **極簡優雅**
 
-參考來源：[Moon Moon 月島甜點](https://moon-map-original.vercel.app)
+參考來源：[Moon Moon 月島甜點](https://map.kiwimu.com)
 
 完整設計指南：[docs/DESIGN_NOTES.md](./docs/DESIGN_NOTES.md)
 
@@ -202,7 +202,7 @@ MIT License
 **MOON MOON 月島甜點**  
 台南安南區療癒系甜點
 
-[官網導覽](https://moon-map-original.vercel.app)
+[官網導覽](https://map.kiwimu.com)
 
 ---
 

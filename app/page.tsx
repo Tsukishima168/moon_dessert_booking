@@ -199,29 +199,29 @@ export default function HomePage() {
             <Banner />
 
             {/* 主敘事文字 */}
-            <div className="max-w-3xl mx-auto mb-6 sm:mb-8">
+            <div className="max-w-3xl mx-auto mb-6 sm:mb-8 px-4 sm:px-0">
               <h1 className="text-base sm:text-lg lg:text-xl font-light text-moon-accent tracking-[0.25em] mb-3 sm:mb-4">
                 DESSERT STUDIO
               </h1>
-              <p className="text-sm sm:text-base text-moon-text/90 leading-relaxed sm:leading-relaxed">
+              <p className="text-sm sm:text-base text-moon-text/90 leading-loose sm:leading-relaxed">
                 {sourceMeta.title}
               </p>
-              <p className="mt-3 text-[11px] sm:text-xs text-moon-muted/80 leading-relaxed">
+              <p className="mt-4 sm:mt-5 text-[11px] sm:text-xs text-moon-muted/80 leading-loose sm:leading-relaxed">
                 {sourceMeta.desc}
               </p>
             </div>
 
             {/* MBTI 個性化標語（若有） */}
             {mbtiType && (
-              <div className="mb-6 sm:mb-8">
-                <div className="inline-flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 border border-moon-border/80 bg-moon-black/40">
-                  <div className="inline-flex items-center gap-2">
+              <div className="mb-6 sm:mb-8 w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 border border-moon-border/80 bg-moon-black/40">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Sparkles size={14} className="text-moon-accent sm:w-4 sm:h-4" />
-                    <span className="text-[11px] sm:text-xs tracking-[0.25em] text-moon-accent">
+                    <span className="text-[10px] sm:text-xs tracking-[0.25em] text-moon-accent whitespace-nowrap">
                       FOR {mbtiType}
                     </span>
                   </div>
-                  <p className="text-[11px] sm:text-xs text-moon-muted tracking-wide">
+                  <p className="text-[10px] sm:text-xs text-moon-muted tracking-wide">
                     已為你整理 {recommendedItems.length} 款較貼近你狀態的甜點作品。
                   </p>
                 </div>
@@ -234,7 +234,7 @@ export default function HomePage() {
                 href="https://map.kiwimu.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 sm:flex-none sm:min-w-[180px] border border-moon-border text-moon-text px-4 py-3 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/60 transition-colors text-center"
+                className="min-w-0 sm:flex-none sm:min-w-[180px] border border-moon-border text-moon-text px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/60 transition-colors text-center"
               >
                 逛展覽地圖
               </Link>
@@ -243,7 +243,7 @@ export default function HomePage() {
                 href="https://passport.kiwimu.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 sm:flex-none sm:min-w-[200px] border border-moon-border/80 text-moon-text px-4 py-3 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/40 transition-colors text-center"
+                className="min-w-0 sm:flex-none sm:min-w-[200px] border border-moon-border/80 text-moon-text px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/40 transition-colors text-center"
               >
                 甜點護照 · 快速測驗
               </Link>
@@ -256,13 +256,13 @@ export default function HomePage() {
                     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }
                 }}
-                className="flex-1 sm:flex-none sm:min-w-[180px] bg-moon-accent text-moon-black px-4 py-3 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-text transition-colors"
+                className="min-w-0 sm:flex-none sm:min-w-[180px] bg-moon-accent text-moon-black px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-text transition-colors"
               >
                 直接預訂本季甜點
               </button>
             </div>
 
-            <div className="w-12 sm:w-16 h-px bg-moon-border mx-auto mt-8 sm:mt-10"></div>
+            <div className="w-16 sm:w-20 h-px bg-moon-border mx-auto mt-8 sm:mt-10"></div>
           </div>
         </div>
       </div>
@@ -395,11 +395,11 @@ export default function HomePage() {
                     <div className="flex items-center gap-4 mb-2">
                       {/* 裝飾線 - 左 */}
                       <div className="hidden sm:block h-px bg-moon-border w-8"></div>
-                      <h2 className="text-lg sm:text-xl font-light text-moon-accent tracking-widest whitespace-nowrap">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-light text-moon-accent tracking-widest break-words">
                         {category.name.toUpperCase()}
                       </h2>
                       <div className="h-px bg-moon-border flex-1"></div>
-                      <span className="text-xs text-moon-muted tracking-wider">
+                      <span className="text-xs text-moon-muted tracking-wider shrink-0">
                         {categoryItems.length} 款
                       </span>
                     </div>

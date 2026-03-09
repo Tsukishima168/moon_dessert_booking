@@ -61,7 +61,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm sm:text-base text-moon-accent font-light tracking-wide truncate">
+            <h3 className="text-sm sm:text-base text-moon-accent font-light tracking-wide line-clamp-2 leading-snug">
               {item.name}
             </h3>
             <p className="text-xs sm:text-sm text-moon-muted mt-1 line-clamp-2">
@@ -97,7 +97,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 alt={item.name}
                 fill
                 className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="(max-width: 640px) calc(100vw - 32px), (max-width: 768px) 100vw, 50vw"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                 }}
@@ -129,13 +129,13 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
               <label className="text-xs text-moon-muted tracking-wider mb-2 block">
                 選擇規格
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 {item.variants.map((variant) => (
                   <button
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant)}
                     className={`
-                      flex-1 py-2 px-3 text-xs tracking-wider border transition-all
+                      w-full sm:flex-1 py-2 px-2 sm:px-3 text-xs tracking-wider border transition-all
                       ${selectedVariant.id === variant.id
                         ? 'border-moon-accent bg-moon-accent text-moon-black'
                         : 'border-moon-border text-moon-muted hover:border-moon-muted'
@@ -152,7 +152,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
 
           {/* 數量和加入購物車（僅可預訂的商品才顯示） */}
           {!isDisplayOnly && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch">
               {/* 數量選擇 */}
               <div className="flex items-center border border-moon-border">
                 <button
@@ -161,7 +161,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 >
                   <Minus size={14} className="text-moon-text" />
                 </button>
-                <span className="px-4 text-sm text-moon-text">{quantity}</span>
+                <span className="px-4 text-sm text-moon-text flex-1 text-center">{quantity}</span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
                   className="p-2 hover:bg-moon-border transition-colors"
@@ -170,10 +170,10 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 </button>
               </div>
 
-              {/* 加入購物車按鈴 */}
+              {/* 加入購物車按鈕 */}
               <button
                 onClick={handleAddToCart}
-                className="flex-1 bg-moon-accent text-moon-black py-2.5 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors"
+                className="w-full sm:flex-1 bg-moon-accent text-moon-black py-2.5 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors"
               >
                 加入購物車 ${selectedVariant?.price ? selectedVariant.price * quantity : ''}
               </button>
