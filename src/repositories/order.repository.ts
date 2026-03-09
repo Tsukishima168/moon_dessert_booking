@@ -1,6 +1,45 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import type { Order, OrderItem } from '@/lib/supabase'
 
+// 後台完整訂單型別（含新欄位）
+export interface AdminOrder {
+  id: string
+  order_id: string
+  customer_name: string
+  phone: string
+  email: string | null
+  pickup_time: string
+  items: OrderItem[]
+  total_price: number
+  original_price: number
+  final_price: number
+  discount_amount: number
+  promo_code: string | null
+  payment_date: string | null
+  payment_method: string | null
+  delivery_method: string
+  delivery_address: string | null
+  delivery_fee: number
+  delivery_notes: string | null
+  admin_notes: string | null
+  status: string
+  created_at: string
+  updated_at: string | null
+}
+
+export interface UpdateOrderPayload {
+  pickup_time?: string
+  items?: OrderItem[]
+  total_price?: number
+  original_price?: number
+  final_price?: number
+  discount_amount?: number
+  promo_code?: string | null
+  payment_method?: string | null
+  status?: string
+  admin_notes?: string | null
+}
+
 export interface InsertOrderPayload {
   order_id: string
   customer_name: string
@@ -44,13 +83,41 @@ export async function insertOrder(payload: InsertOrderPayload): Promise<void> {
 }
 
 /**
- * 依訂單 ID 查詢單筆訂單
+ * 依訂單 ID 查詢單筆訂單（後台完整欄位）
  * @param orderId - 訂單 ID（格式 ORD{timestamp}）
- * @returns Order 物件，找不到時回傳 null
+ * @returns AdminOrder 物件，找不到時回傳 null
  */
-export async function findOrderById(orderId: string): Promise<Order | null> {
-  // TODO: implement
-  throw new Error('Not implemented')
+export async function findOrderById(orderId: string): Promise<AdminOrder | null> {
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient
+    .from('orders')
+    .select('*')
+    .eq('order_id', orderId)
+    .maybeSingle()
+  if (error) throw error
+  return data as AdminOrder | null
+}
+
+/**
+ * 更新訂單欄位（後台管理用）
+ * @param orderId - 訂單 ID
+ * @param payload - 要更新的欄位（部分更新）
+ * @returns 更新後的 AdminOrder
+ */
+export async function updateOrder(
+  orderId: string,
+  payload: UpdateOrderPayload
+): Promise<AdminOrder> {
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient
+    .from('orders')
+    .update(payload)
+    .eq('order_id', orderId)
+    .select('*')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error(`訂單 ${orderId} 不存在`)
+  return data as AdminOrder
 }
 
 /**

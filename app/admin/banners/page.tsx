@@ -190,10 +190,20 @@ function BannerCard({
             <div className="flex items-start gap-6">
                 {/* Preview */}
                 <div
-                    className="flex-shrink-0 w-16 h-16 flex items-center justify-center text-2xl border border-moon-border"
+                    className="flex-shrink-0 w-16 h-16 border border-moon-border overflow-hidden"
                     style={{ backgroundColor: `${banner.background_color}20` }}
                 >
-                    {banner.display_type === 'hero' ? '🎯' : '📢'}
+                    {banner.image_url ? (
+                        <img
+                            src={banner.image_url}
+                            alt={banner.title}
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl">
+                            {banner.display_type === 'hero' ? '🎯' : '📢'}
+                        </div>
+                    )}
                 </div>
 
                 {/* Content */}
@@ -300,6 +310,7 @@ function BannerForm({
     const [formData, setFormData] = useState({
         title: banner?.title || '',
         description: banner?.description || '',
+        image_url: banner?.image_url || '',
         link_url: banner?.link_url || '',
         link_text: banner?.link_text || '立即查看',
         background_color: banner?.background_color || '#d4a574',
@@ -374,6 +385,28 @@ function BannerForm({
                                 rows={2}
                                 placeholder="例如: 2/14 前預訂享優惠,數量有限"
                             />
+                        </div>
+
+                        {/* 圖片 URL */}
+                        <div>
+                            <label className="block text-sm text-moon-muted mb-2">圖片 URL（選填）</label>
+                            <input
+                                type="text"
+                                value={formData.image_url}
+                                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                placeholder="https://res.cloudinary.com/..."
+                            />
+                            {formData.image_url && (
+                                <div className="mt-2 h-24 border border-moon-border/50 overflow-hidden">
+                                    <img
+                                        src={formData.image_url}
+                                        alt="preview"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -490,39 +523,52 @@ function BannerForm({
                     <div className="mb-6 pb-6 border-b border-moon-border">
                         <h3 className="text-sm text-moon-accent mb-3">預覽</h3>
                         <div
-                            className="border p-6"
+                            className="border overflow-hidden"
                             style={{
                                 backgroundColor: `${formData.background_color}10`,
                                 borderColor: formData.background_color,
                             }}
                         >
-                            <h4
-                                className="text-lg tracking-wider mb-2"
-                                style={{ color: formData.text_color }}
-                            >
-                                {formData.title || '標題預覽'}
-                            </h4>
-                            {formData.description && (
-                                <p
-                                    className="text-sm mb-3 opacity-90"
+                            {/* 圖片預覽 */}
+                            {formData.image_url && (
+                                <div className="w-full h-32 overflow-hidden">
+                                    <img
+                                        src={formData.image_url}
+                                        alt="banner"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                </div>
+                            )}
+                            <div className="p-6">
+                                <h4
+                                    className="text-lg tracking-wider mb-2"
                                     style={{ color: formData.text_color }}
                                 >
-                                    {formData.description}
-                                </p>
-                            )}
-                            {formData.link_url && (
-                                <button
-                                    type="button"
-                                    className="px-6 py-2 border"
-                                    style={{
-                                        backgroundColor: formData.background_color,
-                                        color: formData.text_color === '#0a0a0a' ? '#ffffff' : '#0a0a0a',
-                                        borderColor: formData.background_color,
-                                    }}
-                                >
-                                    {formData.link_text} →
-                                </button>
-                            )}
+                                    {formData.title || '標題預覽'}
+                                </h4>
+                                {formData.description && (
+                                    <p
+                                        className="text-sm mb-3 opacity-90"
+                                        style={{ color: formData.text_color }}
+                                    >
+                                        {formData.description}
+                                    </p>
+                                )}
+                                {formData.link_url && (
+                                    <button
+                                        type="button"
+                                        className="px-6 py-2 border"
+                                        style={{
+                                            backgroundColor: formData.background_color,
+                                            color: formData.text_color === '#0a0a0a' ? '#ffffff' : '#0a0a0a',
+                                            borderColor: formData.background_color,
+                                        }}
+                                    >
+                                        {formData.link_text} →
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
