@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Loader2, RefreshCw, Clock, CheckCircle, Truck, XCircle,
-  ChevronRight, Search,
+  ChevronRight, Search, Download,
 } from 'lucide-react';
 
 const ORDER_STATUS = {
@@ -90,6 +90,30 @@ export default function AdminOrdersPage() {
     );
   });
 
+  function handleExportCSV() {
+    const headers = ['訂單編號', '姓名', '電話', '商品', '金額', '狀態', '取貨時間', '建立時間'];
+    const rows = filtered.map(o => [
+      o.order_id,
+      o.customer_name,
+      o.phone,
+      buildItemsSummary(o.items || []),
+      String(o.final_price ?? o.total_price ?? 0),
+      ORDER_STATUS[o.status as OrderStatus]?.label ?? o.status,
+      o.pickup_time,
+      o.created_at,
+    ]);
+    const csv = [headers, ...rows]
+      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="min-h-screen bg-moon-black">
       {/* Header */}
@@ -105,13 +129,23 @@ export default function AdminOrdersPage() {
             <span className="text-moon-border">|</span>
             <h1 className="text-sm tracking-widest text-moon-text">訂單管理</h1>
           </div>
-          <button
-            onClick={() => load(statusFilter)}
-            disabled={loading}
-            className="p-2 text-moon-muted hover:text-moon-accent transition-colors"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleExportCSV}
+              disabled={loading || filtered.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-moon-border text-moon-muted hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-40"
+            >
+              <Download size={13} />
+              匯出 CSV
+            </button>
+            <button
+              onClick={() => load(statusFilter)}
+              disabled={loading}
+              className="p-2 text-moon-muted hover:text-moon-accent transition-colors"
+            >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
       </header>
 

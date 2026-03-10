@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Plus, Trash2, ToggleRight, ToggleLeft, Search, X, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, ToggleRight, ToggleLeft, Search, X, Loader2, AlertCircle, GripVertical } from 'lucide-react';
 import Image from 'next/image';
 
 interface Variant {
@@ -21,6 +21,7 @@ interface MenuItem {
     is_available?: boolean;
     recommended?: boolean;
     variants?: Variant[];
+    sort_order?: number;
     created_at: string;
 }
 
@@ -50,6 +51,8 @@ export default function MenuAdminPage() {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [error, setError] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchMenuItems();
@@ -84,13 +87,15 @@ export default function MenuAdminPage() {
         }
     };
 
-    const filteredItems = items.filter((item) => {
-        const matchesSearch =
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.description?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-        return matchesSearch && matchesCategory;
-    });
+    const filteredItems = items
+        .filter((item) => {
+            const matchesSearch =
+                item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+            return matchesSearch && matchesCategory;
+        })
+        .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
 
     // 分組
     const grouped: Record<string, MenuItem[]> = {};
@@ -216,6 +221,55 @@ export default function MenuAdminPage() {
             variants: f.variants.map((v, i) => (i === idx ? { ...v, [field]: value } : v)),
         }));
 
+    function handleDragStart(id: string) {
+        setDraggingId(id);
+    }
+
+    function handleDragOver(e: React.DragEvent, id: string) {
+        e.preventDefault();
+        if (id !== draggingId) setDragOverId(id);
+    }
+
+    function handleDragEnd() {
+        setDraggingId(null);
+        setDragOverId(null);
+    }
+
+    async function handleDrop(targetId: string) {
+        if (!draggingId || draggingId === targetId) {
+            setDraggingId(null);
+            setDragOverId(null);
+            return;
+        }
+        const sourceItem = items.find(i => i.id === draggingId);
+        const targetItem = items.find(i => i.id === targetId);
+        if (!sourceItem || !targetItem || sourceItem.category !== targetItem.category) {
+            setDraggingId(null);
+            setDragOverId(null);
+            return;
+        }
+        const cat = sourceItem.category;
+        const catItems = items.filter(i => i.category === cat);
+        const srcIdx = catItems.findIndex(i => i.id === draggingId);
+        const tgtIdx = catItems.findIndex(i => i.id === targetId);
+        const reordered = [...catItems];
+        const [moved] = reordered.splice(srcIdx, 1);
+        reordered.splice(tgtIdx, 0, moved);
+        const withOrder = reordered.map((item, idx) => ({ ...item, sort_order: idx }));
+        setItems(prev => prev.map(item => withOrder.find(u => u.id === item.id) ?? item));
+        setDraggingId(null);
+        setDragOverId(null);
+        await Promise.all(
+            withOrder.map(item =>
+                fetch(`/api/admin/menu/${item.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sort_order: item.sort_order }),
+                }).catch(e => console.error('sort_order update failed:', e))
+            )
+        );
+    }
+
     if (loading) {
         return (
             <div className="min-h-screen bg-moon-black flex items-center justify-center">
@@ -307,8 +361,16 @@ export default function MenuAdminPage() {
                                     {catItems.map((item) => (
                                         <div
                                             key={item.id}
+                                            draggable
+                                            onDragStart={() => handleDragStart(item.id)}
+                                            onDragOver={e => handleDragOver(e, item.id)}
+                                            onDrop={() => handleDrop(item.id)}
+                                            onDragEnd={handleDragEnd}
                                             onClick={() => openEdit(item)}
-                                            className={`border border-moon-border bg-moon-dark/70 flex flex-col cursor-pointer hover:border-moon-accent/70 hover:bg-moon-dark transition-colors group ${!item.is_active ? 'opacity-50' : ''}`}
+                                            className={`border bg-moon-dark/70 flex flex-col cursor-pointer hover:border-moon-accent/70 hover:bg-moon-dark transition-colors group
+                                                ${draggingId === item.id ? 'opacity-40' : ''}
+                                                ${dragOverId === item.id ? 'border-moon-accent ring-1 ring-moon-accent/40' : 'border-moon-border'}
+                                                ${!item.is_active ? 'opacity-50' : ''}`}
                                         >
                                             {/* 商品圖片 */}
                                             <div className="relative aspect-square bg-moon-gray overflow-hidden">
@@ -360,6 +422,13 @@ export default function MenuAdminPage() {
 
                                             {/* 操作列 */}
                                             <div className="border-t border-moon-border/50 p-2 flex items-center justify-between gap-1">
+                                                <div
+                                                    onClick={e => e.stopPropagation()}
+                                                    className="p-1.5 text-moon-muted/40 cursor-grab active:cursor-grabbing hover:text-moon-muted transition-colors"
+                                                    title="拖曳排序"
+                                                >
+                                                    <GripVertical size={16} />
+                                                </div>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); toggleActive(item.id, item.is_active); }}
                                                     className={`p-1.5 rounded transition-colors ${item.is_active
