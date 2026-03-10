@@ -193,7 +193,12 @@ export default function CartSidebar() {
                 </div>
 
                 {/* 結帳按鈕 */}
-                <Link href="/checkout" onClick={closeCart}>
+                <Link href="/checkout" onClick={() => {
+                  if (typeof window !== 'undefined' && window.gtag) {
+                    window.gtag('event', 'begin_checkout', { value: finalPrice });
+                  }
+                  closeCart();
+                }}>
                   <button className="w-full bg-moon-accent text-moon-black py-3 sm:py-4 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors">
                     前往結帳
                   </button>

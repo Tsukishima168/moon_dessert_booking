@@ -1,0 +1,7 @@
+ALTER TABLE orders 
+  ADD COLUMN IF NOT EXISTS admin_notes TEXT,
+  ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'transfer';
+
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS display_name TEXT,
+  ADD COLUMN IF NOT EXISTS phone TEXT;
