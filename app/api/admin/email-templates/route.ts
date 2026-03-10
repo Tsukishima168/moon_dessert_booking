@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../_utils/ensureAdmin';
+import { createAdminClient } from '@/lib/supabase-admin';
+
+export const dynamic = 'force-dynamic';
+
+const ALLOWED_TYPES = ['order_confirmation', 'shipping', 'promotional', 'welcome', 'custom'];
 
 export async function GET(req: NextRequest) {
     try {
@@ -7,28 +12,21 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // 模擬數據
-        const templates = [
-            {
-                id: '1',
-                name: '訂單確認信',
-                type: 'order_confirmation',
-                subject: '您的訂單已收到 #{order_id}',
-                html_content: '<html><body>感謝您的訂單</body></html>',
-                is_active: true,
-                used_count: 156,
-                last_used: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-            },
-        ];
+        const db = createAdminClient();
+        const { data, error } = await db
+            .from('email_templates')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-        return NextResponse.json({ templates });
+        if (error) {
+            console.error('GET /api/admin/email-templates query error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ templates: data ?? [] });
     } catch (error) {
         console.error('GET /api/admin/email-templates error:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch templates' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
     }
 }
 
@@ -39,13 +37,37 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
+        const { name, type, subject, preview_text, html_content, is_active } = body;
 
-        return NextResponse.json({ success: true, data: body });
+        if (!name || !type || !subject) {
+            return NextResponse.json({ error: 'name, type and subject are required' }, { status: 400 });
+        }
+        if (!ALLOWED_TYPES.includes(type)) {
+            return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+        }
+
+        const db = createAdminClient();
+        const { data, error } = await db
+            .from('email_templates')
+            .insert({
+                name,
+                type,
+                subject,
+                preview_text: preview_text ?? null,
+                html_content: html_content ?? '',
+                is_active: is_active ?? true,
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('POST /api/admin/email-templates insert error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, data });
     } catch (error) {
         console.error('POST /api/admin/email-templates error:', error);
-        return NextResponse.json(
-            { error: 'Failed to create template' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to create template' }, { status: 500 });
     }
 }
