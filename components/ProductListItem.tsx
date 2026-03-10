@@ -28,6 +28,14 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
         variant_name: selectedVariant.variant_name,
       });
     }
+
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'add_to_cart', {
+        value: selectedVariant.price * quantity,
+        item_name: item.name
+      });
+    }
+
     openCart();
     setQuantity(1);
     setIsExpanded(false); // 加入後自動收合

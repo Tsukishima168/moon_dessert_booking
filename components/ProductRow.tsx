@@ -37,6 +37,14 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                 variant_name: selectedVariant.variant_name,
             });
         }
+
+        if (typeof window !== 'undefined' && window.gtag) {
+            window.gtag('event', 'add_to_cart', {
+                value: selectedVariant.price * quantity,
+                item_name: item.name
+            });
+        }
+
         openCart();
         setAdded(true);
         setQuantity(1);
