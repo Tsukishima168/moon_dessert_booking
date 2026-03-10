@@ -73,3 +73,59 @@ body {
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Tiptap WYSIWYG editor styles */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror p {
+  margin: 0.5em 0;
+  color: #f5f0e8;
+  line-height: 1.7;
+}
+
+.ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #c9a96e;
+  margin: 1em 0 0.5em;
+}
+
+.ProseMirror h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #c9a96e;
+  margin: 0.75em 0 0.4em;
+}
+
+.ProseMirror ul {
+  padding-left: 1.4em;
+  color: #f5f0e8;
+  margin: 0.5em 0;
+}
+
+.ProseMirror li {
+  margin: 0.2em 0;
+}
+
+.ProseMirror strong {
+  color: #c9a96e;
+}
+
+.ProseMirror em {
+  opacity: 0.8;
+}
+
+.ProseMirror a {
+  color: #c9a96e;
+  text-decoration: underline;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #555;
+  pointer-events: none;
+  height: 0;
+}
