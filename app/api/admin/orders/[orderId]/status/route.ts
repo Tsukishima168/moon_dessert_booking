@@ -68,6 +68,7 @@ export async function PATCH(
             newStatus: status,
             pickupTime: order.pickup_time,
             deliveryMethod: order.delivery_method || 'pickup',
+            items: Array.isArray(order.items) ? order.items : [],
         }).catch((err) => {
             console.error('發送狀態通知錯誤（不影響更新）:', err);
         });

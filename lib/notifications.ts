@@ -1,6 +1,9 @@
 import { Resend } from 'resend';
 import { OrderItem } from './supabase';
 import { createAdminClient } from './supabase-admin';
+import { sendEmail } from './email/resend';
+import { orderReadyTemplate } from './email/templates/order-ready';
+import { orderCancelledTemplate } from './email/templates/order-cancelled';
 
 // 初始化 Resend
 const resend = process.env.RESEND_API_KEY
@@ -101,6 +104,7 @@ export async function notifyNewOrder(data: {
 export async function sendOrderStatusNotification(data: {
   orderId: string; customerName: string; oldStatus: string; newStatus: string;
   email?: string; phone?: string; pickupTime?: string; deliveryMethod?: string;
+  items?: OrderItem[];
 }): Promise<{ success: boolean }> {
   // 1. Discord 通知店家
   const msg = `🔄 訂單狀態更新: ${data.orderId}\n${data.customerName} 的訂單從 ${data.oldStatus} 變更為 **${data.newStatus}**`;
@@ -108,9 +112,9 @@ export async function sendOrderStatusNotification(data: {
 
   // 2. Email 通知客戶（只在 ready / cancelled 且有 email）
   if (!['ready', 'cancelled'].includes(data.newStatus) || !data.email) return { success: true };
-  if (!resend) { console.warn('[Email] RESEND_API_KEY 未設定'); return { success: true }; }
 
   try {
+    // 優先查 DB email_templates（後台可自訂模板）
     const db = createAdminClient();
     const keyword = data.newStatus === 'ready' ? '取貨' : '取消';
     const { data: rows } = await db
@@ -130,21 +134,21 @@ export async function sendOrderStatusNotification(data: {
         .replace(/\{customer_name\}/g, data.customerName)
         .replace(/\{order_id\}/g, data.orderId)
         .replace(/\{pickup_time\}/g, data.pickupTime ?? '');
+    } else if (data.newStatus === 'ready') {
+      ({ subject, html } = orderReadyTemplate({
+        customerName: data.customerName,
+        orderNumber: data.orderId,
+        pickupTime: data.pickupTime ?? '',
+        items: data.items ?? [],
+      }));
     } else {
-      const base = 'font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f0e8;padding:32px;';
-      const accent = 'color:#c9a96e;font-weight:300;letter-spacing:0.3em;font-size:20px;margin:0 0 24px;';
-      const footer = 'color:#c9a96e;font-size:11px;letter-spacing:0.2em;margin-top:32px;padding-top:16px;border-top:1px solid rgba(201,169,110,0.3);text-align:center;';
-      if (data.newStatus === 'ready') {
-        subject = '【月島甜點】您的訂單可以取貨了！';
-        html = `<div style="${base}"><h1 style="${accent}">MOON MOON</h1><p>親愛的 ${data.customerName}，</p><p style="color:#c9a96e;">您的訂單現在可以取貨了！</p><p>訂單編號：${data.orderId}</p>${data.pickupTime ? `<p>取貨時間：${data.pickupTime}</p>` : ''}<p style="${footer}">月島甜點 · 台南安南區 · shop.kiwimu.com</p></div>`;
-      } else {
-        subject = '【月島甜點】訂單取消通知';
-        html = `<div style="${base}"><h1 style="${accent}">MOON MOON</h1><p>親愛的 ${data.customerName}，</p><p>很抱歉通知您，您的訂單（${data.orderId}）已取消。</p><p>如有疑問歡迎與我們聯絡。</p><p style="${footer}">月島甜點 · 台南安南區 · shop.kiwimu.com</p></div>`;
-      }
+      ({ subject, html } = orderCancelledTemplate({
+        customerName: data.customerName,
+        orderNumber: data.orderId,
+      }));
     }
 
-    const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-    await resend.emails.send({ from, to: data.email, subject, html });
+    await sendEmail(data.email, subject, html);
     console.log(`[Email] 狀態通知發送成功 → ${data.email} (${data.newStatus})`);
   } catch (err) {
     console.error('[Email] 狀態通知發送失敗（不影響狀態更新）:', err);
