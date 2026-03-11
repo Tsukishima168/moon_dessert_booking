@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Loader2, RefreshCw, Clock, CheckCircle, Truck, XCircle,
-  ChevronRight, Search,
+  ChevronRight, Search, Download,
 } from 'lucide-react';
 
 const ORDER_STATUS = {
@@ -61,6 +61,7 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const load = async (status: string) => {
     setLoading(true);
@@ -79,6 +80,28 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => { load(statusFilter); }, [statusFilter]);
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      const qs = params.size > 0 ? `?${params.toString()}` : '';
+      const res = await fetch(`/api/admin/orders/export${qs}`);
+      if (!res.ok) throw new Error('匯出失敗');
+      const blob = await res.blob();
+      const today = new Date().toISOString().slice(0, 10);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `orders_${today}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (e) {
+      console.error('CSV 匯出錯誤:', e);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const filtered = orders.filter(o => {
     if (!search) return true;
@@ -138,16 +161,26 @@ export default function AdminOrdersPage() {
               );
             })}
           </div>
-          {/* 搜尋 */}
-          <div className="relative">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-moon-muted" />
-            <input
-              type="text"
-              placeholder="搜尋訂單號 / 姓名 / 電話"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs bg-moon-dark border border-moon-border text-moon-text placeholder:text-moon-muted/50 focus:outline-none focus:border-moon-accent w-56 transition-colors"
-            />
+          {/* 搜尋 + 匯出 */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-moon-muted" />
+              <input
+                type="text"
+                placeholder="搜尋訂單號 / 姓名 / 電話"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-8 pr-3 py-1.5 text-xs bg-moon-dark border border-moon-border text-moon-text placeholder:text-moon-muted/50 focus:outline-none focus:border-moon-accent w-56 transition-colors"
+              />
+            </div>
+            <button
+              onClick={handleExportCSV}
+              disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-moon-border text-moon-muted hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-50"
+            >
+              {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              匯出 CSV
+            </button>
           </div>
         </div>
 

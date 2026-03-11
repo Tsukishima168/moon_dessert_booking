@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Plus, Trash2, ToggleRight, ToggleLeft, Search, X, Loader2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 interface Variant {
     id?: string;
@@ -21,6 +22,7 @@ interface MenuItem {
     is_available?: boolean;
     recommended?: boolean;
     variants?: Variant[];
+    sort_order?: number;
     created_at: string;
 }
 
@@ -67,7 +69,9 @@ export default function MenuAdminPage() {
                 throw new Error(data.error || `API 錯誤: ${response.status}`);
             }
             
-            const list: MenuItem[] = data.items || [];
+            const list: MenuItem[] = (data.items || []).sort(
+                (a: MenuItem, b: MenuItem) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+            );
             setItems(list);
             
             // 自動提取分類
@@ -99,6 +103,41 @@ export default function MenuAdminPage() {
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push(item);
     });
+
+    const onDragEnd = (result: DropResult) => {
+        const { destination, source } = result;
+        if (!destination) return;
+        if (destination.droppableId !== source.droppableId) return;
+        if (destination.index === source.index) return;
+
+        const category = source.droppableId;
+        const catItems = grouped[category];
+        if (!catItems) return;
+
+        const reordered = Array.from(catItems);
+        const [moved] = reordered.splice(source.index, 1);
+        reordered.splice(destination.index, 0, moved);
+
+        const updates = reordered.map((item, idx) => ({
+            id: item.id,
+            sort_order: idx * 10,
+        }));
+
+        const prevItems = [...items];
+        const updatedItems = items.map(item => {
+            const update = updates.find(u => u.id === item.id);
+            return update ? { ...item, sort_order: update.sort_order } : item;
+        });
+        setItems(updatedItems);
+
+        fetch('/api/admin/menu/reorder', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: updates }),
+        }).catch(() => {
+            setItems(prevItems);
+        });
+    };
 
     const openCreate = () => {
         setEditingItem(null);
@@ -283,109 +322,129 @@ export default function MenuAdminPage() {
                     </select>
                 </div>
 
-                {/* 商品卡片 — 依分類分組 */}
-                {Object.keys(grouped).length === 0 ? (
-                    <div className="border border-moon-border p-16 text-center">
-                        <p className="text-moon-muted mb-4">沒有符合條件的商品</p>
-                        <button onClick={openCreate} className="text-moon-accent text-sm hover:underline">
-                            新增第一個商品 →
-                        </button>
-                    </div>
-                ) : (
-                    <div className="space-y-10">
-                        {Object.entries(grouped).map(([cat, catItems]) => (
-                            <div key={cat}>
-                                {/* 分類標題 */}
-                                <div className="flex items-center gap-3 mb-4">
-                                    <h2 className="text-sm tracking-[0.2em] text-moon-muted uppercase">{cat}</h2>
-                                    <div className="flex-1 h-px bg-moon-border/50" />
-                                    <span className="text-xs text-moon-muted/60">{catItems.length}</span>
+                {/* 商品列表 — 依分類分組，支援拖曳排序 */}
+                <DragDropContext onDragEnd={onDragEnd}>
+                    {Object.keys(grouped).length === 0 ? (
+                        <div className="border border-moon-border p-16 text-center">
+                            <p className="text-moon-muted mb-4">沒有符合條件的商品</p>
+                            <button onClick={openCreate} className="text-moon-accent text-sm hover:underline">
+                                新增第一個商品 →
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-10">
+                            {Object.entries(grouped).map(([cat, catItems]) => (
+                                <div key={cat}>
+                                    {/* 分類標題 */}
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <h2 className="text-sm tracking-[0.2em] text-moon-muted uppercase">{cat}</h2>
+                                        <div className="flex-1 h-px bg-moon-border/50" />
+                                        <span className="text-xs text-moon-muted/60">{catItems.length}</span>
+                                    </div>
+
+                                    {/* 拖曳列表 */}
+                                    <Droppable droppableId={cat}>
+                                        {(provided) => (
+                                            <div
+                                                ref={provided.innerRef}
+                                                {...provided.droppableProps}
+                                                className="space-y-1"
+                                            >
+                                                {catItems.map((item, index) => (
+                                                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                                                        {(provided, snapshot) => (
+                                                            <div
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                className={`flex items-center gap-3 px-4 py-3 border border-moon-border bg-moon-dark/70 transition-colors ${
+                                                                    snapshot.isDragging
+                                                                        ? 'opacity-50 ring-1 ring-moon-accent shadow-lg'
+                                                                        : 'hover:bg-moon-dark'
+                                                                }`}
+                                                            >
+                                                                {/* 拖曳把手 */}
+                                                                <span
+                                                                    {...provided.dragHandleProps}
+                                                                    className="text-xl leading-none text-moon-muted/40 hover:text-moon-muted cursor-grab active:cursor-grabbing select-none flex-shrink-0"
+                                                                >
+                                                                    ⠿
+                                                                </span>
+
+                                                                {/* 縮圖 */}
+                                                                {item.image_url ? (
+                                                                    <div className="relative w-10 h-10 flex-shrink-0 overflow-hidden">
+                                                                        <Image
+                                                                            src={item.image_url}
+                                                                            alt={item.name}
+                                                                            fill
+                                                                            className="object-cover"
+                                                                            sizes="40px"
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="w-10 h-10 flex-shrink-0 bg-moon-gray flex items-center justify-center text-moon-muted/20 text-sm">
+                                                                        —
+                                                                    </div>
+                                                                )}
+
+                                                                {/* 品項資訊（點擊編輯） */}
+                                                                <div
+                                                                    className={`flex-1 min-w-0 cursor-pointer ${!item.is_active ? 'opacity-50' : ''}`}
+                                                                    onClick={() => openEdit(item)}
+                                                                >
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <span className="text-sm text-moon-text truncate">{item.name}</span>
+                                                                        {!item.is_active && (
+                                                                            <span className="text-[10px] bg-red-400/80 text-white px-1.5 py-0.5 flex-shrink-0">下架</span>
+                                                                        )}
+                                                                        {item.recommended && (
+                                                                            <span className="text-[10px] bg-moon-accent/80 text-moon-black px-1.5 py-0.5 flex-shrink-0">推薦</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-moon-accent mt-0.5">
+                                                                        ${item.price}
+                                                                        {item.variants && item.variants.length > 1 && (
+                                                                            <span className="text-moon-muted ml-1">起</span>
+                                                                        )}
+                                                                        {item.variants && item.variants.length > 0 && (
+                                                                            <span className="text-moon-muted/60 ml-2">{item.variants.length} 種規格</span>
+                                                                        )}
+                                                                    </p>
+                                                                </div>
+
+                                                                {/* 操作按鈕 */}
+                                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); toggleActive(item.id, item.is_active); }}
+                                                                        className={`p-1.5 rounded transition-colors ${item.is_active
+                                                                            ? 'text-green-400 hover:bg-green-400/10'
+                                                                            : 'text-red-400 hover:bg-red-400/10'
+                                                                        }`}
+                                                                        title={item.is_active ? '點擊下架' : '點擊上架'}
+                                                                    >
+                                                                        {item.is_active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
+                                                                        className="p-1.5 text-moon-muted hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                                                                        title="刪除"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                                {provided.placeholder}
+                                            </div>
+                                        )}
+                                    </Droppable>
                                 </div>
-
-                                {/* 卡片 Grid */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {catItems.map((item) => (
-                                        <div
-                                            key={item.id}
-                                            onClick={() => openEdit(item)}
-                                            className={`border border-moon-border bg-moon-dark/70 flex flex-col cursor-pointer hover:border-moon-accent/70 hover:bg-moon-dark transition-colors group ${!item.is_active ? 'opacity-50' : ''}`}
-                                        >
-                                            {/* 商品圖片 */}
-                                            <div className="relative aspect-square bg-moon-gray overflow-hidden">
-                                                {item.image_url ? (
-                                                    <Image
-                                                        src={item.image_url}
-                                                        alt={item.name}
-                                                        fill
-                                                        className="object-cover"
-                                                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                                                    />
-                                                ) : (
-                                                    <div className="absolute inset-0 flex items-center justify-center text-moon-muted/20 text-3xl">
-                                                        —
-                                                    </div>
-                                                )}
-                                                {/* 狀態徽章 */}
-                                                <div className="absolute top-2 left-2 flex gap-1">
-                                                    {!item.is_active && (
-                                                        <span className="text-[10px] bg-red-400/80 text-white px-1.5 py-0.5">
-                                                            下架
-                                                        </span>
-                                                    )}
-                                                    {item.recommended && (
-                                                        <span className="text-[10px] bg-moon-accent/80 text-moon-black px-1.5 py-0.5">
-                                                            推薦
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* 商品資訊 */}
-                                            <div className="p-3 flex-1 flex flex-col gap-1">
-                                                <h3 className="text-sm text-moon-text leading-tight line-clamp-2">
-                                                    {item.name}
-                                                </h3>
-                                                <p className="text-moon-accent text-sm font-light">
-                                                    ${item.price}
-                                                    {item.variants && item.variants.length > 1 && (
-                                                        <span className="text-moon-muted text-xs ml-1">起</span>
-                                                    )}
-                                                </p>
-                                                {item.variants && item.variants.length > 0 && (
-                                                    <p className="text-[11px] text-moon-muted/60">
-                                                        {item.variants.length} 種規格
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* 操作列 */}
-                                            <div className="border-t border-moon-border/50 p-2 flex items-center justify-between gap-1">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); toggleActive(item.id, item.is_active); }}
-                                                    className={`p-1.5 rounded transition-colors ${item.is_active
-                                                        ? 'text-green-400 hover:bg-green-400/10'
-                                                        : 'text-red-400 hover:bg-red-400/10'
-                                                        }`}
-                                                    title={item.is_active ? '點擊下架' : '點擊上架'}
-                                                >
-                                                    {item.is_active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                                                </button>
-
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
-                                                    className="p-1.5 text-moon-muted hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-                                                    title="刪除"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    )}
+                </DragDropContext>
             </main>
 
             {/* ===== 新增 / 編輯 表單 Modal ===== */}
