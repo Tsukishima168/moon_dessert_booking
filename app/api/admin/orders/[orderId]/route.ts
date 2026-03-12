@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { findOrderById, updateOrder } from '@/src/repositories/order.repository';
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
+import { EventBus } from '@/src/lib/event-bus';
 
 const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed', 'cancelled'];
 const ALLOWED_PAYMENT_METHOD = ['cash', 'transfer', 'line_pay'];
@@ -70,9 +71,29 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: '沒有要更新的欄位' }, { status: 400 });
     }
 
+    // status 變更時先取舊狀態（用於 EventBus payload 和差異判斷）
+    let oldStatus: string | undefined;
+    if (body.status !== undefined) {
+      const existing = await findOrderById(orderId);
+      if (!existing) {
+        return NextResponse.json({ success: false, message: '訂單不存在' }, { status: 404 });
+      }
+      oldStatus = existing.status;
+    }
+
     const updatedOrder = await updateOrder(orderId, payload);
 
-    // 狀態變更時同步 N8N
+    // 狀態有實際變更時 emit EventBus（email 通知由 email.handler 接收）
+    if (body.status !== undefined && oldStatus !== body.status) {
+      void EventBus.emit('order.status_updated', {
+        order: updatedOrder,
+        oldStatus,
+        newStatus: body.status as string,
+        deliveryMethod: updatedOrder.delivery_method || 'pickup',
+      });
+    }
+
+    // 狀態變更時同步 N8N（直接呼叫，尚未遷移至 EventBus handler）
     if (body.status !== undefined) {
       void syncOrderEventToN8n('order.status_updated', {
         order_id: updatedOrder.order_id,
