@@ -45,6 +45,14 @@ export async function PATCH(
 
         const oldStatus = order.status;
 
+        if (oldStatus === status) {
+            return NextResponse.json({
+                success: true,
+                message: `訂單狀態維持為 ${status}，未重送通知`,
+                data: { orderId, oldStatus, newStatus: status, skipped: true },
+            });
+        }
+
         // 更新狀態
         const { error: updateError } = await adminClient
             .from('orders')

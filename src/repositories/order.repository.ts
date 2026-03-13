@@ -76,13 +76,18 @@ export interface InsertOrderPayload {
  * 將訂單資料寫入 orders 資料表（使用 admin client 繞過 RLS）
  * @param payload - 完整的訂單欄位
  */
-export async function insertOrder(payload: InsertOrderPayload): Promise<void> {
+export async function insertOrder(payload: InsertOrderPayload): Promise<AdminOrder> {
   const adminClient = createAdminClient()
-  const { error } = await adminClient.from('orders').insert(payload)
+  const { data, error } = await adminClient
+    .from('orders')
+    .insert(payload)
+    .select('*')
+    .single()
   if (error) {
     console.error('Supabase insert error:', error)
     throw error
   }
+  return data as AdminOrder
 }
 
 /**
