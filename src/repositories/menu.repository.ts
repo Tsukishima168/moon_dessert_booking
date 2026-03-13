@@ -34,7 +34,7 @@ export interface UpdateMenuItemPayload {
 }
 
 /**
- * 查詢所有菜單品項，依名稱排序
+ * 查詢所有菜單品項，優先依 sort_order，再依名稱排序
  * @returns MenuItemRow 陣列（原始 DB 欄位）
  */
 export async function findAllMenuItems(): Promise<MenuItemRow[]> {
@@ -42,6 +42,7 @@ export async function findAllMenuItems(): Promise<MenuItemRow[]> {
   const { data, error } = await adminClient
     .from('menu_items')
     .select('*')
+    .order('sort_order', { ascending: true })
     .order('name')
   if (error) throw error
   return (data || []) as MenuItemRow[]

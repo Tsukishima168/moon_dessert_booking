@@ -17,6 +17,7 @@ export interface AdminOrder {
   promo_code: string | null
   payment_date: string | null
   payment_method: string | null
+  linepay_transaction_id: string | null
   delivery_method: string
   delivery_address: string | null
   delivery_fee: number
@@ -36,6 +37,7 @@ export interface UpdateOrderPayload {
   discount_amount?: number
   promo_code?: string | null
   payment_method?: string | null
+  linepay_transaction_id?: string | null
   status?: string
   admin_notes?: string | null
 }
@@ -53,6 +55,7 @@ export interface InsertOrderPayload {
   discount_amount: number
   promo_code: string | null
   payment_date: string | null
+  linepay_transaction_id: string | null
   delivery_method: string
   delivery_address: string | null
   delivery_fee: number

@@ -29,6 +29,7 @@ export interface CreateOrderInput {
   utm_content?: string
   utm_term?: string
   user_id?: string
+  linepay_transaction_id?: string
 }
 
 export interface CreateOrderResult {
@@ -82,6 +83,7 @@ export async function createOrder(
     discount_amount: discountAmount,
     promo_code: input.promo_code ?? null,
     payment_date: input.payment_date ?? null,
+    linepay_transaction_id: input.linepay_transaction_id ?? null,
     delivery_method: input.delivery_method ?? 'pickup',
     delivery_address: input.delivery_address ?? null,
     delivery_fee: deliveryFee,
