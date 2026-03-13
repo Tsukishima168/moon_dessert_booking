@@ -61,6 +61,7 @@ interface FormState {
   status: string;
   admin_notes: string;
   payment_method: string;
+  linepay_transaction_id: string;
 }
 
 interface NotificationChannelStatus {
@@ -142,6 +143,7 @@ function buildFormStateFromOrder(order: AdminOrder): FormState {
     status: order.status,
     admin_notes: order.admin_notes || '',
     payment_method: order.payment_method || '',
+    linepay_transaction_id: order.linepay_transaction_id || '',
   };
 }
 
@@ -177,7 +179,7 @@ export default function AdminOrderEditPage() {
   const [form, setForm] = useState<FormState>({
     pickup_time: '', items: [], promo_code: '',
     discount_amount: 0, status: 'pending',
-    admin_notes: '', payment_method: '',
+    admin_notes: '', payment_method: '', linepay_transaction_id: '',
   });
 
   // 確認視窗
@@ -270,6 +272,7 @@ export default function AdminOrderEditPage() {
           status: form.status,
           admin_notes: form.admin_notes || null,
           payment_method: form.payment_method || null,
+          linepay_transaction_id: form.linepay_transaction_id.trim() || null,
         }),
       });
       const json = await res.json();
@@ -355,6 +358,9 @@ export default function AdminOrderEditPage() {
 
     if (form.payment_method !== (order.payment_method ?? ''))
       lines.push(`付款方式：${PAYMENT_METHOD_LABEL[order.payment_method ?? ''] || '（未設定）'} → ${PAYMENT_METHOD_LABEL[form.payment_method] || '（未設定）'}`);
+
+    if (form.linepay_transaction_id !== (order.linepay_transaction_id ?? ''))
+      lines.push(`Line Pay 交易號：${order.linepay_transaction_id || '（未填）'} → ${form.linepay_transaction_id || '（未填）'}`);
 
     const origItemsStr = JSON.stringify((order.items || []).map(i => `${i.name}×${i.quantity}`));
     const newItemsStr = JSON.stringify(form.items.map(i => `${i.name}×${i.quantity}`));
@@ -871,7 +877,7 @@ export default function AdminOrderEditPage() {
         {/* 付款方式 + 狀態 */}
         <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
           <h2 className="text-xs text-moon-muted tracking-widest">訂單設定</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] text-moon-muted block mb-1">付款方式</label>
               <select
@@ -896,6 +902,21 @@ export default function AdminOrderEditPage() {
                   <option key={v} value={v}>{label}</option>
                 ))}
               </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-[10px] text-moon-muted block mb-1">Line Pay 交易號</label>
+              <input
+                type="text"
+                value={form.linepay_transaction_id}
+                onChange={e => setForm(p => ({ ...p, linepay_transaction_id: e.target.value }))}
+                placeholder={form.payment_method === 'line_pay' ? '貼上 Line Pay 交易號' : '非 Line Pay 可留空'}
+                className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-none focus:border-moon-accent transition-colors font-mono"
+              />
+              <p className="text-[11px] text-moon-muted mt-2 leading-relaxed">
+                {form.payment_method === 'line_pay'
+                  ? '若金流回拋缺漏，可在這裡手動回填，列表與 CSV 會同步帶出。'
+                  : '目前付款方式不是 Line Pay，交易號可先留空；若之後改回 Line Pay，再補填即可。'}
+              </p>
             </div>
           </div>
         </section>

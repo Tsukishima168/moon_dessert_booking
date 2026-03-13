@@ -82,7 +82,7 @@ export async function PATCH(
     const allowed: (keyof UpdateOrderPayload)[] = [
       'pickup_time', 'items', 'total_price', 'original_price',
       'final_price', 'discount_amount', 'promo_code',
-      'payment_method', 'status', 'admin_notes',
+      'payment_method', 'linepay_transaction_id', 'status', 'admin_notes',
     ];
     for (const key of allowed) {
       if (key in body) payload[key] = body[key];
