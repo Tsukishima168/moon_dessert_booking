@@ -11,6 +11,7 @@ export interface OrderStatusSideEffectChannelResult {
 }
 
 export interface OrderStatusSideEffectResult {
+  triggerMode: 'status_change' | 'manual_retry'
   statusChanged: boolean
   previousStatus: string
   currentStatus: string
@@ -37,11 +38,13 @@ interface OrderStatusSideEffectInput {
   updatedAt?: string | null
   previousStatus: string
   currentStatus: string
+  triggerMode?: 'status_change' | 'manual_retry'
 }
 
 export async function runOrderStatusSideEffects(
   input: OrderStatusSideEffectInput
 ): Promise<OrderStatusSideEffectResult> {
+  const triggerMode = input.triggerMode ?? 'status_change'
   const notificationResult = await sendOrderStatusNotification({
     orderId: input.orderId,
     customerName: input.customerName,
@@ -52,6 +55,7 @@ export async function runOrderStatusSideEffects(
     pickupTime: input.pickupTime,
     deliveryMethod: input.deliveryMethod || 'pickup',
     items: input.items ?? [],
+    manual: triggerMode === 'manual_retry',
   })
 
   const n8nWebhookUrl =
@@ -86,11 +90,15 @@ export async function runOrderStatusSideEffects(
 
     n8n = {
       state: 'queued',
-      message: 'n8n 同步已啟動，請至 executions 或 runtime logs 確認最終結果',
+      message:
+        triggerMode === 'manual_retry'
+          ? '已手動觸發 n8n 同步，請至 executions 或 runtime logs 確認最終結果'
+          : 'n8n 同步已啟動，請至 executions 或 runtime logs 確認最終結果',
     }
   }
 
   return {
+    triggerMode,
     statusChanged: input.previousStatus !== input.currentStatus,
     previousStatus: input.previousStatus,
     currentStatus: input.currentStatus,

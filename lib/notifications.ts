@@ -119,9 +119,12 @@ export async function sendOrderStatusNotification(data: {
   orderId: string; customerName: string; oldStatus: string; newStatus: string;
   email?: string; phone?: string; pickupTime?: string; deliveryMethod?: string;
   items?: OrderItem[];
+  manual?: boolean;
 }): Promise<OrderStatusNotificationResult> {
   // 1. Discord 通知店家
-  const msg = `🔄 訂單狀態更新: ${data.orderId}\n${data.customerName} 的訂單從 ${data.oldStatus} 變更為 **${data.newStatus}**`;
+  const msg = data.manual
+    ? `🔁 手動重送訂單通知: ${data.orderId}\n${data.customerName} 的訂單目前狀態為 **${data.newStatus}**`
+    : `🔄 訂單狀態更新: ${data.orderId}\n${data.customerName} 的訂單從 ${data.oldStatus} 變更為 **${data.newStatus}**`;
   const discordConfigured = !!process.env.DISCORD_WEBHOOK_URL;
   const discord = discordConfigured
     ? await sendDiscordNotify(msg)
@@ -136,7 +139,7 @@ export async function sendOrderStatusNotification(data: {
       ? {
         channel: 'discord',
         state: 'sent',
-        message: 'Discord 店家通知已送出',
+        message: data.manual ? 'Discord 店家通知已重送' : 'Discord 店家通知已送出',
       }
       : {
         channel: 'discord',
@@ -213,7 +216,9 @@ export async function sendOrderStatusNotification(data: {
         email: {
           channel: 'email',
           state: 'sent',
-          message: `客戶 Email 已寄至 ${data.email}`,
+          message: data.manual
+            ? `客戶 Email 已重送至 ${data.email}`
+            : `客戶 Email 已寄至 ${data.email}`,
         },
       };
     }

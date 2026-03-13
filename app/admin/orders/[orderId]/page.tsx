@@ -63,6 +63,7 @@ interface SaveNotificationChannelResult {
 }
 
 interface SaveNotificationResult {
+  triggerMode: 'status_change' | 'manual_retry';
   statusChanged: boolean;
   previousStatus: string;
   currentStatus: string;
@@ -139,6 +140,7 @@ export default function AdminOrderEditPage() {
   const [notificationLoading, setNotificationLoading] = useState(true);
   const [lastSaveResult, setLastSaveResult] = useState<SaveNotificationResult | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [retryingNotifications, setRetryingNotifications] = useState(false);
 
   // 表單狀態
   const [form, setForm] = useState<FormState>({
@@ -261,6 +263,31 @@ export default function AdminOrderEditPage() {
     }
   };
 
+  const handleResendNotifications = async () => {
+    if (!order) return;
+    setRetryingNotifications(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/notifications/resend`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        setLastSaveResult((json.notification_result ?? null) as SaveNotificationResult | null);
+        setLastSavedAt(new Date().toISOString());
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        setError(json.message || '重送通知失敗');
+      }
+    } catch {
+      setError('重送通知失敗，請重試');
+    } finally {
+      setRetryingNotifications(false);
+    }
+  };
+
   // ─── 變更摘要計算 ────────────────────────────────────────────────────────
 
   function buildChangeSummary(): string[] {
@@ -305,7 +332,7 @@ export default function AdminOrderEditPage() {
     </div>
   );
 
-  if (error || !order) return (
+  if (!order) return (
     <div className="min-h-screen bg-moon-black flex flex-col items-center justify-center gap-4">
       <p className="text-red-400">{error || '訂單不存在'}</p>
       <button onClick={() => router.push('/admin/orders')} className="text-moon-muted hover:text-moon-text text-sm">
@@ -372,9 +399,18 @@ export default function AdminOrderEditPage() {
           <section className="border border-green-400/30 bg-green-400/5 p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <p className="text-xs tracking-widest text-green-300">上次儲存結果</p>
+                <p className="text-xs tracking-widest text-green-300">最近一次通知結果</p>
                 <p className="text-sm text-moon-text">
-                  {lastSaveResult.statusChanged
+                  {lastSaveResult.triggerMode === 'manual_retry'
+                    ? (
+                      <>
+                        已手動重送目前狀態通知：
+                        <span className="text-green-300 ml-1">
+                          {ORDER_STATUS[lastSaveResult.currentStatus as keyof typeof ORDER_STATUS] ?? lastSaveResult.currentStatus}
+                        </span>
+                      </>
+                    )
+                    : lastSaveResult.statusChanged
                     ? (
                       <>
                         狀態已從{' '}
@@ -440,9 +476,19 @@ export default function AdminOrderEditPage() {
         </section>
 
         <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xs text-moon-muted tracking-widest">通知鏈檢查</h2>
-            {notificationLoading && <Loader2 size={14} className="animate-spin text-moon-muted" />}
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xs text-moon-muted tracking-widest">通知鏈檢查</h2>
+              <div className="flex items-center gap-3">
+                {notificationLoading && <Loader2 size={14} className="animate-spin text-moon-muted" />}
+                <button
+                  onClick={handleResendNotifications}
+                  disabled={retryingNotifications}
+                  className="flex items-center gap-2 border border-moon-border px-3 py-1.5 text-[11px] tracking-wider text-moon-text hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-50"
+                >
+                  {retryingNotifications ? <Loader2 size={12} className="animate-spin" /> : <BellRing size={12} />}
+                  手動重送通知
+                </button>
+              </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
@@ -527,6 +573,9 @@ export default function AdminOrderEditPage() {
                 )}
               </div>
             )}
+            <p className="text-[11px] text-moon-muted">
+              如果剛剛有失敗或略過，可直接點右上角「手動重送通知」補送目前這筆訂單的通知；請避免連點，以免外部通知重複。
+            </p>
           </div>
         </section>
 

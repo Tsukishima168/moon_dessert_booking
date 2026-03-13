@@ -50,6 +50,7 @@ export async function PATCH(
                 message: `訂單狀態維持為 ${status}，未重送通知`,
                 data: { orderId, oldStatus, newStatus: status, skipped: true },
                 notification_result: {
+                    triggerMode: 'status_change',
                     statusChanged: false,
                     previousStatus: oldStatus,
                     currentStatus: status,

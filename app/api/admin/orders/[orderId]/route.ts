@@ -103,6 +103,7 @@ export async function PATCH(
         currentStatus: updatedOrder.status,
       })
       : {
+        triggerMode: 'status_change',
         statusChanged: false,
         previousStatus: updatedOrder.status,
         currentStatus: updatedOrder.status,
