@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { findOrderById, updateOrder } from '@/src/repositories/order.repository';
+import {
+  findNotificationLogsByOrderId,
+  type NotificationLog,
+} from '@/src/repositories/notification-log.repository';
 import { runOrderStatusSideEffects } from '@/src/services/order-status-side-effects.service';
 
 const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed', 'cancelled'];
@@ -19,7 +23,19 @@ export async function GET(
     if (!order) {
       return NextResponse.json({ success: false, message: '訂單不存在' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: order });
+    let notificationLogs: NotificationLog[] = [];
+    try {
+      notificationLogs = await findNotificationLogsByOrderId(params.orderId);
+    } catch (error) {
+      console.warn('讀取 notification_logs 失敗，先回傳空陣列:', error);
+    }
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...order,
+        notification_logs: notificationLogs,
+      },
+    });
   } catch (error) {
     console.error('取得訂單錯誤:', error);
     return NextResponse.json({ success: false, message: '取得訂單失敗' }, { status: 500 });

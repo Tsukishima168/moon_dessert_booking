@@ -5,6 +5,7 @@ import {
   type StatusNotificationChannel,
 } from '@/lib/notifications'
 import type { OrderItem } from '@/lib/supabase'
+import { insertNotificationLog } from '@/src/repositories/notification-log.repository'
 
 export interface OrderStatusSideEffectChannelResult {
   state: NotificationDeliveryState | 'queued'
@@ -24,6 +25,7 @@ export interface OrderStatusSideEffectResult {
     email: OrderStatusSideEffectChannelResult
     n8n: OrderStatusSideEffectChannelResult
   }
+  loggedAt?: string
 }
 
 interface OrderStatusSideEffectInput {
@@ -117,7 +119,7 @@ export async function runOrderStatusSideEffects(
     }
   }
 
-  return {
+  const result: OrderStatusSideEffectResult = {
     triggerMode,
     requestedChannel,
     statusChanged: input.previousStatus !== input.currentStatus,
@@ -134,5 +136,30 @@ export async function runOrderStatusSideEffects(
       },
       n8n,
     },
+  }
+
+  try {
+    const log = await insertNotificationLog({
+      order_id: input.orderId,
+      event_type: 'order.status_updated',
+      trigger_mode: triggerMode,
+      requested_channel: requestedChannel,
+      previous_status: input.previousStatus,
+      current_status: input.currentStatus,
+      email_state: result.channels.email.state,
+      email_message: result.channels.email.message,
+      discord_state: result.channels.discord.state,
+      discord_message: result.channels.discord.message,
+      n8n_state: result.channels.n8n.state,
+      n8n_message: result.channels.n8n.message,
+    })
+
+    return {
+      ...result,
+      loggedAt: log.created_at,
+    }
+  } catch (error) {
+    console.error('[OrderStatusSideEffects] notification_logs 寫入失敗（不影響主流程）:', error)
+    return result
   }
 }

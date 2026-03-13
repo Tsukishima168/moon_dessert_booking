@@ -14,6 +14,23 @@ interface OrderItem {
   quantity: number;
 }
 
+interface NotificationLogEntry {
+  id: string;
+  order_id: string;
+  event_type: string;
+  trigger_mode: 'status_change' | 'manual_retry';
+  requested_channel: 'all' | 'email' | 'discord' | 'n8n';
+  previous_status: string | null;
+  current_status: string;
+  email_state: SaveNotificationChannelResult['state'];
+  email_message: string;
+  discord_state: SaveNotificationChannelResult['state'];
+  discord_message: string;
+  n8n_state: SaveNotificationChannelResult['state'];
+  n8n_message: string;
+  created_at: string;
+}
+
 interface AdminOrder {
   order_id: string;
   customer_name: string;
@@ -32,6 +49,7 @@ interface AdminOrder {
   admin_notes: string | null;
   status: string;
   created_at: string;
+  notification_logs?: NotificationLogEntry[];
 }
 
 interface FormState {
@@ -126,6 +144,17 @@ function buildFormStateFromOrder(order: AdminOrder): FormState {
   };
 }
 
+async function fetchAdminOrder(orderId: string): Promise<AdminOrder> {
+  const response = await fetch(`/api/admin/orders/${orderId}`);
+  const json = await response.json();
+
+  if (!response.ok || !json.success || !json.data) {
+    throw new Error(json.message || '載入失敗');
+  }
+
+  return json.data as AdminOrder;
+}
+
 // ─── 主元件 ──────────────────────────────────────────────────────────────────
 
 export default function AdminOrderEditPage() {
@@ -159,18 +188,14 @@ export default function AdminOrderEditPage() {
   useEffect(() => {
     if (!orderId) return;
     setLoading(true);
-    fetch(`/api/admin/orders/${orderId}`)
-      .then(r => r.json())
-      .then(json => {
-        if (json.success && json.data) {
-          const nextOrder = json.data as AdminOrder;
-          setOrder(nextOrder);
-          setForm(buildFormStateFromOrder(nextOrder));
-        } else {
-          setError('訂單不存在');
-        }
+    fetchAdminOrder(orderId)
+      .then((nextOrder) => {
+        setOrder(nextOrder);
+        setForm(buildFormStateFromOrder(nextOrder));
       })
-      .catch(() => setError('載入失敗'))
+      .catch((fetchError) => {
+        setError(fetchError instanceof Error ? fetchError.message : '載入失敗');
+      })
       .finally(() => setLoading(false));
   }, [orderId]);
 
@@ -253,6 +278,12 @@ export default function AdminOrderEditPage() {
         setForm(buildFormStateFromOrder(nextOrder));
         setLastSaveResult((json.notification_result ?? null) as SaveNotificationResult | null);
         setLastSavedAt(new Date().toISOString());
+        void fetchAdminOrder(orderId)
+          .then((refreshedOrder) => {
+            setOrder(refreshedOrder);
+            setForm(buildFormStateFromOrder(refreshedOrder));
+          })
+          .catch(() => { });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setError(json.message || '儲存失敗');
@@ -282,6 +313,12 @@ export default function AdminOrderEditPage() {
       if (json.success) {
         setLastSaveResult((json.notification_result ?? null) as SaveNotificationResult | null);
         setLastSavedAt(new Date().toISOString());
+        void fetchAdminOrder(orderId)
+          .then((refreshedOrder) => {
+            setOrder(refreshedOrder);
+            setForm(buildFormStateFromOrder(refreshedOrder));
+          })
+          .catch(() => { });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setError(json.message || '重送通知失敗');
@@ -371,6 +408,10 @@ export default function AdminOrderEditPage() {
     email: 'Email',
     discord: 'Discord',
     n8n: 'n8n',
+  };
+  const triggerModeLabel: Record<SaveNotificationResult['triggerMode'], string> = {
+    status_change: '狀態變更',
+    manual_retry: '手動重送',
   };
 
   const StatusIndicator = ({ ok }: { ok: boolean }) =>
@@ -604,6 +645,61 @@ export default function AdminOrderEditPage() {
               如果剛剛有失敗或略過，可直接點右上角對應通道補送；請避免連點，以免外部通知重複。
             </p>
           </div>
+        </section>
+
+        <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xs text-moon-muted tracking-widest">通知歷史</h2>
+            <p className="text-[11px] text-moon-muted">
+              最近 {(order.notification_logs || []).length} 筆
+            </p>
+          </div>
+
+          {(order.notification_logs || []).length === 0 ? (
+            <p className="text-sm text-moon-muted">
+              尚無通知紀錄。狀態變更或手動重送後，結果會顯示在這裡。
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {(order.notification_logs || []).map((log) => (
+                <div key={log.id} className="border border-moon-border/50 bg-moon-black/30 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm text-moon-text">
+                        {triggerModeLabel[log.trigger_mode]} · {retryTargetLabel[log.requested_channel]}
+                      </p>
+                      <p className="text-xs text-moon-muted">
+                        {log.previous_status
+                          ? `${ORDER_STATUS[log.previous_status as keyof typeof ORDER_STATUS] ?? log.previous_status} → ${ORDER_STATUS[log.current_status as keyof typeof ORDER_STATUS] ?? log.current_status}`
+                          : ORDER_STATUS[log.current_status as keyof typeof ORDER_STATUS] ?? log.current_status}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-moon-muted">
+                      {new Date(log.created_at).toLocaleString('zh-TW', { hour12: false })}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {[
+                      { key: 'email', label: '客戶 Email', state: log.email_state, message: log.email_message },
+                      { key: 'discord', label: 'Discord', state: log.discord_state, message: log.discord_message },
+                      { key: 'n8n', label: 'n8n', state: log.n8n_state, message: log.n8n_message },
+                    ].map((channel) => (
+                      <div key={channel.key} className="border border-moon-border/40 px-3 py-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs text-moon-muted">{channel.label}</p>
+                          <span className={`border px-2 py-1 text-[10px] tracking-wider ${saveResultStateStyles[channel.state]}`}>
+                            {saveResultStateLabel[channel.state]}
+                          </span>
+                        </div>
+                        <p className="text-xs text-moon-text/80 leading-relaxed">{channel.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* 取餐時間 */}
