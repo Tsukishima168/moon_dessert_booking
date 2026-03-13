@@ -44,6 +44,8 @@ const PAYMENT_METHOD_LABEL: Record<string, string> = {
   line_pay: 'LINE Pay',
 };
 
+const PAYMENT_FILTERS = ['all', 'cash', 'transfer', 'line_pay'] as const;
+
 function buildItemsSummary(items: OrderItem[]): string {
   return items
     .map(item => {
@@ -67,7 +69,9 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [linePayGapOnly, setLinePayGapOnly] = useState(false);
 
   const load = async (status: string) => {
     setLoading(true);
@@ -88,6 +92,14 @@ export default function AdminOrdersPage() {
   useEffect(() => { load(statusFilter); }, [statusFilter]);
 
   const filtered = orders.filter(o => {
+    if (paymentFilter !== 'all' && (o.payment_method ?? '') !== paymentFilter) {
+      return false;
+    }
+
+    if (linePayGapOnly && !(o.payment_method === 'line_pay' && !o.linepay_transaction_id)) {
+      return false;
+    }
+
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -96,6 +108,10 @@ export default function AdminOrdersPage() {
       o.phone.includes(q)
     );
   });
+
+  const missingLinePayCount = orders.filter(
+    order => order.payment_method === 'line_pay' && !order.linepay_transaction_id
+  ).length;
 
   function handleExportCSV() {
     const headers = ['訂單編號', '姓名', '電話', '付款方式', 'Line Pay 交易號', '商品', '金額', '狀態', '取貨時間', '建立時間'];
@@ -160,26 +176,53 @@ export default function AdminOrdersPage() {
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-4">
         {/* 篩選列 */}
-        <div className="flex flex-wrap gap-2 items-center justify-between">
-          <div className="flex flex-wrap gap-1.5">
-            {STATUS_FILTERS.map(s => {
-              const cfg = s !== 'all' ? ORDER_STATUS[s as OrderStatus] : null;
-              return (
+        <div className="flex flex-wrap gap-3 items-start justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-1.5">
+              {STATUS_FILTERS.map(s => {
+                const cfg = s !== 'all' ? ORDER_STATUS[s as OrderStatus] : null;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-3 py-1.5 text-xs tracking-wider border transition-colors ${
+                      statusFilter === s
+                        ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
+                        : s === 'cancelled'
+                        ? 'border-red-500/30 text-red-400/70 hover:border-red-500/60'
+                        : 'border-moon-border text-moon-muted hover:border-moon-muted'
+                    }`}
+                  >
+                    {s === 'all' ? '全部狀態' : cfg?.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {PAYMENT_FILTERS.map(method => (
                 <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
+                  key={method}
+                  onClick={() => setPaymentFilter(method)}
                   className={`px-3 py-1.5 text-xs tracking-wider border transition-colors ${
-                    statusFilter === s
+                    paymentFilter === method
                       ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
-                      : s === 'cancelled'
-                      ? 'border-red-500/30 text-red-400/70 hover:border-red-500/60'
                       : 'border-moon-border text-moon-muted hover:border-moon-muted'
                   }`}
                 >
-                  {s === 'all' ? '全部' : cfg?.label}
+                  {method === 'all' ? '全部付款' : PAYMENT_METHOD_LABEL[method]}
                 </button>
-              );
-            })}
+              ))}
+              <button
+                onClick={() => setLinePayGapOnly(value => !value)}
+                className={`px-3 py-1.5 text-xs tracking-wider border transition-colors ${
+                  linePayGapOnly
+                    ? 'border-yellow-300/50 bg-yellow-300/10 text-yellow-300'
+                    : 'border-moon-border text-moon-muted hover:border-yellow-300/40 hover:text-yellow-300'
+                }`}
+              >
+                只看 Line Pay 未回填
+              </button>
+            </div>
           </div>
           {/* 搜尋 */}
           <div className="relative">
@@ -195,9 +238,20 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* 計數 */}
-        <p className="text-xs text-moon-muted">
-          共 <span className="text-moon-text">{filtered.length}</span> 筆
-        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-moon-muted">
+          <p>
+            共 <span className="text-moon-text">{filtered.length}</span> 筆
+          </p>
+          <p>
+            Line Pay 未回填 <span className="text-yellow-300">{missingLinePayCount}</span> 筆
+          </p>
+          {paymentFilter !== 'all' && (
+            <p>
+              付款方式：<span className="text-moon-text">{PAYMENT_METHOD_LABEL[paymentFilter]}</span>
+            </p>
+          )}
+          {linePayGapOnly && <p className="text-yellow-300">已啟用缺漏快篩</p>}
+        </div>
 
         {/* 表格 */}
         {loading ? (
@@ -245,7 +299,7 @@ export default function AdminOrdersPage() {
                             {PAYMENT_METHOD_LABEL[order.payment_method || ''] || '未設定'}
                           </p>
                           {order.payment_method === 'line_pay' && (
-                            <p className="text-[11px] text-moon-accent font-mono">
+                            <p className={`text-[11px] font-mono ${order.linepay_transaction_id ? 'text-moon-accent' : 'text-yellow-300'}`}>
                               {order.linepay_transaction_id || '待回填交易號'}
                             </p>
                           )}
