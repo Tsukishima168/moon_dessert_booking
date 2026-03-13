@@ -104,6 +104,7 @@ export async function PATCH(
       })
       : {
         triggerMode: 'status_change',
+        requestedChannel: 'all',
         statusChanged: false,
         previousStatus: updatedOrder.status,
         currentStatus: updatedOrder.status,

@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureAdmin } from '@/app/api/admin/_utils/ensureAdmin'
 import { findOrderById } from '@/src/repositories/order.repository'
-import { runOrderStatusSideEffects } from '@/src/services/order-status-side-effects.service'
+import {
+  runOrderStatusSideEffects,
+  type NotificationRetryTarget,
+} from '@/src/services/order-status-side-effects.service'
+
+function isValidTarget(value: unknown): value is NotificationRetryTarget {
+  return value === 'all' || value === 'email' || value === 'discord' || value === 'n8n'
+}
 
 // POST /api/admin/orders/[orderId]/notifications/resend - 手動重送訂單通知
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   if (!(await ensureAdmin())) {
@@ -13,6 +20,16 @@ export async function POST(
   }
 
   try {
+    const body = await request.json().catch(() => ({}))
+    const requestedChannel = body?.target ?? 'all'
+
+    if (!isValidTarget(requestedChannel)) {
+      return NextResponse.json(
+        { success: false, message: '無效的通知通道' },
+        { status: 400 }
+      )
+    }
+
     const order = await findOrderById(params.orderId)
 
     if (!order) {
@@ -36,11 +53,12 @@ export async function POST(
       previousStatus: order.status,
       currentStatus: order.status,
       triggerMode: 'manual_retry',
+      requestedChannel,
     })
 
     return NextResponse.json({
       success: true,
-      message: `已手動重送 ${order.order_id} 的通知`,
+      message: `已手動重送 ${order.order_id} 的${requestedChannel === 'all' ? '全部通知' : `${requestedChannel} 通知`}`,
       data: order,
       notification_result: notificationResult,
     })

@@ -51,6 +51,7 @@ export async function PATCH(
                 data: { orderId, oldStatus, newStatus: status, skipped: true },
                 notification_result: {
                     triggerMode: 'status_change',
+                    requestedChannel: 'all',
                     statusChanged: false,
                     previousStatus: oldStatus,
                     currentStatus: status,

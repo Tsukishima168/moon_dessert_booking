@@ -19,6 +19,8 @@ export interface OrderStatusNotificationResult {
   email: NotificationDeliveryResult;
 }
 
+export type StatusNotificationChannel = 'discord' | 'email';
+
 // 初始化 Resend
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -120,16 +122,27 @@ export async function sendOrderStatusNotification(data: {
   email?: string; phone?: string; pickupTime?: string; deliveryMethod?: string;
   items?: OrderItem[];
   manual?: boolean;
+  selectedChannels?: StatusNotificationChannel[];
 }): Promise<OrderStatusNotificationResult> {
+  const selectedChannels = data.selectedChannels ?? ['discord', 'email'];
+  const shouldSendDiscord = selectedChannels.includes('discord');
+  const shouldSendEmail = selectedChannels.includes('email');
+
   // 1. Discord 通知店家
   const msg = data.manual
     ? `🔁 手動重送訂單通知: ${data.orderId}\n${data.customerName} 的訂單目前狀態為 **${data.newStatus}**`
     : `🔄 訂單狀態更新: ${data.orderId}\n${data.customerName} 的訂單從 ${data.oldStatus} 變更為 **${data.newStatus}**`;
   const discordConfigured = !!process.env.DISCORD_WEBHOOK_URL;
-  const discord = discordConfigured
+  const discord = shouldSendDiscord && discordConfigured
     ? await sendDiscordNotify(msg)
     : false;
-  const discordResult: NotificationDeliveryResult = !discordConfigured
+  const discordResult: NotificationDeliveryResult = !shouldSendDiscord
+    ? {
+      channel: 'discord',
+      state: 'skipped',
+      message: data.manual ? '本次未選擇重送 Discord' : '本次未啟用 Discord 通知',
+    }
+    : !discordConfigured
     ? {
       channel: 'discord',
       state: 'skipped',
@@ -148,6 +161,18 @@ export async function sendOrderStatusNotification(data: {
       };
 
   // 2. Email 通知客戶（只在 ready / cancelled 且有 email）
+  if (!shouldSendEmail) {
+    return {
+      success: discordResult.state !== 'failed',
+      discord: discordResult,
+      email: {
+        channel: 'email',
+        state: 'skipped',
+        message: data.manual ? '本次未選擇重送客戶 Email' : '本次未啟用客戶 Email 通知',
+      },
+    };
+  }
+
   if (!['ready', 'cancelled'].includes(data.newStatus)) {
     return {
       success: discordResult.state !== 'failed',

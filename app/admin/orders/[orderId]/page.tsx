@@ -64,6 +64,7 @@ interface SaveNotificationChannelResult {
 
 interface SaveNotificationResult {
   triggerMode: 'status_change' | 'manual_retry';
+  requestedChannel: 'all' | 'email' | 'discord' | 'n8n';
   statusChanged: boolean;
   previousStatus: string;
   currentStatus: string;
@@ -140,7 +141,7 @@ export default function AdminOrderEditPage() {
   const [notificationLoading, setNotificationLoading] = useState(true);
   const [lastSaveResult, setLastSaveResult] = useState<SaveNotificationResult | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [retryingNotifications, setRetryingNotifications] = useState(false);
+  const [retryingTarget, setRetryingTarget] = useState<SaveNotificationResult['requestedChannel'] | null>(null);
 
   // 表單狀態
   const [form, setForm] = useState<FormState>({
@@ -263,14 +264,18 @@ export default function AdminOrderEditPage() {
     }
   };
 
-  const handleResendNotifications = async () => {
+  const handleResendNotifications = async (
+    target: SaveNotificationResult['requestedChannel']
+  ) => {
     if (!order) return;
-    setRetryingNotifications(true);
+    setRetryingTarget(target);
     setError(null);
 
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/notifications/resend`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target }),
       });
       const json = await res.json();
 
@@ -284,7 +289,7 @@ export default function AdminOrderEditPage() {
     } catch {
       setError('重送通知失敗，請重試');
     } finally {
-      setRetryingNotifications(false);
+      setRetryingTarget(null);
     }
   };
 
@@ -361,6 +366,12 @@ export default function AdminOrderEditPage() {
     skipped: '略過',
     queued: '同步中',
   };
+  const retryTargetLabel: Record<SaveNotificationResult['requestedChannel'], string> = {
+    all: '全部通知',
+    email: 'Email',
+    discord: 'Discord',
+    n8n: 'n8n',
+  };
 
   const StatusIndicator = ({ ok }: { ok: boolean }) =>
     ok ? (
@@ -404,7 +415,11 @@ export default function AdminOrderEditPage() {
                   {lastSaveResult.triggerMode === 'manual_retry'
                     ? (
                       <>
-                        已手動重送目前狀態通知：
+                        已手動重送
+                        <span className="text-green-300 ml-1">
+                          {retryTargetLabel[lastSaveResult.requestedChannel]}
+                        </span>
+                        <span className="ml-1">，目前狀態：</span>
                         <span className="text-green-300 ml-1">
                           {ORDER_STATUS[lastSaveResult.currentStatus as keyof typeof ORDER_STATUS] ?? lastSaveResult.currentStatus}
                         </span>
@@ -478,16 +493,28 @@ export default function AdminOrderEditPage() {
         <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xs text-moon-muted tracking-widest">通知鏈檢查</h2>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 {notificationLoading && <Loader2 size={14} className="animate-spin text-moon-muted" />}
-                <button
-                  onClick={handleResendNotifications}
-                  disabled={retryingNotifications}
-                  className="flex items-center gap-2 border border-moon-border px-3 py-1.5 text-[11px] tracking-wider text-moon-text hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-50"
-                >
-                  {retryingNotifications ? <Loader2 size={12} className="animate-spin" /> : <BellRing size={12} />}
-                  手動重送通知
-                </button>
+                {([
+                  ['all', '重送全部'],
+                  ['email', 'Email'],
+                  ['discord', 'Discord'],
+                  ['n8n', 'n8n'],
+                ] as const).map(([target, label]) => (
+                  <button
+                    key={target}
+                    onClick={() => handleResendNotifications(target)}
+                    disabled={retryingTarget !== null}
+                    className="flex items-center gap-2 border border-moon-border px-3 py-1.5 text-[11px] tracking-wider text-moon-text hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-50"
+                  >
+                    {retryingTarget === target ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <BellRing size={12} />
+                    )}
+                    {label}
+                  </button>
+                ))}
               </div>
           </div>
 
@@ -574,7 +601,7 @@ export default function AdminOrderEditPage() {
               </div>
             )}
             <p className="text-[11px] text-moon-muted">
-              如果剛剛有失敗或略過，可直接點右上角「手動重送通知」補送目前這筆訂單的通知；請避免連點，以免外部通知重複。
+              如果剛剛有失敗或略過，可直接點右上角對應通道補送；請避免連點，以免外部通知重複。
             </p>
           </div>
         </section>

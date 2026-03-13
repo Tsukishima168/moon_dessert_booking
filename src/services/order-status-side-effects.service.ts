@@ -2,6 +2,7 @@ import { syncOrderEventToN8n } from '@/lib/integrations/n8n'
 import {
   sendOrderStatusNotification,
   type NotificationDeliveryState,
+  type StatusNotificationChannel,
 } from '@/lib/notifications'
 import type { OrderItem } from '@/lib/supabase'
 
@@ -10,8 +11,11 @@ export interface OrderStatusSideEffectChannelResult {
   message: string
 }
 
+export type NotificationRetryTarget = 'all' | 'email' | 'discord' | 'n8n'
+
 export interface OrderStatusSideEffectResult {
   triggerMode: 'status_change' | 'manual_retry'
+  requestedChannel: NotificationRetryTarget
   statusChanged: boolean
   previousStatus: string
   currentStatus: string
@@ -39,12 +43,22 @@ interface OrderStatusSideEffectInput {
   previousStatus: string
   currentStatus: string
   triggerMode?: 'status_change' | 'manual_retry'
+  requestedChannel?: NotificationRetryTarget
 }
 
 export async function runOrderStatusSideEffects(
   input: OrderStatusSideEffectInput
 ): Promise<OrderStatusSideEffectResult> {
   const triggerMode = input.triggerMode ?? 'status_change'
+  const requestedChannel = input.requestedChannel ?? 'all'
+  const selectedChannels =
+    requestedChannel === 'all'
+      ? ['discord', 'email', 'n8n']
+      : [requestedChannel]
+  const selectedNotificationChannels = selectedChannels.filter(
+    (channel): channel is StatusNotificationChannel =>
+      channel === 'discord' || channel === 'email'
+  )
   const notificationResult = await sendOrderStatusNotification({
     orderId: input.orderId,
     customerName: input.customerName,
@@ -56,6 +70,7 @@ export async function runOrderStatusSideEffects(
     deliveryMethod: input.deliveryMethod || 'pickup',
     items: input.items ?? [],
     manual: triggerMode === 'manual_retry',
+    selectedChannels: selectedNotificationChannels,
   })
 
   const n8nWebhookUrl =
@@ -63,7 +78,12 @@ export async function runOrderStatusSideEffects(
     process.env.NEXT_PUBLIC_N8N_ORDER_WEBHOOK_URL
 
   let n8n: OrderStatusSideEffectChannelResult
-  if (!n8nWebhookUrl) {
+  if (!selectedChannels.includes('n8n')) {
+    n8n = {
+      state: 'skipped',
+      message: triggerMode === 'manual_retry' ? '本次未選擇重送 n8n' : '本次未啟用 n8n 同步',
+    }
+  } else if (!n8nWebhookUrl) {
     n8n = {
       state: 'skipped',
       message: 'N8N webhook 未設定，已略過同步',
@@ -99,6 +119,7 @@ export async function runOrderStatusSideEffects(
 
   return {
     triggerMode,
+    requestedChannel,
     statusChanged: input.previousStatus !== input.currentStatus,
     previousStatus: input.previousStatus,
     currentStatus: input.currentStatus,
