@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Plus, Minus, Save, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Loader2, Plus, Minus, Save, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Mail, BellRing, Workflow } from 'lucide-react';
 
 // ─── 型別 ──────────────────────────────────────────────────────────────────────
 
@@ -42,6 +42,19 @@ interface FormState {
   status: string;
   admin_notes: string;
   payment_method: string;
+}
+
+interface NotificationChannelStatus {
+  isConfigured: boolean;
+  message: string;
+  mode?: string;
+  host?: string | null;
+}
+
+interface NotificationStatusData {
+  resend: NotificationChannelStatus;
+  discord: NotificationChannelStatus;
+  n8n: NotificationChannelStatus;
 }
 
 // ─── 設定 ──────────────────────────────────────────────────────────────────────
@@ -94,6 +107,8 @@ export default function AdminOrderEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notificationStatus, setNotificationStatus] = useState<NotificationStatusData | null>(null);
+  const [notificationLoading, setNotificationLoading] = useState(true);
 
   // 表單狀態
   const [form, setForm] = useState<FormState>({
@@ -133,6 +148,21 @@ export default function AdminOrderEditPage() {
       .catch(() => setError('載入失敗'))
       .finally(() => setLoading(false));
   }, [orderId]);
+
+  useEffect(() => {
+    setNotificationLoading(true);
+    fetch('/api/admin/notifications/status')
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data) {
+          setNotificationStatus(json.data);
+        }
+      })
+      .catch(() => {
+        setNotificationStatus(null);
+      })
+      .finally(() => setNotificationLoading(false));
+  }, []);
 
   // ─── 金額計算 ────────────────────────────────────────────────────────────
 
@@ -258,6 +288,19 @@ export default function AdminOrderEditPage() {
 
   const statusColorClass = ORDER_STATUS_COLOR[order.status] ?? 'text-moon-muted bg-moon-muted/10';
   const summaryLines = buildChangeSummary();
+  const willChangeStatus = form.status !== order.status;
+  const willTriggerCustomerEmail =
+    willChangeStatus &&
+    ['ready', 'cancelled'].includes(form.status) &&
+    !!order.email;
+  const willTriggerOpsNotifications = willChangeStatus;
+
+  const StatusIndicator = ({ ok }: { ok: boolean }) =>
+    ok ? (
+      <CheckCircle2 size={14} className="text-green-400 flex-shrink-0 mt-0.5" />
+    ) : (
+      <XCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+    );
 
   return (
     <div className="min-h-screen bg-moon-black">
@@ -301,6 +344,97 @@ export default function AdminOrderEditPage() {
               <div className="col-span-2">
                 <p className="text-[10px] text-moon-muted mb-0.5">Email</p>
                 <p className="text-moon-text">{order.email}</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xs text-moon-muted tracking-widest">通知鏈檢查</h2>
+            {notificationLoading && <Loader2 size={14} className="animate-spin text-moon-muted" />}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="border border-moon-border/60 bg-moon-black/40 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-moon-muted">
+                <Mail size={13} />
+                客戶 Email
+              </div>
+              <div className="flex items-start gap-2">
+                <StatusIndicator ok={!!order.email && !!notificationStatus?.resend?.isConfigured} />
+                <div className="text-xs leading-relaxed">
+                  <p className="text-moon-text">
+                    {order.email ? order.email : '此訂單沒有 Email'}
+                  </p>
+                  <p className="text-moon-muted">
+                    {notificationStatus?.resend?.message ?? '尚未取得 Resend 狀態'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border border-moon-border/60 bg-moon-black/40 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-moon-muted">
+                <BellRing size={13} />
+                Discord
+              </div>
+              <div className="flex items-start gap-2">
+                <StatusIndicator ok={!!notificationStatus?.discord?.isConfigured} />
+                <p className="text-xs text-moon-muted leading-relaxed">
+                  {notificationStatus?.discord?.message ?? '尚未取得 Discord 狀態'}
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-moon-border/60 bg-moon-black/40 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-moon-muted">
+                <Workflow size={13} />
+                n8n
+              </div>
+              <div className="flex items-start gap-2">
+                <StatusIndicator ok={!!notificationStatus?.n8n?.isConfigured} />
+                <div className="text-xs leading-relaxed">
+                  <p className="text-moon-muted">
+                    {notificationStatus?.n8n?.message ?? '尚未取得 n8n 狀態'}
+                  </p>
+                  {notificationStatus?.n8n?.host && (
+                    <p className="text-moon-text/70 font-mono">{notificationStatus.n8n.host}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border border-moon-border/40 bg-moon-black/30 px-4 py-3 space-y-2">
+            <p className="text-xs text-moon-muted">本次儲存的通知預期</p>
+            {!willChangeStatus ? (
+              <p className="text-sm text-moon-muted">
+                狀態未改變，這次儲存不會重送狀態通知。
+              </p>
+            ) : (
+              <div className="space-y-1.5 text-sm">
+                <p className="text-moon-text">
+                  狀態將從 <span className="text-moon-muted">{ORDER_STATUS[order.status as keyof typeof ORDER_STATUS] ?? order.status}</span>
+                  {' → '}
+                  <span className="text-moon-accent">{ORDER_STATUS[form.status as keyof typeof ORDER_STATUS] ?? form.status}</span>
+                </p>
+                <p className={willTriggerCustomerEmail ? 'text-green-400' : 'text-moon-muted'}>
+                  客戶 Email：{willTriggerCustomerEmail ? '會嘗試發送' : '這次不會發送'}
+                </p>
+                <p className={willTriggerOpsNotifications ? 'text-green-400' : 'text-moon-muted'}>
+                  Discord / n8n：{willTriggerOpsNotifications ? '會嘗試同步' : '這次不會同步'}
+                </p>
+                {willTriggerCustomerEmail && !notificationStatus?.resend?.isConfigured && (
+                  <p className="text-red-400 text-xs">
+                    注意：目前 Resend 未完整設定，狀態更新成功也可能不會寄出 Email。
+                  </p>
+                )}
+                {willTriggerOpsNotifications && !notificationStatus?.discord?.isConfigured && (
+                  <p className="text-red-400 text-xs">
+                    注意：目前 Discord 未設定，店家通知會略過。
+                  </p>
+                )}
               </div>
             )}
           </div>
