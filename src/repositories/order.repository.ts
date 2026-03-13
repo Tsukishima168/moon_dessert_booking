@@ -40,6 +40,7 @@ export interface UpdateOrderPayload {
   linepay_transaction_id?: string | null
   status?: string
   admin_notes?: string | null
+  updated_at?: string
 }
 
 export interface InsertOrderPayload {

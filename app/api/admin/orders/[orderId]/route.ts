@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
-import { findOrderById, updateOrder } from '@/src/repositories/order.repository';
+import {
+  findOrderById,
+  type UpdateOrderPayload,
+} from '@/src/repositories/order.repository';
 import {
   findNotificationLogsByOrderId,
   type NotificationLog,
 } from '@/src/repositories/notification-log.repository';
-import { runOrderStatusSideEffects } from '@/src/services/order-status-side-effects.service';
+import {
+  OrderNotFoundError,
+  updateAdminOrderWithStatusEffects,
+} from '@/src/services/order-status-transition.service';
 
 const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed', 'cancelled'];
 const ALLOWED_PAYMENT_METHOD = ['cash', 'transfer', 'line_pay'];
@@ -72,8 +78,8 @@ export async function PATCH(
     }
 
     // 只取允許更新的欄位
-    const payload: Record<string, unknown> = {};
-    const allowed = [
+    const payload: UpdateOrderPayload = {};
+    const allowed: (keyof UpdateOrderPayload)[] = [
       'pickup_time', 'items', 'total_price', 'original_price',
       'final_price', 'discount_amount', 'promo_code',
       'payment_method', 'status', 'admin_notes',
@@ -86,50 +92,8 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: '沒有要更新的欄位' }, { status: 400 });
     }
 
-    let oldStatus: string | undefined;
-    if (body.status !== undefined) {
-      const existing = await findOrderById(orderId);
-      if (!existing) {
-        return NextResponse.json({ success: false, message: '訂單不存在' }, { status: 404 });
-      }
-      oldStatus = existing.status;
-    }
-
-    const updatedOrder = await updateOrder(orderId, payload);
-
-    const hasStatusChanged =
-      body.status !== undefined && oldStatus !== undefined && oldStatus !== body.status;
-
-    const notificationResult = hasStatusChanged
-      ? await runOrderStatusSideEffects({
-        orderId: updatedOrder.order_id,
-        customerName: updatedOrder.customer_name,
-        phone: updatedOrder.phone,
-        email: updatedOrder.email,
-        pickupTime: updatedOrder.pickup_time,
-        deliveryMethod: updatedOrder.delivery_method,
-        deliveryAddress: updatedOrder.delivery_address,
-        totalPrice: updatedOrder.total_price,
-        finalPrice: updatedOrder.final_price,
-        promoCode: updatedOrder.promo_code,
-        discountAmount: updatedOrder.discount_amount,
-        items: Array.isArray(updatedOrder.items) ? updatedOrder.items : [],
-        updatedAt: updatedOrder.updated_at,
-        previousStatus: oldStatus as string,
-        currentStatus: updatedOrder.status,
-      })
-      : {
-        triggerMode: 'status_change',
-        requestedChannel: 'all',
-        statusChanged: false,
-        previousStatus: updatedOrder.status,
-        currentStatus: updatedOrder.status,
-        channels: {
-          discord: { state: 'skipped', message: '本次未變更狀態，不會重送 Discord 通知' },
-          email: { state: 'skipped', message: '本次未變更狀態，不會重送客戶 Email' },
-          n8n: { state: 'skipped', message: '本次未變更狀態，不會同步 n8n' },
-        },
-      };
+    const { updatedOrder, notificationResult } =
+      await updateAdminOrderWithStatusEffects(orderId, payload);
 
     return NextResponse.json({
       success: true,
@@ -137,6 +101,9 @@ export async function PATCH(
       notification_result: notificationResult,
     });
   } catch (error) {
+    if (error instanceof OrderNotFoundError) {
+      return NextResponse.json({ success: false, message: '訂單不存在' }, { status: 404 });
+    }
     console.error('更新訂單錯誤:', error);
     return NextResponse.json({ success: false, message: '更新失敗' }, { status: 500 });
   }
