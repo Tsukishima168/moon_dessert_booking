@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Plus, Minus, Save, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Mail, BellRing, Workflow } from 'lucide-react';
+import { Loader2, Plus, Minus, Save, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Mail, BellRing, Workflow, Clock3 } from 'lucide-react';
 
 // ─── 型別 ──────────────────────────────────────────────────────────────────────
 
@@ -57,6 +57,22 @@ interface NotificationStatusData {
   n8n: NotificationChannelStatus;
 }
 
+interface SaveNotificationChannelResult {
+  state: 'sent' | 'failed' | 'skipped' | 'queued';
+  message: string;
+}
+
+interface SaveNotificationResult {
+  statusChanged: boolean;
+  previousStatus: string;
+  currentStatus: string;
+  channels: {
+    discord: SaveNotificationChannelResult;
+    email: SaveNotificationChannelResult;
+    n8n: SaveNotificationChannelResult;
+  };
+}
+
 // ─── 設定 ──────────────────────────────────────────────────────────────────────
 
 const ORDER_STATUS = {
@@ -96,6 +112,18 @@ function toLocalDateTimeValue(s: string): string {
   return normalized;
 }
 
+function buildFormStateFromOrder(order: AdminOrder): FormState {
+  return {
+    pickup_time: toLocalDateTimeValue(order.pickup_time),
+    items: (order.items || []).map(i => ({ ...i })),
+    promo_code: order.promo_code || '',
+    discount_amount: order.discount_amount ?? 0,
+    status: order.status,
+    admin_notes: order.admin_notes || '',
+    payment_method: order.payment_method || '',
+  };
+}
+
 // ─── 主元件 ──────────────────────────────────────────────────────────────────
 
 export default function AdminOrderEditPage() {
@@ -109,6 +137,8 @@ export default function AdminOrderEditPage() {
   const [error, setError] = useState<string | null>(null);
   const [notificationStatus, setNotificationStatus] = useState<NotificationStatusData | null>(null);
   const [notificationLoading, setNotificationLoading] = useState(true);
+  const [lastSaveResult, setLastSaveResult] = useState<SaveNotificationResult | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   // 表單狀態
   const [form, setForm] = useState<FormState>({
@@ -130,17 +160,9 @@ export default function AdminOrderEditPage() {
       .then(r => r.json())
       .then(json => {
         if (json.success && json.data) {
-          const o: AdminOrder = json.data;
-          setOrder(o);
-          setForm({
-            pickup_time: toLocalDateTimeValue(o.pickup_time),
-            items: (o.items || []).map(i => ({ ...i })),
-            promo_code: o.promo_code || '',
-            discount_amount: o.discount_amount ?? 0,
-            status: o.status,
-            admin_notes: o.admin_notes || '',
-            payment_method: o.payment_method || '',
-          });
+          const nextOrder = json.data as AdminOrder;
+          setOrder(nextOrder);
+          setForm(buildFormStateFromOrder(nextOrder));
         } else {
           setError('訂單不存在');
         }
@@ -200,6 +222,7 @@ export default function AdminOrderEditPage() {
   const handleConfirmSave = async () => {
     if (!order) return;
     setSaving(true);
+    setError(null);
     setShowSummary(false);
     setShowCancelConfirm(false);
     try {
@@ -222,7 +245,12 @@ export default function AdminOrderEditPage() {
       });
       const json = await res.json();
       if (json.success) {
-        router.push('/admin/orders');
+        const nextOrder = json.data as AdminOrder;
+        setOrder(nextOrder);
+        setForm(buildFormStateFromOrder(nextOrder));
+        setLastSaveResult((json.notification_result ?? null) as SaveNotificationResult | null);
+        setLastSavedAt(new Date().toISOString());
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setError(json.message || '儲存失敗');
       }
@@ -294,6 +322,18 @@ export default function AdminOrderEditPage() {
     ['ready', 'cancelled'].includes(form.status) &&
     !!order.email;
   const willTriggerOpsNotifications = willChangeStatus;
+  const saveResultStateStyles: Record<SaveNotificationChannelResult['state'], string> = {
+    sent: 'text-green-400 bg-green-400/10 border-green-400/20',
+    failed: 'text-red-400 bg-red-400/10 border-red-400/20',
+    skipped: 'text-moon-muted bg-moon-border/10 border-moon-border/30',
+    queued: 'text-yellow-300 bg-yellow-300/10 border-yellow-300/20',
+  };
+  const saveResultStateLabel: Record<SaveNotificationChannelResult['state'], string> = {
+    sent: '已送出',
+    failed: '失敗',
+    skipped: '略過',
+    queued: '同步中',
+  };
 
   const StatusIndicator = ({ ok }: { ok: boolean }) =>
     ok ? (
@@ -328,6 +368,56 @@ export default function AdminOrderEditPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {lastSaveResult && (
+          <section className="border border-green-400/30 bg-green-400/5 p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs tracking-widest text-green-300">上次儲存結果</p>
+                <p className="text-sm text-moon-text">
+                  {lastSaveResult.statusChanged
+                    ? (
+                      <>
+                        狀態已從{' '}
+                        <span className="text-moon-muted">
+                          {ORDER_STATUS[lastSaveResult.previousStatus as keyof typeof ORDER_STATUS] ?? lastSaveResult.previousStatus}
+                        </span>
+                        {' → '}
+                        <span className="text-green-300">
+                          {ORDER_STATUS[lastSaveResult.currentStatus as keyof typeof ORDER_STATUS] ?? lastSaveResult.currentStatus}
+                        </span>
+                      </>
+                    )
+                    : '訂單資料已儲存，本次未觸發狀態通知'}
+                </p>
+              </div>
+              {lastSavedAt && (
+                <div className="flex items-center gap-1 text-[11px] text-moon-muted">
+                  <Clock3 size={12} />
+                  <span>{new Date(lastSavedAt).toLocaleString('zh-TW', { hour12: false })}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { key: 'email', label: '客戶 Email', result: lastSaveResult.channels.email },
+                { key: 'discord', label: 'Discord', result: lastSaveResult.channels.discord },
+                { key: 'n8n', label: 'n8n', result: lastSaveResult.channels.n8n },
+              ].map(({ key, label, result }) => (
+                <div key={key} className="border border-moon-border/50 bg-moon-black/30 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-moon-muted">{label}</p>
+                    <span className={`border px-2 py-1 text-[10px] tracking-wider ${saveResultStateStyles[result.state]}`}>
+                      {saveResultStateLabel[result.state]}
+                    </span>
+                  </div>
+                  <p className="text-sm text-moon-text leading-relaxed">{result.message}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* 客人資訊（唯讀） */}
         <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-2">
           <h2 className="text-xs text-moon-muted tracking-widest mb-3">客人資訊</h2>

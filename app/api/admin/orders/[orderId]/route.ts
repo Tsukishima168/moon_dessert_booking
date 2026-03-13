@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { findOrderById, updateOrder } from '@/src/repositories/order.repository';
-import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
-import { sendOrderStatusNotification } from '@/lib/notifications';
+import { runOrderStatusSideEffects } from '@/src/services/order-status-side-effects.service';
 
 const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed', 'cancelled'];
 const ALLOWED_PAYMENT_METHOD = ['cash', 'transfer', 'line_pay'];
@@ -85,45 +84,40 @@ export async function PATCH(
     const hasStatusChanged =
       body.status !== undefined && oldStatus !== undefined && oldStatus !== body.status;
 
-    if (hasStatusChanged) {
-      const previousStatus = oldStatus as string;
-
-      void sendOrderStatusNotification({
+    const notificationResult = hasStatusChanged
+      ? await runOrderStatusSideEffects({
         orderId: updatedOrder.order_id,
         customerName: updatedOrder.customer_name,
         phone: updatedOrder.phone,
-        email: updatedOrder.email ?? undefined,
-        oldStatus: previousStatus,
-        newStatus: updatedOrder.status,
-        pickupTime: updatedOrder.pickup_time,
-        deliveryMethod: updatedOrder.delivery_method || 'pickup',
-        items: Array.isArray(updatedOrder.items) ? updatedOrder.items : [],
-      }).catch((err) => {
-        console.error('發送狀態通知錯誤（不影響更新）:', err);
-      });
-    }
-
-    // 狀態有實際變更時同步 N8N
-    if (hasStatusChanged) {
-      void syncOrderEventToN8n('order.status_updated', {
-        order_id: updatedOrder.order_id,
-        status: updatedOrder.status,
-        customer_name: updatedOrder.customer_name,
-        phone: updatedOrder.phone,
         email: updatedOrder.email,
-        pickup_time: updatedOrder.pickup_time,
-        delivery_method: updatedOrder.delivery_method,
-        delivery_address: updatedOrder.delivery_address,
-        total_price: updatedOrder.total_price,
-        final_price: updatedOrder.final_price,
-        promo_code: updatedOrder.promo_code,
-        discount_amount: updatedOrder.discount_amount,
+        pickupTime: updatedOrder.pickup_time,
+        deliveryMethod: updatedOrder.delivery_method,
+        deliveryAddress: updatedOrder.delivery_address,
+        totalPrice: updatedOrder.total_price,
+        finalPrice: updatedOrder.final_price,
+        promoCode: updatedOrder.promo_code,
+        discountAmount: updatedOrder.discount_amount,
         items: Array.isArray(updatedOrder.items) ? updatedOrder.items : [],
-        updated_at: updatedOrder.updated_at ?? undefined,
-      });
-    }
+        updatedAt: updatedOrder.updated_at,
+        previousStatus: oldStatus as string,
+        currentStatus: updatedOrder.status,
+      })
+      : {
+        statusChanged: false,
+        previousStatus: updatedOrder.status,
+        currentStatus: updatedOrder.status,
+        channels: {
+          discord: { state: 'skipped', message: '本次未變更狀態，不會重送 Discord 通知' },
+          email: { state: 'skipped', message: '本次未變更狀態，不會重送客戶 Email' },
+          n8n: { state: 'skipped', message: '本次未變更狀態，不會同步 n8n' },
+        },
+      };
 
-    return NextResponse.json({ success: true, data: updatedOrder });
+    return NextResponse.json({
+      success: true,
+      data: updatedOrder,
+      notification_result: notificationResult,
+    });
   } catch (error) {
     console.error('更新訂單錯誤:', error);
     return NextResponse.json({ success: false, message: '更新失敗' }, { status: 500 });

@@ -5,6 +5,20 @@ import { sendEmail } from './email/resend';
 import { orderReadyTemplate } from './email/templates/order-ready';
 import { orderCancelledTemplate } from './email/templates/order-cancelled';
 
+export type NotificationDeliveryState = 'sent' | 'failed' | 'skipped';
+
+export interface NotificationDeliveryResult {
+  channel: 'discord' | 'email';
+  state: NotificationDeliveryState;
+  message: string;
+}
+
+export interface OrderStatusNotificationResult {
+  success: boolean;
+  discord: NotificationDeliveryResult;
+  email: NotificationDeliveryResult;
+}
+
 // 初始化 Resend
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -105,13 +119,55 @@ export async function sendOrderStatusNotification(data: {
   orderId: string; customerName: string; oldStatus: string; newStatus: string;
   email?: string; phone?: string; pickupTime?: string; deliveryMethod?: string;
   items?: OrderItem[];
-}): Promise<{ success: boolean }> {
+}): Promise<OrderStatusNotificationResult> {
   // 1. Discord 通知店家
   const msg = `🔄 訂單狀態更新: ${data.orderId}\n${data.customerName} 的訂單從 ${data.oldStatus} 變更為 **${data.newStatus}**`;
-  sendDiscordNotify(msg);
+  const discordConfigured = !!process.env.DISCORD_WEBHOOK_URL;
+  const discord = discordConfigured
+    ? await sendDiscordNotify(msg)
+    : false;
+  const discordResult: NotificationDeliveryResult = !discordConfigured
+    ? {
+      channel: 'discord',
+      state: 'skipped',
+      message: 'Discord Webhook 未設定，已略過店家通知',
+    }
+    : discord
+      ? {
+        channel: 'discord',
+        state: 'sent',
+        message: 'Discord 店家通知已送出',
+      }
+      : {
+        channel: 'discord',
+        state: 'failed',
+        message: 'Discord 店家通知送出失敗，請查看 runtime logs',
+      };
 
   // 2. Email 通知客戶（只在 ready / cancelled 且有 email）
-  if (!['ready', 'cancelled'].includes(data.newStatus) || !data.email) return { success: true };
+  if (!['ready', 'cancelled'].includes(data.newStatus)) {
+    return {
+      success: discordResult.state !== 'failed',
+      discord: discordResult,
+      email: {
+        channel: 'email',
+        state: 'skipped',
+        message: '此狀態不寄送客戶 Email',
+      },
+    };
+  }
+
+  if (!data.email) {
+    return {
+      success: discordResult.state !== 'failed',
+      discord: discordResult,
+      email: {
+        channel: 'email',
+        state: 'skipped',
+        message: '此訂單沒有 Email，已略過客戶通知',
+      },
+    };
+  }
 
   try {
     // 優先查 DB email_templates（後台可自訂模板）
@@ -148,13 +204,41 @@ export async function sendOrderStatusNotification(data: {
       }));
     }
 
-    await sendEmail(data.email, subject, html);
-    console.log(`[Email] 狀態通知發送成功 → ${data.email} (${data.newStatus})`);
+    const emailSent = await sendEmail(data.email, subject, html);
+    if (emailSent) {
+      console.log(`[Email] 狀態通知發送成功 → ${data.email} (${data.newStatus})`);
+      return {
+        success: discordResult.state !== 'failed',
+        discord: discordResult,
+        email: {
+          channel: 'email',
+          state: 'sent',
+          message: `客戶 Email 已寄至 ${data.email}`,
+        },
+      };
+    }
+
+    return {
+      success: false,
+      discord: discordResult,
+      email: {
+        channel: 'email',
+        state: 'failed',
+        message: `客戶 Email 寄送失敗（${data.email}）`,
+      },
+    };
   } catch (err) {
     console.error('[Email] 狀態通知發送失敗（不影響狀態更新）:', err);
+    return {
+      success: false,
+      discord: discordResult,
+      email: {
+        channel: 'email',
+        state: 'failed',
+        message: `客戶 Email 寄送失敗（${data.email}）`,
+      },
+    };
   }
-
-  return { success: true };
 }
 
 export async function sendPickupReminderEmail(_data: unknown): Promise<boolean> {
