@@ -414,6 +414,7 @@ export default function AdminOrderEditPage() {
     status_change: '狀態變更',
     manual_retry: '手動重送',
   };
+  const timelineNotificationLogs = [...(order.notification_logs || [])].reverse();
 
   const StatusIndicator = ({ ok }: { ok: boolean }) =>
     ok ? (
@@ -670,57 +671,90 @@ export default function AdminOrderEditPage() {
 
         <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xs text-moon-muted tracking-widest">通知歷史</h2>
+            <h2 className="text-xs text-moon-muted tracking-widest">訂單活動時間軸</h2>
             <p className="text-[11px] text-moon-muted">
-              最近 {(order.notification_logs || []).length} 筆
+              共 {timelineNotificationLogs.length + 1} 個節點
             </p>
           </div>
 
-          {(order.notification_logs || []).length === 0 ? (
-            <p className="text-sm text-moon-muted">
-              尚無通知紀錄。狀態變更或手動重送後，結果會顯示在這裡。
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {(order.notification_logs || []).map((log) => (
-                <div key={log.id} className="border border-moon-border/50 bg-moon-black/30 p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-sm text-moon-text">
-                        {triggerModeLabel[log.trigger_mode]} · {retryTargetLabel[log.requested_channel]}
-                      </p>
-                      <p className="text-xs text-moon-muted">
-                        {log.previous_status
-                          ? `${ORDER_STATUS[log.previous_status as keyof typeof ORDER_STATUS] ?? log.previous_status} → ${ORDER_STATUS[log.current_status as keyof typeof ORDER_STATUS] ?? log.current_status}`
-                          : ORDER_STATUS[log.current_status as keyof typeof ORDER_STATUS] ?? log.current_status}
-                      </p>
-                    </div>
-                    <p className="text-[11px] text-moon-muted">
-                      {new Date(log.created_at).toLocaleString('zh-TW', { hour12: false })}
+          <div className="space-y-4">
+            <div className="relative pl-7">
+              {timelineNotificationLogs.length > 0 && (
+                <div className="absolute left-[7px] top-5 bottom-[-16px] w-px bg-moon-border/60" />
+              )}
+              <span className="absolute left-0 top-1 w-4 h-4 rounded-full bg-moon-accent text-moon-black flex items-center justify-center text-[10px]">
+                1
+              </span>
+              <div className="border border-moon-border/50 bg-moon-black/30 p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm text-moon-text">訂單建立</p>
+                    <p className="text-xs text-moon-muted">
+                      建立訂單並等待後續狀態流轉
                     </p>
                   </div>
+                  <p className="text-[11px] text-moon-muted">
+                    {new Date(order.created_at).toLocaleString('zh-TW', { hour12: false })}
+                  </p>
+                </div>
+                <p className="text-xs text-moon-text/80">
+                  建立人：{order.customer_name} · 金額：${(order.final_price ?? order.total_price ?? 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
 
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {[
-                      { key: 'email', label: '客戶 Email', state: log.email_state, message: log.email_message },
-                      { key: 'discord', label: 'Discord', state: log.discord_state, message: log.discord_message },
-                      { key: 'n8n', label: 'n8n', state: log.n8n_state, message: log.n8n_message },
-                    ].map((channel) => (
-                      <div key={channel.key} className="border border-moon-border/40 px-3 py-3 space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs text-moon-muted">{channel.label}</p>
-                          <span className={`border px-2 py-1 text-[10px] tracking-wider ${saveResultStateStyles[channel.state]}`}>
-                            {saveResultStateLabel[channel.state]}
-                          </span>
-                        </div>
-                        <p className="text-xs text-moon-text/80 leading-relaxed">{channel.message}</p>
+            {timelineNotificationLogs.length === 0 ? (
+              <p className="text-sm text-moon-muted pl-7">
+                目前只有建立訂單紀錄。後續狀態變更或手動重送會沿著時間軸往下累積。
+              </p>
+            ) : (
+              timelineNotificationLogs.map((log, index) => (
+                <div key={log.id} className="relative pl-7">
+                  {index !== timelineNotificationLogs.length - 1 && (
+                    <div className="absolute left-[7px] top-5 bottom-[-16px] w-px bg-moon-border/60" />
+                  )}
+                  <span className="absolute left-0 top-1 w-4 h-4 rounded-full border border-moon-accent text-moon-accent flex items-center justify-center text-[10px] bg-moon-black">
+                    {index + 2}
+                  </span>
+                  <div className="border border-moon-border/50 bg-moon-black/30 p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm text-moon-text">
+                          {triggerModeLabel[log.trigger_mode]} · {retryTargetLabel[log.requested_channel]}
+                        </p>
+                        <p className="text-xs text-moon-muted">
+                          {log.previous_status
+                            ? `${ORDER_STATUS[log.previous_status as keyof typeof ORDER_STATUS] ?? log.previous_status} → ${ORDER_STATUS[log.current_status as keyof typeof ORDER_STATUS] ?? log.current_status}`
+                            : ORDER_STATUS[log.current_status as keyof typeof ORDER_STATUS] ?? log.current_status}
+                        </p>
                       </div>
-                    ))}
+                      <p className="text-[11px] text-moon-muted">
+                        {new Date(log.created_at).toLocaleString('zh-TW', { hour12: false })}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {[
+                        { key: 'email', label: '客戶 Email', state: log.email_state, message: log.email_message },
+                        { key: 'discord', label: 'Discord', state: log.discord_state, message: log.discord_message },
+                        { key: 'n8n', label: 'n8n', state: log.n8n_state, message: log.n8n_message },
+                      ].map((channel) => (
+                        <div key={channel.key} className="border border-moon-border/40 px-3 py-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs text-moon-muted">{channel.label}</p>
+                            <span className={`border px-2 py-1 text-[10px] tracking-wider ${saveResultStateStyles[channel.state]}`}>
+                              {saveResultStateLabel[channel.state]}
+                            </span>
+                          </div>
+                          <p className="text-xs text-moon-text/80 leading-relaxed">{channel.message}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </section>
 
         {/* 取餐時間 */}
