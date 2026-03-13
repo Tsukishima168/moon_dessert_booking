@@ -34,8 +34,15 @@ interface AdminOrder {
   total_price: number;
   status: string;
   payment_method: string | null;
+  linepay_transaction_id?: string | null;
   created_at: string;
 }
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  cash: '現金',
+  transfer: '轉帳',
+  line_pay: 'LINE Pay',
+};
 
 function buildItemsSummary(items: OrderItem[]): string {
   return items
@@ -91,11 +98,13 @@ export default function AdminOrdersPage() {
   });
 
   function handleExportCSV() {
-    const headers = ['訂單編號', '姓名', '電話', '商品', '金額', '狀態', '取貨時間', '建立時間'];
+    const headers = ['訂單編號', '姓名', '電話', '付款方式', 'Line Pay 交易號', '商品', '金額', '狀態', '取貨時間', '建立時間'];
     const rows = filtered.map(o => [
       o.order_id,
       o.customer_name,
       o.phone,
+      PAYMENT_METHOD_LABEL[o.payment_method || ''] || '未設定',
+      o.linepay_transaction_id || '',
       buildItemsSummary(o.items || []),
       String(o.final_price ?? o.total_price ?? 0),
       ORDER_STATUS[o.status as OrderStatus]?.label ?? o.status,
@@ -199,12 +208,13 @@ export default function AdminOrdersPage() {
           <div className="text-center py-20 text-moon-muted text-sm">沒有符合的訂單</div>
         ) : (
           <div className="border border-moon-border overflow-x-auto">
-            <table className="w-full text-xs min-w-[700px]">
+            <table className="w-full text-xs min-w-[860px]">
               <thead>
                 <tr className="border-b border-moon-border bg-moon-dark/60">
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">訂單編號</th>
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">客人</th>
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">電話</th>
+                  <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">付款資訊</th>
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">取餐時間</th>
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">品項</th>
                   <th className="text-right px-4 py-3 text-moon-muted font-normal tracking-wider">金額</th>
@@ -229,6 +239,18 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-4 py-3 text-moon-text">{order.customer_name}</td>
                       <td className="px-4 py-3 text-moon-muted">{order.phone}</td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          <p className="text-moon-text">
+                            {PAYMENT_METHOD_LABEL[order.payment_method || ''] || '未設定'}
+                          </p>
+                          {order.payment_method === 'line_pay' && (
+                            <p className="text-[11px] text-moon-accent font-mono">
+                              {order.linepay_transaction_id || '待回填交易號'}
+                            </p>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-moon-muted whitespace-nowrap">
                         {order.pickup_time}
                       </td>

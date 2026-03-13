@@ -44,6 +44,7 @@ interface AdminOrder {
   discount_amount: number;
   promo_code: string | null;
   payment_method: string | null;
+  linepay_transaction_id: string | null;
   delivery_method: string;
   delivery_fee: number;
   admin_notes: string | null;
@@ -528,6 +529,26 @@ export default function AdminOrderEditPage() {
                 <p className="text-moon-text">{order.email}</p>
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-3">
+          <h2 className="text-xs text-moon-muted tracking-widest">付款資訊</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-[10px] text-moon-muted mb-0.5">付款方式</p>
+              <p className="text-moon-text">
+                {PAYMENT_METHOD_LABEL[order.payment_method ?? ''] || '未設定'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-moon-muted mb-0.5">Line Pay 交易號</p>
+              <p className={order.linepay_transaction_id ? 'text-moon-accent font-mono break-all' : 'text-moon-muted'}>
+                {order.payment_method === 'line_pay'
+                  ? order.linepay_transaction_id || '待回填'
+                  : '此訂單非 Line Pay'}
+              </p>
+            </div>
           </div>
         </section>
 
