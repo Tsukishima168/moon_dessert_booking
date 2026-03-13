@@ -54,7 +54,9 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState('');
   const [confirmedName, setConfirmedName] = useState('');
   const [confirmedAmount, setConfirmedAmount] = useState(0);
+  const [confirmedEmail, setConfirmedEmail] = useState('');
   const [linePayUrl, setLinePayUrl] = useState('');
+  const [submitError, setSubmitError] = useState('');
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
@@ -252,6 +254,13 @@ export default function CheckoutPage() {
 
   // 監聽日期變化
   const watchedPickupDate = watch('pickup_date');
+  const watchedCustomerName = watch('customer_name');
+  const watchedPhone = watch('phone');
+  const watchedEmail = watch('email');
+  const watchedPickupTime = watch('pickup_time');
+  const watchedDeliveryCity = watch('delivery_city');
+  const watchedDeliveryDistrict = watch('delivery_district');
+  const watchedDeliveryAddressDetail = watch('delivery_address_detail');
   useEffect(() => {
     if (watchedPickupDate) {
       setSelectedDate(watchedPickupDate);
@@ -283,10 +292,76 @@ export default function CheckoutPage() {
     normalizePrices();
   }, [normalizePrices]);
 
+  const checkoutChecklist = useMemo(() => {
+    const contactReady =
+      !!watchedCustomerName?.trim() &&
+      !!watchedPhone?.trim() &&
+      !!watchedEmail?.trim();
+    const dateReady =
+      !!selectedDate &&
+      (watchedDeliveryMethod === 'pickup' ? !!watchedPickupTime : true) &&
+      !!dateValidation?.valid;
+    const addressReady =
+      watchedDeliveryMethod === 'pickup'
+        ? true
+        : !!watchedDeliveryCity && !!watchedDeliveryDistrict && !!watchedDeliveryAddressDetail?.trim();
+
+    return [
+      {
+        id: 'contact',
+        label: '聯絡資訊',
+        detail: contactReady ? '姓名 / 電話 / Email 已完成' : '請填寫基本聯絡資訊',
+        done: contactReady,
+      },
+      {
+        id: 'date',
+        label: watchedDeliveryMethod === 'pickup' ? '取貨時間' : '到貨日期',
+        detail: dateReady
+          ? watchedDeliveryMethod === 'pickup'
+            ? `${selectedDate} ${watchedPickupTime}`
+            : `${selectedDate} 宅配`
+          : watchedDeliveryMethod === 'pickup'
+            ? '請選擇取貨日期與時段'
+            : '請選擇到貨日期',
+        done: dateReady,
+      },
+      {
+        id: 'address',
+        label: watchedDeliveryMethod === 'pickup' ? '取貨方式' : '配送地址',
+        detail: watchedDeliveryMethod === 'pickup'
+          ? '門市自取'
+          : addressReady
+            ? `${watchedDeliveryCity}${watchedDeliveryDistrict}${watchedDeliveryAddressDetail}`
+            : '請補齊宅配地址',
+        done: addressReady,
+      },
+    ];
+  }, [
+    watchedCustomerName,
+    watchedPhone,
+    watchedEmail,
+    selectedDate,
+    watchedPickupTime,
+    dateValidation,
+    watchedDeliveryMethod,
+    watchedDeliveryCity,
+    watchedDeliveryDistrict,
+    watchedDeliveryAddressDetail,
+  ]);
+
+  const completedChecklistCount = checkoutChecklist.filter((item) => item.done).length;
+  const incompleteChecklistCount = checkoutChecklist.length - completedChecklistCount;
+  const checklistProgress = Math.round(
+    (completedChecklistCount / checkoutChecklist.length) * 100
+  );
+  const isCheckoutReady = incompleteChecklistCount === 0 && !isSubmitting;
+
   // 提交訂單
   const onSubmit = async (data: CheckoutFormData) => {
+    setSubmitError('');
+
     if (dateValidation && !dateValidation.valid) {
-      alert(dateValidation.reason);
+      setSubmitError(dateValidation.reason);
       return;
     }
 
@@ -358,6 +433,9 @@ export default function CheckoutPage() {
       if (result.success) {
         const newOrderId = result.order_id;
         setOrderId(newOrderId);
+        setConfirmedName(data.customer_name);
+        setConfirmedAmount(finalPrice);
+        setConfirmedEmail(data.email);
         // 儲存姓名電話到 profiles（登入用戶）
         if (loggedInUser?.id) {
           supabase.from('profiles').upsert({
@@ -418,11 +496,11 @@ export default function CheckoutPage() {
         setLinePayUrl(lineUrl);
 
       } else {
-        alert(`訂單失敗：${result.message}`);
+        setSubmitError(`訂單失敗：${result.message}`);
       }
     } catch (error) {
       console.error('訂單錯誤:', error);
-      alert('系統錯誤，請重試');
+      setSubmitError('系統錯誤，請重試');
     } finally {
       setIsSubmitting(false);
     }
@@ -475,6 +553,21 @@ export default function CheckoutPage() {
               <span className="text-moon-muted">應付金額</span>
               <span className="text-moon-accent font-light">NT$ {confirmedAmount}</span>
             </div>
+            {confirmedEmail && (
+              <div className="flex justify-between text-sm">
+                <span className="text-moon-muted">通知信箱</span>
+                <span className="text-moon-text break-all text-right">{confirmedEmail}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="border border-moon-border/20 p-4 space-y-3 bg-moon-dark/20">
+            <p className="text-xs text-moon-muted tracking-wider">— 接下來請做這 3 步 —</p>
+            <div className="space-y-2 text-sm">
+              <p className="text-moon-text">1. 依下方帳號完成轉帳，備註填 <span className="text-moon-accent font-mono">{orderId}</span></p>
+              <p className="text-moon-text">2. 點擊 LINE 按鈕，把訂單資訊直接傳給月島甜點</p>
+              <p className="text-moon-text">3. 等待我們確認款項後，會再通知你可取貨 / 出貨</p>
+            </div>
           </div>
 
           {/* 付款說明 */}
@@ -498,13 +591,20 @@ export default function CheckoutPage() {
             </a>
           )}
 
-          <p className="text-center text-xs text-moon-muted/60">
-            訂單確認信已發送至您的信箱（若有填寫）
-          </p>
-
-          <Link href="/" className="block text-center text-xs text-moon-muted underline underline-offset-4">
-            返回首頁
-          </Link>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Link
+              href={confirmedEmail ? `/auth/login?email=${encodeURIComponent(confirmedEmail)}` : '/auth/login'}
+              className="flex items-center justify-center border border-moon-border text-moon-text py-3 text-xs tracking-widest hover:border-moon-accent hover:text-moon-accent transition-colors"
+            >
+              查詢我的訂單
+            </Link>
+            <Link
+              href="/"
+              className="flex items-center justify-center text-center text-xs text-moon-muted underline underline-offset-4 py-3"
+            >
+              返回首頁
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -523,7 +623,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-moon-black py-8 sm:py-12 lg:py-16">
+    <div className="min-h-screen bg-moon-black py-8 sm:py-12 lg:py-16 pb-28 lg:pb-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* 步驟引導 */}
         <div className="flex justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
@@ -546,6 +646,55 @@ export default function CheckoutPage() {
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-moon-accent text-center mb-8 sm:mb-12 lg:mb-16 tracking-wider">
           填寫訂單
         </h1>
+
+        <div className="max-w-3xl mx-auto mb-6 sm:mb-8">
+          <div className="border border-moon-border bg-moon-dark/60 p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs tracking-widest text-moon-muted">CHECKOUT PROGRESS</p>
+                <p className="text-sm text-moon-text mt-1">
+                  已完成 {completedChecklistCount} / {checkoutChecklist.length} 項
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xl text-moon-accent font-light">{checklistProgress}%</p>
+                <p className="text-[10px] text-moon-muted">
+                  {incompleteChecklistCount === 0 ? '可以送出訂單' : `剩 ${incompleteChecklistCount} 項待完成`}
+                </p>
+              </div>
+            </div>
+            <div className="h-1 bg-moon-black">
+              <div
+                className="h-full bg-moon-accent transition-all duration-300"
+                style={{ width: `${checklistProgress}%` }}
+              />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {checkoutChecklist.map((item) => (
+                <div
+                  key={item.id}
+                  className={`border px-3 py-3 space-y-1 ${
+                    item.done ? 'border-moon-accent/50 bg-moon-accent/5' : 'border-moon-border/60 bg-moon-black/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                        item.done ? 'bg-moon-accent text-moon-black' : 'border border-moon-border text-moon-muted'
+                      }`}
+                    >
+                      {item.done ? '✓' : '·'}
+                    </span>
+                    <p className={`text-xs tracking-wider ${item.done ? 'text-moon-accent' : 'text-moon-muted'}`}>
+                      {item.label}
+                    </p>
+                  </div>
+                  <p className="text-xs text-moon-text/80 leading-relaxed">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* 左側：訂單總覽 */}
@@ -587,7 +736,7 @@ export default function CheckoutPage() {
 
           {/* 右側：表單 */}
           <div>
-            <form onSubmit={handleSubmit(onSubmit)} className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 space-y-6">
+            <form id="checkout-form" onSubmit={handleSubmit(onSubmit)} className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 space-y-6">
 
               {/* Promo Code */}
               <div className="space-y-2">
@@ -604,6 +753,12 @@ export default function CheckoutPage() {
                 {promoCode && <p className="text-xs text-moon-accent">已套用：{promoCode}</p>}
                 {promoError && <p className="text-xs text-red-400">{promoError}</p>}
               </div>
+
+              {submitError && (
+                <div className="border border-red-400/30 bg-red-400/5 px-4 py-3 text-sm text-red-300">
+                  {submitError}
+                </div>
+              )}
 
               {/* Personal Info */}
               <div className="space-y-4">
@@ -802,14 +957,42 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-white transition-colors disabled:opacity-50"
+                disabled={!isCheckoutReady}
+                className="hidden lg:block w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-white transition-colors disabled:opacity-50 disabled:hover:bg-moon-accent"
               >
                 {isSubmitting ? '處理中，請稍候...' : `送出訂單 · 總計 $${finalPrice}`}
               </button>
 
+              <p className="hidden lg:block text-[11px] text-moon-muted">
+                送出後會建立訂單編號、寄出確認信，並提供 LINE 一鍵回傳付款資訊。
+              </p>
+
             </form>
           </div>
+        </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-moon-border bg-moon-dark/95 backdrop-blur lg:hidden">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] tracking-widest text-moon-muted">MOBILE CHECKOUT</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-moon-accent text-lg font-light">${finalPrice}</p>
+              <p className="text-[11px] text-moon-muted text-right">
+                {incompleteChecklistCount === 0
+                  ? '資料已齊，準備送出'
+                  : `剩 ${incompleteChecklistCount} 項待完成`}
+              </p>
+            </div>
+          </div>
+          <button
+            type="submit"
+            form="checkout-form"
+            disabled={!isCheckoutReady}
+            className="shrink-0 bg-moon-accent text-moon-black px-4 py-3 text-xs tracking-widest disabled:opacity-50"
+          >
+            {isSubmitting ? '送出中' : '送出訂單'}
+          </button>
         </div>
       </div>
     </div>
