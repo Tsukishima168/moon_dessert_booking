@@ -82,6 +82,7 @@ export interface Order {
   id: string;
   order_id: string;
   customer_name: string;
+  email?: string | null;
   phone: string;
   pickup_time: string;
   items: OrderItem[];
