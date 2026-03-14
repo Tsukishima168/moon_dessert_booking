@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Plus, Minus, Save, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Loader2, Plus, Minus, Save, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Mail, BellRing, Workflow, Clock3 } from 'lucide-react';
 
 // ─── 型別 ──────────────────────────────────────────────────────────────────────
 
@@ -12,6 +12,23 @@ interface OrderItem {
   variant_name?: string;
   price: number;
   quantity: number;
+}
+
+interface NotificationLogEntry {
+  id: string;
+  order_id: string;
+  event_type: string;
+  trigger_mode: 'status_change' | 'manual_retry';
+  requested_channel: 'all' | 'email' | 'discord' | 'n8n';
+  previous_status: string | null;
+  current_status: string;
+  email_state: SaveNotificationChannelResult['state'];
+  email_message: string;
+  discord_state: SaveNotificationChannelResult['state'];
+  discord_message: string;
+  n8n_state: SaveNotificationChannelResult['state'];
+  n8n_message: string;
+  created_at: string;
 }
 
 interface AdminOrder {
@@ -27,11 +44,13 @@ interface AdminOrder {
   discount_amount: number;
   promo_code: string | null;
   payment_method: string | null;
+  linepay_transaction_id: string | null;
   delivery_method: string;
   delivery_fee: number;
   admin_notes: string | null;
   status: string;
   created_at: string;
+  notification_logs?: NotificationLogEntry[];
 }
 
 interface FormState {
@@ -42,6 +61,38 @@ interface FormState {
   status: string;
   admin_notes: string;
   payment_method: string;
+  linepay_transaction_id: string;
+}
+
+interface NotificationChannelStatus {
+  isConfigured: boolean;
+  message: string;
+  mode?: string;
+  host?: string | null;
+}
+
+interface NotificationStatusData {
+  resend: NotificationChannelStatus;
+  discord: NotificationChannelStatus;
+  n8n: NotificationChannelStatus;
+}
+
+interface SaveNotificationChannelResult {
+  state: 'sent' | 'failed' | 'skipped' | 'queued';
+  message: string;
+}
+
+interface SaveNotificationResult {
+  triggerMode: 'status_change' | 'manual_retry';
+  requestedChannel: 'all' | 'email' | 'discord' | 'n8n';
+  statusChanged: boolean;
+  previousStatus: string;
+  currentStatus: string;
+  channels: {
+    discord: SaveNotificationChannelResult;
+    email: SaveNotificationChannelResult;
+    n8n: SaveNotificationChannelResult;
+  };
 }
 
 // ─── 設定 ──────────────────────────────────────────────────────────────────────
@@ -83,6 +134,30 @@ function toLocalDateTimeValue(s: string): string {
   return normalized;
 }
 
+function buildFormStateFromOrder(order: AdminOrder): FormState {
+  return {
+    pickup_time: toLocalDateTimeValue(order.pickup_time),
+    items: (order.items || []).map(i => ({ ...i })),
+    promo_code: order.promo_code || '',
+    discount_amount: order.discount_amount ?? 0,
+    status: order.status,
+    admin_notes: order.admin_notes || '',
+    payment_method: order.payment_method || '',
+    linepay_transaction_id: order.linepay_transaction_id || '',
+  };
+}
+
+async function fetchAdminOrder(orderId: string): Promise<AdminOrder> {
+  const response = await fetch(`/api/admin/orders/${orderId}`);
+  const json = await response.json();
+
+  if (!response.ok || !json.success || !json.data) {
+    throw new Error(json.message || '載入失敗');
+  }
+
+  return json.data as AdminOrder;
+}
+
 // ─── 主元件 ──────────────────────────────────────────────────────────────────
 
 export default function AdminOrderEditPage() {
@@ -94,12 +169,17 @@ export default function AdminOrderEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notificationStatus, setNotificationStatus] = useState<NotificationStatusData | null>(null);
+  const [notificationLoading, setNotificationLoading] = useState(true);
+  const [lastSaveResult, setLastSaveResult] = useState<SaveNotificationResult | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [retryingTarget, setRetryingTarget] = useState<SaveNotificationResult['requestedChannel'] | null>(null);
 
   // 表單狀態
   const [form, setForm] = useState<FormState>({
     pickup_time: '', items: [], promo_code: '',
     discount_amount: 0, status: 'pending',
-    admin_notes: '', payment_method: '',
+    admin_notes: '', payment_method: '', linepay_transaction_id: '',
   });
 
   // 確認視窗
@@ -111,28 +191,31 @@ export default function AdminOrderEditPage() {
   useEffect(() => {
     if (!orderId) return;
     setLoading(true);
-    fetch(`/api/admin/orders/${orderId}`)
+    fetchAdminOrder(orderId)
+      .then((nextOrder) => {
+        setOrder(nextOrder);
+        setForm(buildFormStateFromOrder(nextOrder));
+      })
+      .catch((fetchError) => {
+        setError(fetchError instanceof Error ? fetchError.message : '載入失敗');
+      })
+      .finally(() => setLoading(false));
+  }, [orderId]);
+
+  useEffect(() => {
+    setNotificationLoading(true);
+    fetch('/api/admin/notifications/status')
       .then(r => r.json())
       .then(json => {
         if (json.success && json.data) {
-          const o: AdminOrder = json.data;
-          setOrder(o);
-          setForm({
-            pickup_time: toLocalDateTimeValue(o.pickup_time),
-            items: (o.items || []).map(i => ({ ...i })),
-            promo_code: o.promo_code || '',
-            discount_amount: o.discount_amount ?? 0,
-            status: o.status,
-            admin_notes: o.admin_notes || '',
-            payment_method: o.payment_method || '',
-          });
-        } else {
-          setError('訂單不存在');
+          setNotificationStatus(json.data);
         }
       })
-      .catch(() => setError('載入失敗'))
-      .finally(() => setLoading(false));
-  }, [orderId]);
+      .catch(() => {
+        setNotificationStatus(null);
+      })
+      .finally(() => setNotificationLoading(false));
+  }, []);
 
   // ─── 金額計算 ────────────────────────────────────────────────────────────
 
@@ -170,6 +253,7 @@ export default function AdminOrderEditPage() {
   const handleConfirmSave = async () => {
     if (!order) return;
     setSaving(true);
+    setError(null);
     setShowSummary(false);
     setShowCancelConfirm(false);
     try {
@@ -188,11 +272,23 @@ export default function AdminOrderEditPage() {
           status: form.status,
           admin_notes: form.admin_notes || null,
           payment_method: form.payment_method || null,
+          linepay_transaction_id: form.linepay_transaction_id.trim() || null,
         }),
       });
       const json = await res.json();
       if (json.success) {
-        router.push('/admin/orders');
+        const nextOrder = json.data as AdminOrder;
+        setOrder(nextOrder);
+        setForm(buildFormStateFromOrder(nextOrder));
+        setLastSaveResult((json.notification_result ?? null) as SaveNotificationResult | null);
+        setLastSavedAt(new Date().toISOString());
+        void fetchAdminOrder(orderId)
+          .then((refreshedOrder) => {
+            setOrder(refreshedOrder);
+            setForm(buildFormStateFromOrder(refreshedOrder));
+          })
+          .catch(() => { });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setError(json.message || '儲存失敗');
       }
@@ -200,6 +296,41 @@ export default function AdminOrderEditPage() {
       setError('儲存失敗，請重試');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResendNotifications = async (
+    target: SaveNotificationResult['requestedChannel']
+  ) => {
+    if (!order) return;
+    setRetryingTarget(target);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/notifications/resend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target }),
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        setLastSaveResult((json.notification_result ?? null) as SaveNotificationResult | null);
+        setLastSavedAt(new Date().toISOString());
+        void fetchAdminOrder(orderId)
+          .then((refreshedOrder) => {
+            setOrder(refreshedOrder);
+            setForm(buildFormStateFromOrder(refreshedOrder));
+          })
+          .catch(() => { });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        setError(json.message || '重送通知失敗');
+      }
+    } catch {
+      setError('重送通知失敗，請重試');
+    } finally {
+      setRetryingTarget(null);
     }
   };
 
@@ -228,6 +359,9 @@ export default function AdminOrderEditPage() {
     if (form.payment_method !== (order.payment_method ?? ''))
       lines.push(`付款方式：${PAYMENT_METHOD_LABEL[order.payment_method ?? ''] || '（未設定）'} → ${PAYMENT_METHOD_LABEL[form.payment_method] || '（未設定）'}`);
 
+    if (form.linepay_transaction_id !== (order.linepay_transaction_id ?? ''))
+      lines.push(`Line Pay 交易號：${order.linepay_transaction_id || '（未填）'} → ${form.linepay_transaction_id || '（未填）'}`);
+
     const origItemsStr = JSON.stringify((order.items || []).map(i => `${i.name}×${i.quantity}`));
     const newItemsStr = JSON.stringify(form.items.map(i => `${i.name}×${i.quantity}`));
     if (origItemsStr !== newItemsStr)
@@ -247,7 +381,7 @@ export default function AdminOrderEditPage() {
     </div>
   );
 
-  if (error || !order) return (
+  if (!order) return (
     <div className="min-h-screen bg-moon-black flex flex-col items-center justify-center gap-4">
       <p className="text-red-400">{error || '訂單不存在'}</p>
       <button onClick={() => router.push('/admin/orders')} className="text-moon-muted hover:text-moon-text text-sm">
@@ -258,6 +392,42 @@ export default function AdminOrderEditPage() {
 
   const statusColorClass = ORDER_STATUS_COLOR[order.status] ?? 'text-moon-muted bg-moon-muted/10';
   const summaryLines = buildChangeSummary();
+  const willChangeStatus = form.status !== order.status;
+  const willTriggerCustomerEmail =
+    willChangeStatus &&
+    ['ready', 'cancelled'].includes(form.status) &&
+    !!order.email;
+  const willTriggerOpsNotifications = willChangeStatus;
+  const saveResultStateStyles: Record<SaveNotificationChannelResult['state'], string> = {
+    sent: 'text-green-400 bg-green-400/10 border-green-400/20',
+    failed: 'text-red-400 bg-red-400/10 border-red-400/20',
+    skipped: 'text-moon-muted bg-moon-border/10 border-moon-border/30',
+    queued: 'text-yellow-300 bg-yellow-300/10 border-yellow-300/20',
+  };
+  const saveResultStateLabel: Record<SaveNotificationChannelResult['state'], string> = {
+    sent: '已送出',
+    failed: '失敗',
+    skipped: '略過',
+    queued: '同步中',
+  };
+  const retryTargetLabel: Record<SaveNotificationResult['requestedChannel'], string> = {
+    all: '全部通知',
+    email: 'Email',
+    discord: 'Discord',
+    n8n: 'n8n',
+  };
+  const triggerModeLabel: Record<SaveNotificationResult['triggerMode'], string> = {
+    status_change: '狀態變更',
+    manual_retry: '手動重送',
+  };
+  const timelineNotificationLogs = [...(order.notification_logs || [])].reverse();
+
+  const StatusIndicator = ({ ok }: { ok: boolean }) =>
+    ok ? (
+      <CheckCircle2 size={14} className="text-green-400 flex-shrink-0 mt-0.5" />
+    ) : (
+      <XCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+    );
 
   return (
     <div className="min-h-screen bg-moon-black">
@@ -285,6 +455,69 @@ export default function AdminOrderEditPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {lastSaveResult && (
+          <section className="border border-green-400/30 bg-green-400/5 p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs tracking-widest text-green-300">最近一次通知結果</p>
+                <p className="text-sm text-moon-text">
+                  {lastSaveResult.triggerMode === 'manual_retry'
+                    ? (
+                      <>
+                        已手動重送
+                        <span className="text-green-300 ml-1">
+                          {retryTargetLabel[lastSaveResult.requestedChannel]}
+                        </span>
+                        <span className="ml-1">，目前狀態：</span>
+                        <span className="text-green-300 ml-1">
+                          {ORDER_STATUS[lastSaveResult.currentStatus as keyof typeof ORDER_STATUS] ?? lastSaveResult.currentStatus}
+                        </span>
+                      </>
+                    )
+                    : lastSaveResult.statusChanged
+                    ? (
+                      <>
+                        狀態已從{' '}
+                        <span className="text-moon-muted">
+                          {ORDER_STATUS[lastSaveResult.previousStatus as keyof typeof ORDER_STATUS] ?? lastSaveResult.previousStatus}
+                        </span>
+                        {' → '}
+                        <span className="text-green-300">
+                          {ORDER_STATUS[lastSaveResult.currentStatus as keyof typeof ORDER_STATUS] ?? lastSaveResult.currentStatus}
+                        </span>
+                      </>
+                    )
+                    : '訂單資料已儲存，本次未觸發狀態通知'}
+                </p>
+              </div>
+              {lastSavedAt && (
+                <div className="flex items-center gap-1 text-[11px] text-moon-muted">
+                  <Clock3 size={12} />
+                  <span>{new Date(lastSavedAt).toLocaleString('zh-TW', { hour12: false })}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { key: 'email', label: '客戶 Email', result: lastSaveResult.channels.email },
+                { key: 'discord', label: 'Discord', result: lastSaveResult.channels.discord },
+                { key: 'n8n', label: 'n8n', result: lastSaveResult.channels.n8n },
+              ].map(({ key, label, result }) => (
+                <div key={key} className="border border-moon-border/50 bg-moon-black/30 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-moon-muted">{label}</p>
+                    <span className={`border px-2 py-1 text-[10px] tracking-wider ${saveResultStateStyles[result.state]}`}>
+                      {saveResultStateLabel[result.state]}
+                    </span>
+                  </div>
+                  <p className="text-sm text-moon-text leading-relaxed">{result.message}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* 客人資訊（唯讀） */}
         <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-2">
           <h2 className="text-xs text-moon-muted tracking-widest mb-3">客人資訊</h2>
@@ -302,6 +535,230 @@ export default function AdminOrderEditPage() {
                 <p className="text-[10px] text-moon-muted mb-0.5">Email</p>
                 <p className="text-moon-text">{order.email}</p>
               </div>
+            )}
+          </div>
+        </section>
+
+        <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-3">
+          <h2 className="text-xs text-moon-muted tracking-widest">付款資訊</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-[10px] text-moon-muted mb-0.5">付款方式</p>
+              <p className="text-moon-text">
+                {PAYMENT_METHOD_LABEL[order.payment_method ?? ''] || '未設定'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-moon-muted mb-0.5">Line Pay 交易號</p>
+              <p className={order.linepay_transaction_id ? 'text-moon-accent font-mono break-all' : 'text-moon-muted'}>
+                {order.payment_method === 'line_pay'
+                  ? order.linepay_transaction_id || '待回填'
+                  : '此訂單非 Line Pay'}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xs text-moon-muted tracking-widest">通知鏈檢查</h2>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {notificationLoading && <Loader2 size={14} className="animate-spin text-moon-muted" />}
+                {([
+                  ['all', '重送全部'],
+                  ['email', 'Email'],
+                  ['discord', 'Discord'],
+                  ['n8n', 'n8n'],
+                ] as const).map(([target, label]) => (
+                  <button
+                    key={target}
+                    onClick={() => handleResendNotifications(target)}
+                    disabled={retryingTarget !== null}
+                    className="flex items-center gap-2 border border-moon-border px-3 py-1.5 text-[11px] tracking-wider text-moon-text hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-50"
+                  >
+                    {retryingTarget === target ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <BellRing size={12} />
+                    )}
+                    {label}
+                  </button>
+                ))}
+              </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="border border-moon-border/60 bg-moon-black/40 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-moon-muted">
+                <Mail size={13} />
+                客戶 Email
+              </div>
+              <div className="flex items-start gap-2">
+                <StatusIndicator ok={!!order.email && !!notificationStatus?.resend?.isConfigured} />
+                <div className="text-xs leading-relaxed">
+                  <p className="text-moon-text">
+                    {order.email ? order.email : '此訂單沒有 Email'}
+                  </p>
+                  <p className="text-moon-muted">
+                    {notificationStatus?.resend?.message ?? '尚未取得 Resend 狀態'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border border-moon-border/60 bg-moon-black/40 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-moon-muted">
+                <BellRing size={13} />
+                Discord
+              </div>
+              <div className="flex items-start gap-2">
+                <StatusIndicator ok={!!notificationStatus?.discord?.isConfigured} />
+                <p className="text-xs text-moon-muted leading-relaxed">
+                  {notificationStatus?.discord?.message ?? '尚未取得 Discord 狀態'}
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-moon-border/60 bg-moon-black/40 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-moon-muted">
+                <Workflow size={13} />
+                n8n
+              </div>
+              <div className="flex items-start gap-2">
+                <StatusIndicator ok={!!notificationStatus?.n8n?.isConfigured} />
+                <div className="text-xs leading-relaxed">
+                  <p className="text-moon-muted">
+                    {notificationStatus?.n8n?.message ?? '尚未取得 n8n 狀態'}
+                  </p>
+                  {notificationStatus?.n8n?.host && (
+                    <p className="text-moon-text/70 font-mono">{notificationStatus.n8n.host}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border border-moon-border/40 bg-moon-black/30 px-4 py-3 space-y-2">
+            <p className="text-xs text-moon-muted">本次儲存的通知預期</p>
+            {!willChangeStatus ? (
+              <p className="text-sm text-moon-muted">
+                狀態未改變，這次儲存不會重送狀態通知。
+              </p>
+            ) : (
+              <div className="space-y-1.5 text-sm">
+                <p className="text-moon-text">
+                  狀態將從 <span className="text-moon-muted">{ORDER_STATUS[order.status as keyof typeof ORDER_STATUS] ?? order.status}</span>
+                  {' → '}
+                  <span className="text-moon-accent">{ORDER_STATUS[form.status as keyof typeof ORDER_STATUS] ?? form.status}</span>
+                </p>
+                <p className={willTriggerCustomerEmail ? 'text-green-400' : 'text-moon-muted'}>
+                  客戶 Email：{willTriggerCustomerEmail ? '會嘗試發送' : '這次不會發送'}
+                </p>
+                <p className={willTriggerOpsNotifications ? 'text-green-400' : 'text-moon-muted'}>
+                  Discord / n8n：{willTriggerOpsNotifications ? '會嘗試同步' : '這次不會同步'}
+                </p>
+                {willTriggerCustomerEmail && !notificationStatus?.resend?.isConfigured && (
+                  <p className="text-red-400 text-xs">
+                    注意：目前 Resend 未完整設定，狀態更新成功也可能不會寄出 Email。
+                  </p>
+                )}
+                {willTriggerOpsNotifications && !notificationStatus?.discord?.isConfigured && (
+                  <p className="text-red-400 text-xs">
+                    注意：目前 Discord 未設定，店家通知會略過。
+                  </p>
+                )}
+              </div>
+            )}
+            <p className="text-[11px] text-moon-muted">
+              如果剛剛有失敗或略過，可直接點右上角對應通道補送；請避免連點，以免外部通知重複。
+            </p>
+          </div>
+        </section>
+
+        <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xs text-moon-muted tracking-widest">訂單活動時間軸</h2>
+            <p className="text-[11px] text-moon-muted">
+              共 {timelineNotificationLogs.length + 1} 個節點
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="relative pl-7">
+              {timelineNotificationLogs.length > 0 && (
+                <div className="absolute left-[7px] top-5 bottom-[-16px] w-px bg-moon-border/60" />
+              )}
+              <span className="absolute left-0 top-1 w-4 h-4 rounded-full bg-moon-accent text-moon-black flex items-center justify-center text-[10px]">
+                1
+              </span>
+              <div className="border border-moon-border/50 bg-moon-black/30 p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm text-moon-text">訂單建立</p>
+                    <p className="text-xs text-moon-muted">
+                      建立訂單並等待後續狀態流轉
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-moon-muted">
+                    {new Date(order.created_at).toLocaleString('zh-TW', { hour12: false })}
+                  </p>
+                </div>
+                <p className="text-xs text-moon-text/80">
+                  建立人：{order.customer_name} · 金額：${(order.final_price ?? order.total_price ?? 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            {timelineNotificationLogs.length === 0 ? (
+              <p className="text-sm text-moon-muted pl-7">
+                目前只有建立訂單紀錄。後續狀態變更或手動重送會沿著時間軸往下累積。
+              </p>
+            ) : (
+              timelineNotificationLogs.map((log, index) => (
+                <div key={log.id} className="relative pl-7">
+                  {index !== timelineNotificationLogs.length - 1 && (
+                    <div className="absolute left-[7px] top-5 bottom-[-16px] w-px bg-moon-border/60" />
+                  )}
+                  <span className="absolute left-0 top-1 w-4 h-4 rounded-full border border-moon-accent text-moon-accent flex items-center justify-center text-[10px] bg-moon-black">
+                    {index + 2}
+                  </span>
+                  <div className="border border-moon-border/50 bg-moon-black/30 p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm text-moon-text">
+                          {triggerModeLabel[log.trigger_mode]} · {retryTargetLabel[log.requested_channel]}
+                        </p>
+                        <p className="text-xs text-moon-muted">
+                          {log.previous_status
+                            ? `${ORDER_STATUS[log.previous_status as keyof typeof ORDER_STATUS] ?? log.previous_status} → ${ORDER_STATUS[log.current_status as keyof typeof ORDER_STATUS] ?? log.current_status}`
+                            : ORDER_STATUS[log.current_status as keyof typeof ORDER_STATUS] ?? log.current_status}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-moon-muted">
+                        {new Date(log.created_at).toLocaleString('zh-TW', { hour12: false })}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {[
+                        { key: 'email', label: '客戶 Email', state: log.email_state, message: log.email_message },
+                        { key: 'discord', label: 'Discord', state: log.discord_state, message: log.discord_message },
+                        { key: 'n8n', label: 'n8n', state: log.n8n_state, message: log.n8n_message },
+                      ].map((channel) => (
+                        <div key={channel.key} className="border border-moon-border/40 px-3 py-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs text-moon-muted">{channel.label}</p>
+                            <span className={`border px-2 py-1 text-[10px] tracking-wider ${saveResultStateStyles[channel.state]}`}>
+                              {saveResultStateLabel[channel.state]}
+                            </span>
+                          </div>
+                          <p className="text-xs text-moon-text/80 leading-relaxed">{channel.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </section>
@@ -420,7 +877,7 @@ export default function AdminOrderEditPage() {
         {/* 付款方式 + 狀態 */}
         <section className="border border-moon-border bg-moon-dark/40 p-5 space-y-4">
           <h2 className="text-xs text-moon-muted tracking-widest">訂單設定</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] text-moon-muted block mb-1">付款方式</label>
               <select
@@ -445,6 +902,21 @@ export default function AdminOrderEditPage() {
                   <option key={v} value={v}>{label}</option>
                 ))}
               </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-[10px] text-moon-muted block mb-1">Line Pay 交易號</label>
+              <input
+                type="text"
+                value={form.linepay_transaction_id}
+                onChange={e => setForm(p => ({ ...p, linepay_transaction_id: e.target.value }))}
+                placeholder={form.payment_method === 'line_pay' ? '貼上 Line Pay 交易號' : '非 Line Pay 可留空'}
+                className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-none focus:border-moon-accent transition-colors font-mono"
+              />
+              <p className="text-[11px] text-moon-muted mt-2 leading-relaxed">
+                {form.payment_method === 'line_pay'
+                  ? '若金流回拋缺漏，可在這裡手動回填，列表與 CSV 會同步帶出。'
+                  : '目前付款方式不是 Line Pay，交易號可先留空；若之後改回 Line Pay，再補填即可。'}
+              </p>
             </div>
           </div>
         </section>

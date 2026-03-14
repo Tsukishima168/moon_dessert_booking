@@ -23,9 +23,11 @@ export async function handleOrderCreatedN8n(
   }
 
   try {
+    const orderIdentifier = order.order_id || order.id
+
     // 轉換 Order → OrderSyncPayload
     const syncPayload: OrderSyncPayload = {
-      order_id: order.id,
+      order_id: orderIdentifier,
       status: order.status,
       customer_name: order.customer_name || '',
       phone: order.phone || '',
@@ -40,9 +42,9 @@ export async function handleOrderCreatedN8n(
     }
 
     await syncOrderEventToN8n('order.created', syncPayload)
-    console.log(`[N8nHandler] Order ${order.id} synced to N8N`)
+    console.log(`[N8nHandler] Order ${orderIdentifier} synced to N8N`)
   } catch (error) {
-    console.error('[N8nHandler] Failed to sync order to N8N', order.id, error)
+    console.error('[N8nHandler] Failed to sync order to N8N', order.order_id || order.id, error)
     // 不 throw：N8N 同步是 fire-and-forget，dead-letter 由 n8n.ts 處理
   }
 }

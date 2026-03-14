@@ -17,6 +17,7 @@ export interface AdminOrder {
   promo_code: string | null
   payment_date: string | null
   payment_method: string | null
+  linepay_transaction_id: string | null
   delivery_method: string
   delivery_address: string | null
   delivery_fee: number
@@ -36,8 +37,10 @@ export interface UpdateOrderPayload {
   discount_amount?: number
   promo_code?: string | null
   payment_method?: string | null
+  linepay_transaction_id?: string | null
   status?: string
   admin_notes?: string | null
+  updated_at?: string
 }
 
 export interface InsertOrderPayload {
@@ -53,6 +56,7 @@ export interface InsertOrderPayload {
   discount_amount: number
   promo_code: string | null
   payment_date: string | null
+  linepay_transaction_id: string | null
   delivery_method: string
   delivery_address: string | null
   delivery_fee: number
@@ -73,13 +77,18 @@ export interface InsertOrderPayload {
  * 將訂單資料寫入 orders 資料表（使用 admin client 繞過 RLS）
  * @param payload - 完整的訂單欄位
  */
-export async function insertOrder(payload: InsertOrderPayload): Promise<void> {
+export async function insertOrder(payload: InsertOrderPayload): Promise<AdminOrder> {
   const adminClient = createAdminClient()
-  const { error } = await adminClient.from('orders').insert(payload)
+  const { data, error } = await adminClient
+    .from('orders')
+    .insert(payload)
+    .select('*')
+    .single()
   if (error) {
     console.error('Supabase insert error:', error)
     throw error
   }
+  return data as AdminOrder
 }
 
 /**

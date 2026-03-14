@@ -22,9 +22,9 @@ export async function handleOrderCreated(payload: Record<string, unknown>): Prom
 
   try {
     await grantOrderReward(order)
-    console.log(`[RewardHandler] Successfully granted reward for order ${order.id}`)
+    console.log(`[RewardHandler] Successfully granted reward for order ${order.order_id || order.id}`)
   } catch (error) {
-    console.error('[RewardHandler] Failed to grant reward for order', order.id, error)
+    console.error('[RewardHandler] Failed to grant reward for order', order.order_id || order.id, error)
     // 不 throw，因為點數發放是 fire-and-forget
   }
 }

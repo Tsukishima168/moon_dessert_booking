@@ -1,7 +1,5 @@
 import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
-import { sendCustomerEmail, notifyNewOrder } from '@/lib/notifications'
-import { syncOrderEventToN8n } from '@/lib/integrations/n8n'
 import { EventBus } from '@/src/lib/event-bus'
 
 export interface CreateOrderInput {
@@ -29,6 +27,7 @@ export interface CreateOrderInput {
   utm_content?: string
   utm_term?: string
   user_id?: string
+  linepay_transaction_id?: string
 }
 
 export interface CreateOrderResult {
@@ -82,6 +81,7 @@ export async function createOrder(
     discount_amount: discountAmount,
     promo_code: input.promo_code ?? null,
     payment_date: input.payment_date ?? null,
+    linepay_transaction_id: input.linepay_transaction_id ?? null,
     delivery_method: input.delivery_method ?? 'pickup',
     delivery_address: input.delivery_address ?? null,
     delivery_fee: deliveryFee,
@@ -98,15 +98,15 @@ export async function createOrder(
     status: 'pending',
   } as const
 
-  await insertOrder(orderData)
+  const createdOrder = await insertOrder(orderData)
 
-  console.log(`成功建立訂單: ${orderId}`)
+  console.log(`成功建立訂單: ${createdOrder.order_id}`)
 
   // Phase 2: emit("order.created") event bus
   // 所有後續副作用（加點、通知、integration）都由 event handlers 處理
   // 此處改為 fire-and-forget emit，不阻塞回應
   EventBus.emit('order.created', {
-    order: orderData,
+    order: createdOrder,
     metadata: {
       createdAt: new Date().toISOString(),
       source: 'shop',
@@ -115,7 +115,7 @@ export async function createOrder(
     console.error('事件發送錯誤（不影響訂單）:', error)
   })
 
-  return { orderId, finalPrice }
+  return { orderId: createdOrder.order_id, finalPrice }
 }
 
 /**

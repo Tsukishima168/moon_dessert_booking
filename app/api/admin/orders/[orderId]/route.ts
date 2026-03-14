@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
-import { findOrderById, updateOrder } from '@/src/repositories/order.repository';
-import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
+import {
+  findOrderById,
+  type UpdateOrderPayload,
+} from '@/src/repositories/order.repository';
+import {
+  findNotificationLogsByOrderId,
+  type NotificationLog,
+} from '@/src/repositories/notification-log.repository';
+import {
+  OrderNotFoundError,
+  updateAdminOrderWithStatusEffects,
+} from '@/src/services/order-status-transition.service';
 
 const ALLOWED_STATUS = ['pending', 'paid', 'ready', 'completed', 'cancelled'];
 const ALLOWED_PAYMENT_METHOD = ['cash', 'transfer', 'line_pay'];
@@ -19,7 +29,19 @@ export async function GET(
     if (!order) {
       return NextResponse.json({ success: false, message: '訂單不存在' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: order });
+    let notificationLogs: NotificationLog[] = [];
+    try {
+      notificationLogs = await findNotificationLogsByOrderId(params.orderId);
+    } catch (error) {
+      console.warn('讀取 notification_logs 失敗，先回傳空陣列:', error);
+    }
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...order,
+        notification_logs: notificationLogs,
+      },
+    });
   } catch (error) {
     console.error('取得訂單錯誤:', error);
     return NextResponse.json({ success: false, message: '取得訂單失敗' }, { status: 500 });
@@ -56,11 +78,11 @@ export async function PATCH(
     }
 
     // 只取允許更新的欄位
-    const payload: Record<string, unknown> = {};
-    const allowed = [
+    const payload: UpdateOrderPayload = {};
+    const allowed: (keyof UpdateOrderPayload)[] = [
       'pickup_time', 'items', 'total_price', 'original_price',
       'final_price', 'discount_amount', 'promo_code',
-      'payment_method', 'status', 'admin_notes',
+      'payment_method', 'linepay_transaction_id', 'status', 'admin_notes',
     ];
     for (const key of allowed) {
       if (key in body) payload[key] = body[key];
@@ -70,30 +92,18 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: '沒有要更新的欄位' }, { status: 400 });
     }
 
-    const updatedOrder = await updateOrder(orderId, payload);
+    const { updatedOrder, notificationResult } =
+      await updateAdminOrderWithStatusEffects(orderId, payload);
 
-    // 狀態變更時同步 N8N
-    if (body.status !== undefined) {
-      void syncOrderEventToN8n('order.status_updated', {
-        order_id: updatedOrder.order_id,
-        status: updatedOrder.status,
-        customer_name: updatedOrder.customer_name,
-        phone: updatedOrder.phone,
-        email: updatedOrder.email,
-        pickup_time: updatedOrder.pickup_time,
-        delivery_method: updatedOrder.delivery_method,
-        delivery_address: updatedOrder.delivery_address,
-        total_price: updatedOrder.total_price,
-        final_price: updatedOrder.final_price,
-        promo_code: updatedOrder.promo_code,
-        discount_amount: updatedOrder.discount_amount,
-        items: Array.isArray(updatedOrder.items) ? updatedOrder.items : [],
-        updated_at: updatedOrder.updated_at ?? undefined,
-      });
-    }
-
-    return NextResponse.json({ success: true, data: updatedOrder });
+    return NextResponse.json({
+      success: true,
+      data: updatedOrder,
+      notification_result: notificationResult,
+    });
   } catch (error) {
+    if (error instanceof OrderNotFoundError) {
+      return NextResponse.json({ success: false, message: '訂單不存在' }, { status: 404 });
+    }
     console.error('更新訂單錯誤:', error);
     return NextResponse.json({ success: false, message: '更新失敗' }, { status: 500 });
   }

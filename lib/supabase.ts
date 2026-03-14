@@ -46,6 +46,7 @@ export interface MenuItem {
   category: string;
   image_url: string;
   is_available: boolean;
+  sort_order?: number;
 }
 
 export interface MenuVariant {
@@ -81,6 +82,7 @@ export interface Order {
   id: string;
   order_id: string;
   customer_name: string;
+  email?: string | null;
   phone: string;
   pickup_time: string;
   items: OrderItem[];
@@ -100,6 +102,7 @@ export interface Order {
   final_price?: number;
   created_at: string;
   user_id?: string;
+  linepay_transaction_id?: string | null;
 }
 
 export interface MBTIRecommendation {
@@ -171,7 +174,8 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
     const { data: menuItems, error: itemsError } = await supabase
       .from('menu_items')
       .select('*')
-      .order('id');
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
 
     if (itemsError) throw itemsError;
     if (!menuItems) return [];
@@ -216,6 +220,7 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
         category: item.category || item.category_id?.toString() || '',
         image_url: item.image_url || item.image || '',
         is_available: item.is_available !== false,
+        sort_order: item.sort_order ?? 0,
         variants: itemVariants.map((v) => ({
           id: v.id.toString(),
           menu_item_id: v.menu_item_id.toString(),
