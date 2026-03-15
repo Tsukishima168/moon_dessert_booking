@@ -4,11 +4,13 @@ import {
     OrderNotFoundError,
     updateAdminOrderWithStatusEffects,
 } from '@/src/services/order-status-transition.service';
+import { syncOrderEventToN8n } from '@/lib/integrations/n8n';
+import { EventBus } from '@/src/lib/event-bus';
 
 // PATCH /api/admin/orders/[orderId]/status - 更新訂單狀態
 export async function PATCH(
-    request: NextRequest,
-    { params }: { params: { orderId: string } }
+  request: NextRequest,
+  { params }: { params: { orderId: string } }
 ) {
     try {
         const isAdmin = await ensureAdmin();
@@ -33,6 +35,35 @@ export async function PATCH(
 
         const oldStatus = previousOrder.status;
         const skipped = oldStatus === updatedOrder.status;
+
+        // 透過 EventBus 派發（email 通知由對應 handler 接收）
+        if (!skipped) {
+            void EventBus.emit('order.status_updated', {
+                order: updatedOrder,
+                oldStatus,
+                newStatus: status,
+                deliveryMethod: updatedOrder.delivery_method || 'pickup',
+                items: Array.isArray(updatedOrder.items) ? updatedOrder.items : [],
+            });
+        }
+
+        // 同步到 n8n
+        void syncOrderEventToN8n('order.status_updated', {
+            order_id: updatedOrder.order_id,
+            status,
+            customer_name: updatedOrder.customer_name,
+            phone: updatedOrder.phone,
+            email: updatedOrder.email,
+            pickup_time: updatedOrder.pickup_time,
+            delivery_method: updatedOrder.delivery_method,
+            delivery_address: updatedOrder.delivery_address,
+            total_price: updatedOrder.total_price,
+            final_price: updatedOrder.final_price,
+            promo_code: updatedOrder.promo_code,
+            discount_amount: updatedOrder.discount_amount,
+            items: Array.isArray(updatedOrder.items) ? updatedOrder.items : [],
+            updated_at: updatedOrder.updated_at ?? new Date().toISOString(),
+        });
 
         console.log(`訂單 ${orderId} 狀態更新: ${oldStatus} → ${status}`);
 

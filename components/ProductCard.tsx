@@ -36,6 +36,18 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
     }
 
     openCart();
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'add_to_cart', {
+        currency: 'TWD',
+        value: selectedVariant.price * quantity,
+        items: [{
+          item_id: item.id,
+          item_name: item.name,
+          price: selectedVariant.price,
+          quantity: quantity,
+        }]
+      });
+    }
     setQuantity(1);
   };
 
