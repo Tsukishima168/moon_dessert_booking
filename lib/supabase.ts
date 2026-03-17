@@ -84,7 +84,6 @@ export interface Order {
   customer_name: string;
   email?: string | null;
   phone: string;
-  email?: string;
   pickup_time: string;
   items: OrderItem[];
   total_price: number;
