@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { getAlignedMenuItemName } from './menuNameAliases';
 
 // 惰性初始化：避免在建置期間因環境變數尚未注入而導致崩潰
 let _supabase: SupabaseClient | null = null;
@@ -201,6 +202,7 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
 
     // 4. 組合資料
     const menuWithVariants: MenuItemWithVariants[] = menuItems.map((item) => {
+      const rawName = item.name || item.title || '';
       const itemVariants = variants?.filter(
         (v) => v.menu_item_id === item.id
       ) || [];
@@ -215,7 +217,7 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
 
       return {
         id: item.id.toString(),
-        name: item.name || item.title || '',
+        name: getAlignedMenuItemName(rawName),
         description: item.description || '',
         category: item.category || item.category_id?.toString() || '',
         image_url: item.image_url || item.image || '',
