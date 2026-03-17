@@ -92,8 +92,38 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: '沒有要更新的欄位' }, { status: 400 });
     }
 
-    const { updatedOrder, notificationResult } =
+    const { previousOrder, updatedOrder, notificationResult } =
       await updateAdminOrderWithStatusEffects(orderId, payload);
+
+    // 狀態有實際變更時 emit EventBus（email 通知由 email.handler 接收）
+    if (body.status !== undefined && previousOrder.status !== updatedOrder.status) {
+      void EventBus.emit('order.status_updated', {
+        order: updatedOrder,
+        oldStatus: previousOrder.status,
+        newStatus: updatedOrder.status as string,
+        deliveryMethod: updatedOrder.delivery_method || 'pickup',
+      });
+    }
+
+    // 狀態變更時同步 N8N
+    if (body.status !== undefined) {
+      void syncOrderEventToN8n('order.status_updated', {
+        order_id: updatedOrder.order_id,
+        status: updatedOrder.status,
+        customer_name: updatedOrder.customer_name,
+        phone: updatedOrder.phone,
+        email: updatedOrder.email,
+        pickup_time: updatedOrder.pickup_time,
+        delivery_method: updatedOrder.delivery_method,
+        delivery_address: updatedOrder.delivery_address,
+        total_price: updatedOrder.total_price,
+        final_price: updatedOrder.final_price,
+        promo_code: updatedOrder.promo_code,
+        discount_amount: updatedOrder.discount_amount,
+        items: Array.isArray(updatedOrder.items) ? updatedOrder.items : [],
+        updated_at: updatedOrder.updated_at ?? undefined,
+      });
+    }
 
     return NextResponse.json({
       success: true,

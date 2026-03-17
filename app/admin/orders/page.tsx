@@ -72,6 +72,7 @@ export default function AdminOrdersPage() {
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [linePayGapOnly, setLinePayGapOnly] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const load = async (status: string) => {
     setLoading(true);
@@ -90,6 +91,28 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => { load(statusFilter); }, [statusFilter]);
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      const qs = params.size > 0 ? `?${params.toString()}` : '';
+      const res = await fetch(`/api/admin/orders/export${qs}`);
+      if (!res.ok) throw new Error('匯出失敗');
+      const blob = await res.blob();
+      const today = new Date().toISOString().slice(0, 10);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `orders_${today}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (e) {
+      console.error('CSV 匯出錯誤:', e);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const filtered = orders.filter(o => {
     if (paymentFilter !== 'all' && (o.payment_method ?? '') !== paymentFilter) {
@@ -113,32 +136,6 @@ export default function AdminOrdersPage() {
     order => order.payment_method === 'line_pay' && !order.linepay_transaction_id
   ).length;
 
-  function handleExportCSV() {
-    const headers = ['訂單編號', '姓名', '電話', '付款方式', 'Line Pay 交易號', '商品', '金額', '狀態', '取貨時間', '建立時間'];
-    const rows = filtered.map(o => [
-      o.order_id,
-      o.customer_name,
-      o.phone,
-      PAYMENT_METHOD_LABEL[o.payment_method || ''] || '未設定',
-      o.linepay_transaction_id || '',
-      buildItemsSummary(o.items || []),
-      String(o.final_price ?? o.total_price ?? 0),
-      ORDER_STATUS[o.status as OrderStatus]?.label ?? o.status,
-      o.pickup_time,
-      o.created_at,
-    ]);
-    const csv = [headers, ...rows]
-      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `orders_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   return (
     <div className="min-h-screen bg-moon-black">
       {/* Header */}
@@ -155,14 +152,6 @@ export default function AdminOrdersPage() {
             <h1 className="text-sm tracking-widest text-moon-text">訂單管理</h1>
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={handleExportCSV}
-              disabled={loading || filtered.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-moon-border text-moon-muted hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-40"
-            >
-              <Download size={13} />
-              匯出 CSV
-            </button>
             <button
               onClick={() => load(statusFilter)}
               disabled={loading}
@@ -224,16 +213,26 @@ export default function AdminOrdersPage() {
               </button>
             </div>
           </div>
-          {/* 搜尋 */}
-          <div className="relative">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-moon-muted" />
-            <input
-              type="text"
-              placeholder="搜尋訂單號 / 姓名 / 電話"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs bg-moon-dark border border-moon-border text-moon-text placeholder:text-moon-muted/50 focus:outline-none focus:border-moon-accent w-56 transition-colors"
-            />
+          {/* 搜尋 + 匯出 */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-moon-muted" />
+              <input
+                type="text"
+                placeholder="搜尋訂單號 / 姓名 / 電話"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-8 pr-3 py-1.5 text-xs bg-moon-dark border border-moon-border text-moon-text placeholder:text-moon-muted/50 focus:outline-none focus:border-moon-accent w-56 transition-colors"
+              />
+            </div>
+            <button
+              onClick={handleExportCSV}
+              disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-moon-border text-moon-muted hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-50"
+            >
+              {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              匯出 CSV
+            </button>
           </div>
         </div>
 
