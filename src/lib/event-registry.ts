@@ -27,6 +27,9 @@ import {
 // import { handleOrderPaid } from '@/src/modules/marketing/promo.handler';
 // import { handleOrderCompleted } from '@/src/modules/passport/stamp.handler';
 
+// ─── Data / Analytics Handlers ───────────────────────────────────────────────
+import { handleOrderCreatedUserEvent } from '@/src/modules/user-events/order-created.handler';
+
 // ─── Gamification Handlers ───────────────────────────────────────────────────
 // TODO: 實裝後取消註解
 // import { handlePointsEarned } from '@/src/modules/gamification/badge.handler';
@@ -52,6 +55,7 @@ export function registerAllEventHandlers(): void {
   EventBus.on('order.created', handleOrderCreatedN8n); // → N8N 訂單同步
   EventBus.on('order.created', handleOrderCreatedNotifications); // → 客戶信 + 店家 Discord
   EventBus.on('order.created', handleOrderCreatedEmail);   // → 訂單確認信
+  EventBus.on('order.created', handleOrderCreatedUserEvent); // → user_events 行為追蹤
   // EventBus.on('order.created', handleOrderBadge);     // → 觸發勳章解鎖檢查
 
   EventBus.on('order.status_updated', handleOrderStatusUpdatedEmail); // → ready/cancelled 狀態通知信

@@ -1,6 +1,8 @@
 import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
-import { insertOrder } from '@/src/repositories/order.repository'
+import { validatePromoCode } from '@/lib/supabase'
+import { insertOrder, findOrdersByUserId } from '@/src/repositories/order.repository'
 import { EventBus } from '@/src/lib/event-bus'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -42,6 +44,44 @@ export interface CreateOrderResult {
  * @param authUserId - 從 supabase auth 取得的當前登入用戶 ID（未登入傳 null）
  * @returns 訂單 ID 與最終金額
  */
+/**
+ * 從 DB 查詢 menu_variants 的實際單價，重新計算訂單金額
+ * 防止前端傳入偽造的 price
+ */
+async function recalculateItemsPrice(items: OrderItem[]): Promise<number> {
+  if (items.length === 0) return 0
+
+  const variantIds = items.map(item => item.id)
+  const adminClient = createAdminClient()
+
+  const { data: variants, error } = await adminClient
+    .from('menu_variants')
+    .select('id, price')
+    .in('id', variantIds)
+
+  if (error) throw error
+
+  const priceMap = new Map<string, number>(
+    (variants || []).map(v => {
+      const rawPrice = String(v.price).replace(/[^0-9.]/g, '')
+      return [String(v.id), rawPrice === '' ? 0 : Number(rawPrice)]
+    })
+  )
+
+  let total = 0
+  for (const item of items) {
+    const unitPrice = priceMap.get(item.id)
+    if (unitPrice === undefined) {
+      throw new Error(`品項不存在或已下架：${item.name}`)
+    }
+    if (item.quantity <= 0 || !Number.isInteger(item.quantity)) {
+      throw new Error(`品項數量無效：${item.name}`)
+    }
+    total += unitPrice * item.quantity
+  }
+  return total
+}
+
 export async function createOrder(
   input: CreateOrderInput,
   authUserId: string | null
@@ -52,19 +92,31 @@ export async function createOrder(
     throw new Error('手機號碼格式不正確')
   }
 
-  // 金額標準化
-  const finalPrice = input.final_price
-    ? parseFloat(String(input.final_price))
-    : parseFloat(String(input.total_price))
-  const originalPrice = input.original_price
-    ? parseFloat(String(input.original_price))
-    : parseFloat(String(input.total_price))
-  const discountAmount = input.discount_amount
-    ? parseFloat(String(input.discount_amount))
-    : 0
-  const deliveryFee = input.delivery_fee
-    ? parseFloat(String(input.delivery_fee))
-    : 0
+  // 伺服器端重新計算商品小計，防止前端偽造價格
+  const itemsSubtotal = await recalculateItemsPrice(input.items)
+
+  // 伺服器端計算運費，防止前端偽造
+  const method = input.delivery_method ?? 'pickup'
+  const deliveryFee = method === 'pickup'
+    ? 0
+    : itemsSubtotal >= 2000 ? 0 : 150
+
+  // 優惠碼折扣驗證（若有傳入）
+  let discountAmount = 0
+  if (input.promo_code) {
+    const promoResult = await validatePromoCode(
+      input.promo_code.toUpperCase().trim(),
+      itemsSubtotal
+    )
+    if (!promoResult.valid) {
+      throw new Error(promoResult.message || '優惠碼無效')
+    }
+    discountAmount = promoResult.discount_amount
+  }
+
+  // 以伺服器計算結果為準，前端傳入的 total_price 只作參考
+  const originalPrice = itemsSubtotal + deliveryFee
+  const finalPrice = Math.max(0, originalPrice - discountAmount)
 
   const orderId = `ORD${Date.now()}`
 
@@ -128,8 +180,7 @@ export async function applyPromoCode(
   code: string,
   subtotal: number
 ): Promise<PromoCodeValidation> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  return validatePromoCode(code.toUpperCase().trim(), subtotal)
 }
 
 /**
@@ -138,8 +189,7 @@ export async function applyPromoCode(
  * @returns Order 陣列
  */
 export async function getUserOrders(userId: string): Promise<Order[]> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  return findOrdersByUserId(userId)
 }
 
 /**
@@ -151,6 +201,6 @@ export async function cancelOrder(
   orderId: string,
   requesterId: string
 ): Promise<void> {
-  // TODO: implement
+  // TODO: implement — 需確認訂單屬於 requesterId 且狀態為 pending
   throw new Error('Not implemented')
 }

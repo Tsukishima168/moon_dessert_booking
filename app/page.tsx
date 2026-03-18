@@ -7,7 +7,7 @@ import ProductListItem from '@/components/ProductListItem';
 import ProductRow from '@/components/ProductRow';
 import Banner from '@/components/Banner';
 import { MenuItemWithVariants, MenuCategory } from '@/lib/supabase';
-import { Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { Loader2, AlertCircle, Sparkles, Search, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -20,6 +20,15 @@ export default function HomePage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // 前端搜尋過濾（不重新呼叫 API）
+  const filteredMenuItems = searchQuery.trim()
+    ? menuItems.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
+        (item.description?.toLowerCase().includes(searchQuery.trim().toLowerCase()) ?? false)
+      )
+    : menuItems;
 
   // 取得菜單資料和分類
   useEffect(() => {
@@ -59,13 +68,13 @@ export default function HomePage() {
     fetchData();
   }, [mbtiType]);
 
-  // 按分類分組商品
+  // 按分類分組商品（依搜尋結果過濾）
   const getItemsByCategory = (categoryId: string) => {
-    return menuItems.filter((item) => item.category === categoryId);
+    return filteredMenuItems.filter((item) => item.category === categoryId);
   };
 
-  // 取得推薦商品
-  const recommendedItems = menuItems.filter(item => item.recommended);
+  // 取得推薦商品（依搜尋結果過濾）
+  const recommendedItems = filteredMenuItems.filter(item => item.recommended);
 
   // 來源感知（from: moon-map / passport / lab）
   const fromSource = searchParams?.get('from');
@@ -273,10 +282,38 @@ export default function HomePage() {
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16"
       >
         {/* 選購引導（不擅長網路的人也能輕鬆跟上） */}
-        <div className="mb-8 sm:mb-12 p-4 sm:p-6 border border-moon-border/60 bg-moon-dark/30">
+        <div className="mb-6 p-4 sm:p-6 border border-moon-border/60 bg-moon-dark/30">
           <p className="text-xs sm:text-sm text-moon-muted text-center leading-relaxed">
             <span className="text-moon-accent">三步驟完成預訂：</span>① 選擇喜歡的甜點與規格 → ② 點「加入購物車」→ ③ 前往結帳填寫資料
           </p>
+        </div>
+
+        {/* 搜尋列 */}
+        <div className="mb-8 sm:mb-12">
+          <div className="relative max-w-md mx-auto">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-moon-muted pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="搜尋甜點..."
+              className="w-full pl-9 pr-8 py-2.5 bg-moon-dark border border-moon-border text-moon-text text-sm placeholder-moon-muted focus:outline-none focus:border-moon-accent transition"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-moon-muted hover:text-moon-text"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="text-center text-xs text-moon-muted mt-2">
+              找到 {filteredMenuItems.length} 款符合「{searchQuery}」的商品
+            </p>
+          )}
         </div>
 
         {/* MBTI 推薦區塊 - 卡片式展示 */}
@@ -318,8 +355,8 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 本季精選（無 MBTI 時顯示前幾項推薦或熱門） */}
-        {!mbtiType && menuItems.length > 0 && (
+        {/* 本季精選（無 MBTI 且無搜尋時顯示前幾項推薦或熱門） */}
+        {!mbtiType && !searchQuery && menuItems.length > 0 && (
           <div className="mb-16 sm:mb-24">
             <div className="mb-8 sm:mb-12 text-center">
               <div className="flex items-center justify-center gap-3 sm:gap-6 mb-3 sm:mb-4">
@@ -359,20 +396,26 @@ export default function HomePage() {
         )}
 
         {categories.length === 0 ? (
-          // 如果沒有分類，顯示所有商品
+          // 如果沒有分類，顯示所有商品（依搜尋結果）
           <>
-            {/* Mobile: 列表式 */}
-            <div className="md:hidden border border-moon-border bg-moon-dark">
-              {menuItems.map((item) => (
-                <ProductListItem key={item.id} item={item} />
-              ))}
-            </div>
-            {/* Desktop: Row List */}
-            <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
-              {menuItems.map((item, i) => (
-                <ProductRow key={item.id} item={item} index={i} />
-              ))}
-            </div>
+            {filteredMenuItems.length === 0 && searchQuery ? (
+              <p className="text-center text-moon-muted py-12">沒有符合的商品</p>
+            ) : (
+              <>
+                {/* Mobile: 列表式 */}
+                <div className="md:hidden border border-moon-border bg-moon-dark">
+                  {filteredMenuItems.map((item) => (
+                    <ProductListItem key={item.id} item={item} />
+                  ))}
+                </div>
+                {/* Desktop: Row List */}
+                <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
+                  {filteredMenuItems.map((item, i) => (
+                    <ProductRow key={item.id} item={item} index={i} />
+                  ))}
+                </div>
+              </>
+            )}
           </>
         ) : (
           // 按分類分組顯示

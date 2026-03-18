@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMenuItemAvailability } from '@/src/services/product.service'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/check-menu-availability?date=YYYY-MM-DD&menu_item_id=uuid
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
+    const { searchParams } = req.nextUrl
     const date = searchParams.get('date')
     const menuItemId = searchParams.get('menu_item_id')
 

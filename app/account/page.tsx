@@ -3,8 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { User, LogOut, ShoppingBag, Calendar, DollarSign, Loader2 } from 'lucide-react';
+import { User, LogOut, ShoppingBag, Calendar, DollarSign, Loader2, Star, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+
+interface AuthUser {
+  id: string;
+  email?: string;
+}
 
 interface Order {
   id: string;
@@ -37,9 +42,10 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function AccountPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [points, setPoints] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -51,38 +57,36 @@ export default function AccountPage() {
     try {
       setLoading(true);
 
-      // 取得當前用戶
-      const {
-        data: { user: sessionUser },
-      } = await supabase.auth.getUser();
+      // 取得當前 Auth 用戶（僅驗證身份，不查 DB）
+      const { data: { user: sessionUser } } = await supabase.auth.getUser();
 
       if (!sessionUser) {
         router.push(`/auth/login?redirect=/account`);
         return;
       }
 
-      setUser(sessionUser);
+      setUser({ id: sessionUser.id, email: sessionUser.email });
 
-      // 取得用戶資料
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', sessionUser.id)
-        .single();
+      // 透過 API 取得 profile、訂單、點數（不直接查 DB）
+      const [profileRes, ordersRes, pointsRes] = await Promise.all([
+        fetch('/api/user/profile'),
+        fetch('/api/user/orders'),
+        fetch('/api/user/points'),
+      ]);
 
-      if (profileData) {
+      if (profileRes.ok) {
+        const profileData: Profile = await profileRes.json();
         setProfile(profileData);
       }
 
-      // 取得用戶訂單
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', sessionUser.id)
-        .order('created_at', { ascending: false });
-
-      if (ordersData) {
+      if (ordersRes.ok) {
+        const ordersData: Order[] = await ordersRes.json();
         setOrders(ordersData);
+      }
+
+      if (pointsRes.ok) {
+        const pointsData: { points: number } = await pointsRes.json();
+        setPoints(pointsData.points);
       }
     } catch (error) {
       console.error('載入用戶資料錯誤:', error);
@@ -154,6 +158,22 @@ export default function AccountPage() {
               <p className="text-xs text-moon-muted mt-4">
                 會員加入於 {new Date(profile?.created_at || '').toLocaleDateString('zh-TW')}
               </p>
+            </div>
+            {/* 點數顯示 — 與 Passport 會員中心共用 profiles.points */}
+            <div className="text-right">
+              <div className="flex items-center gap-1 text-moon-accent font-semibold">
+                <Star size={16} fill="currentColor" />
+                <span>{points ?? '–'}</span>
+              </div>
+              <p className="text-xs text-moon-muted mt-0.5">點數</p>
+              <Link
+                href="https://passport.kiwimu.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-xs text-moon-muted hover:text-moon-accent transition"
+              >
+                會員護照 <ExternalLink size={12} />
+              </Link>
             </div>
           </div>
         </div>

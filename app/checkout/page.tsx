@@ -89,16 +89,15 @@ export default function CheckoutPage() {
   // Auth State
   const [loggedInUser, setLoggedInUser] = useState<{ email: string; id: string } | null>(null);
 
-  // 從 profiles 表載入用戶資料
-  const loadUserProfile = async (userId: string, email: string) => {
+  // 從 API 載入用戶資料（不直接查 DB）
+  const loadUserProfile = async (_userId: string, email: string) => {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, phone')
-        .eq('id', userId)
-        .single();
-      if (profile?.full_name) setValue('customer_name', profile.full_name);
-      if (profile?.phone) setValue('phone', profile.phone);
+      const res = await fetch('/api/user/profile');
+      if (res.ok) {
+        const profile: { full_name?: string; phone?: string } = await res.json();
+        if (profile?.full_name) setValue('customer_name', profile.full_name);
+        if (profile?.phone) setValue('phone', profile.phone);
+      }
     } catch { }
     setValue('email', email);
   };
@@ -436,14 +435,13 @@ export default function CheckoutPage() {
         setConfirmedName(data.customer_name);
         setConfirmedAmount(finalPrice);
         setConfirmedEmail(data.email);
-        // 儲存姓名電話到 profiles（登入用戶）
+        // 儲存姓名電話到 profiles（登入用戶）—— 透過 API 不直接寫 DB
         if (loggedInUser?.id) {
-          supabase.from('profiles').upsert({
-            id: loggedInUser.id,
-            full_name: data.customer_name,
-            phone: data.phone,
-            updated_at: new Date().toISOString(),
-          }).then(() => { });
+          fetch('/api/user/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ full_name: data.customer_name, phone: data.phone }),
+          }).catch(() => { });
         }
         setOrderSuccess(true);
         clearCart();
