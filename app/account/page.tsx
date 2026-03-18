@@ -6,6 +6,11 @@ import { supabase } from '@/lib/supabase';
 import { User, LogOut, ShoppingBag, Calendar, DollarSign, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
+interface AuthUser {
+  id: string;
+  email?: string;
+}
+
 interface Order {
   id: string;
   order_id: string;
@@ -37,7 +42,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function AccountPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,37 +56,29 @@ export default function AccountPage() {
     try {
       setLoading(true);
 
-      // 取得當前用戶
-      const {
-        data: { user: sessionUser },
-      } = await supabase.auth.getUser();
+      // 取得當前 Auth 用戶（僅驗證身份，不查 DB）
+      const { data: { user: sessionUser } } = await supabase.auth.getUser();
 
       if (!sessionUser) {
         router.push(`/auth/login?redirect=/account`);
         return;
       }
 
-      setUser(sessionUser);
+      setUser({ id: sessionUser.id, email: sessionUser.email });
 
-      // 取得用戶資料
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', sessionUser.id)
-        .single();
+      // 透過 API 取得 profile 與訂單（不直接查 DB）
+      const [profileRes, ordersRes] = await Promise.all([
+        fetch('/api/user/profile'),
+        fetch('/api/user/orders'),
+      ]);
 
-      if (profileData) {
+      if (profileRes.ok) {
+        const profileData: Profile = await profileRes.json();
         setProfile(profileData);
       }
 
-      // 取得用戶訂單
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', sessionUser.id)
-        .order('created_at', { ascending: false });
-
-      if (ordersData) {
+      if (ordersRes.ok) {
+        const ordersData: Order[] = await ordersRes.json();
         setOrders(ordersData);
       }
     } catch (error) {

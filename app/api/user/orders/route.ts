@@ -1,34 +1,23 @@
 import { createClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
+import { getUserOrders } from '@/src/services/order.service';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const supabase = createClient();
 
-    // 取得當前用戶
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 查詢用戶訂單
-    const { data: orders, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const orders = await getUserOrders(user.id);
 
-    if (error) throw error;
-
-    return NextResponse.json(orders || []);
-  } catch (error: any) {
+    return NextResponse.json(orders);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch orders';
     console.error('查詢訂單錯誤:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch orders' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

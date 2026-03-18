@@ -24,13 +24,20 @@ function getTomorrowDate(): string {
 // GET: 執行取貨提醒
 export async function GET(request: Request) {
     try {
-        // 驗證 Cron Secret（Vercel 會自動帶上這個 header）
+        // 驗證 Cron Secret（Vercel 自動帶 Authorization header）
         const authHeader = request.headers.get('authorization');
         const cronSecret = process.env.CRON_SECRET;
 
-        // 如果設定了 CRON_SECRET，就驗證
-        if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-            console.warn('未授權的 Cron 請求');
+        // CRON_SECRET 為必填，未設定時直接拒絕所有請求
+        if (!cronSecret) {
+            console.error('[cron] CRON_SECRET 未設定，拒絕所有請求');
+            return NextResponse.json(
+                { success: false, message: '服務未設定' },
+                { status: 503 }
+            );
+        }
+        if (authHeader !== `Bearer ${cronSecret}`) {
+            console.warn('[cron] 未授權的請求');
             return NextResponse.json(
                 { success: false, message: '未授權' },
                 { status: 401 }

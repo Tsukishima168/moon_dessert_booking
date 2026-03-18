@@ -135,8 +135,14 @@ export async function updateOrder(
  * @returns Order 陣列
  */
 export async function findOrdersByUserId(userId: string): Promise<Order[]> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient
+    .from('orders')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data || []) as Order[]
 }
 
 /**
@@ -148,8 +154,12 @@ export async function updateOrderStatus(
   orderId: string,
   status: string
 ): Promise<void> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
+    .from('orders')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('order_id', orderId)
+  if (error) throw error
 }
 
 /**
@@ -158,8 +168,14 @@ export async function updateOrderStatus(
  * @returns 訂單數量
  */
 export async function countConfirmedOrdersByDate(date: string): Promise<number> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  const adminClient = createAdminClient()
+  const { count, error } = await adminClient
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .like('pickup_time', `${date}%`)
+    .in('status', ['pending', 'paid', 'confirmed', 'preparing', 'ready'])
+  if (error) throw error
+  return count ?? 0
 }
 
 /**
