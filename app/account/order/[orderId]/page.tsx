@@ -51,6 +51,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (orderId) {
@@ -80,6 +81,28 @@ export default function OrderDetailPage() {
       setError('加載訂單出錯');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!order || !window.confirm('確定要取消這筆訂單嗎？')) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/user/orders/${orderId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel' }),
+      });
+      const data = await res.json() as { success?: boolean; error?: string; message?: string };
+      if (!res.ok) {
+        alert(data.error || '取消失敗，請稍後再試');
+        return;
+      }
+      setOrder(prev => prev ? { ...prev, status: 'cancelled' } : prev);
+    } catch {
+      alert('取消訂單發生錯誤');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -141,8 +164,20 @@ export default function OrderDetailPage() {
               <h1 className="text-3xl font-bold text-gray-800 mb-2">訂單詳情</h1>
               <p className="text-gray-600">訂單編號: <span className="font-mono font-bold text-pink-600">{order.order_id}</span></p>
             </div>
-            <div className={`px-4 py-2 rounded-lg font-semibold ${statusInfo.color}`}>
-              {statusInfo.icon} {statusInfo.label}
+            <div className="flex flex-col items-end gap-2">
+              <div className={`px-4 py-2 rounded-lg font-semibold ${statusInfo.color}`}>
+                {statusInfo.icon} {statusInfo.label}
+              </div>
+              {/* 取消訂單按鈕（僅 pending 狀態可用） */}
+              {order.status === 'pending' && (
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className="text-xs px-3 py-1.5 border border-red-300 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 transition"
+                >
+                  {cancelling ? '取消中...' : '取消訂單'}
+                </button>
+              )}
             </div>
           </div>
 
