@@ -33,7 +33,7 @@ BEGIN
   INSERT INTO public.profiles (
     id,
     email,
-    full_name,
+    display_name,
     avatar_url,
     created_at
   )
@@ -49,9 +49,9 @@ BEGIN
     NOW()
   )
   ON CONFLICT (id) DO UPDATE SET
-    email      = EXCLUDED.email,
-    full_name  = COALESCE(profiles.full_name, EXCLUDED.full_name),
-    avatar_url = COALESCE(profiles.avatar_url, EXCLUDED.avatar_url);
+    email        = EXCLUDED.email,
+    display_name = COALESCE(profiles.display_name, EXCLUDED.display_name),
+    avatar_url   = COALESCE(profiles.avatar_url, EXCLUDED.avatar_url);
 
   RETURN NEW;
 END;
@@ -67,7 +67,7 @@ CREATE TRIGGER on_auth_user_created
 
 -- ── 4. 補建歷史用戶（已存在 auth.users 但沒有 profiles 的） ──
 
-INSERT INTO public.profiles (id, email, full_name, avatar_url, created_at)
+INSERT INTO public.profiles (id, email, display_name, avatar_url, created_at)
 SELECT
   u.id,
   u.email,

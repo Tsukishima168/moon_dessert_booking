@@ -12,7 +12,7 @@ CREATE OR REPLACE VIEW public.v_user_journey AS
 SELECT
   p.id                                        AS user_id,
   p.email,
-  p.full_name,
+  p.display_name,
   p.mbti_type,
   p.first_site,
   p.last_seen_site,

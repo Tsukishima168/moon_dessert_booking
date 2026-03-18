@@ -14,9 +14,7 @@ CREATE INDEX IF NOT EXISTS idx_point_transactions_user_id
   ON public.point_transactions(user_id);
 
 -- ── 2. point_logs 加 source_site（Shop 用） ───────────────
-
-ALTER TABLE public.point_logs
-  ADD COLUMN IF NOT EXISTS source_site TEXT DEFAULT 'shop';
+-- point_logs 不存在（Shop 用 insert_user_event_for_user 取代），跳過
 
 -- ── 3. 統一 View：v_point_history ─────────────────────────
 -- 供 Passport 積分頁、後台報表使用
@@ -33,21 +31,7 @@ SELECT
   pt.description,
   COALESCE(pt.source, 'passport')     AS source_site,
   pt.created_at
-FROM public.point_transactions pt
-
-UNION ALL
-
--- point_logs（Shop）
-SELECT
-  pl.id,
-  pl.user_id,
-  NULL                                AS device_id,
-  pl.amount,
-  pl.reason,
-  COALESCE(pl.metadata->>'description', pl.reason) AS description,
-  COALESCE(pl.source_site, 'shop')    AS source_site,
-  pl.created_at
-FROM public.point_logs pl;
+FROM public.point_transactions pt;
 
 -- ── 4. 跨站積分總覽 View（每位登入用戶） ─────────────────
 
