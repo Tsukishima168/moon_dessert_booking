@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { User, LogOut, ShoppingBag, Calendar, DollarSign, Loader2 } from 'lucide-react';
+import { User, LogOut, ShoppingBag, Calendar, DollarSign, Loader2, Star, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
 interface AuthUser {
@@ -45,6 +45,7 @@ export default function AccountPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [points, setPoints] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -66,10 +67,11 @@ export default function AccountPage() {
 
       setUser({ id: sessionUser.id, email: sessionUser.email });
 
-      // 透過 API 取得 profile 與訂單（不直接查 DB）
-      const [profileRes, ordersRes] = await Promise.all([
+      // 透過 API 取得 profile、訂單、點數（不直接查 DB）
+      const [profileRes, ordersRes, pointsRes] = await Promise.all([
         fetch('/api/user/profile'),
         fetch('/api/user/orders'),
+        fetch('/api/user/points'),
       ]);
 
       if (profileRes.ok) {
@@ -80,6 +82,11 @@ export default function AccountPage() {
       if (ordersRes.ok) {
         const ordersData: Order[] = await ordersRes.json();
         setOrders(ordersData);
+      }
+
+      if (pointsRes.ok) {
+        const pointsData: { points: number } = await pointsRes.json();
+        setPoints(pointsData.points);
       }
     } catch (error) {
       console.error('載入用戶資料錯誤:', error);
@@ -151,6 +158,22 @@ export default function AccountPage() {
               <p className="text-xs text-moon-muted mt-4">
                 會員加入於 {new Date(profile?.created_at || '').toLocaleDateString('zh-TW')}
               </p>
+            </div>
+            {/* 點數顯示 — 與 Passport 會員中心共用 profiles.points */}
+            <div className="text-right">
+              <div className="flex items-center gap-1 text-moon-accent font-semibold">
+                <Star size={16} fill="currentColor" />
+                <span>{points ?? '–'}</span>
+              </div>
+              <p className="text-xs text-moon-muted mt-0.5">點數</p>
+              <Link
+                href="https://passport.kiwimu.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-xs text-moon-muted hover:text-moon-accent transition"
+              >
+                會員護照 <ExternalLink size={12} />
+              </Link>
             </div>
           </div>
         </div>

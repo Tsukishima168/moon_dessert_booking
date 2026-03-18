@@ -95,9 +95,11 @@ export async function createOrder(
   // 伺服器端重新計算商品小計，防止前端偽造價格
   const itemsSubtotal = await recalculateItemsPrice(input.items)
 
-  const deliveryFee = input.delivery_fee
-    ? parseFloat(String(input.delivery_fee))
-    : 0
+  // 伺服器端計算運費，防止前端偽造
+  const method = input.delivery_method ?? 'pickup'
+  const deliveryFee = method === 'pickup'
+    ? 0
+    : itemsSubtotal >= 2000 ? 0 : 150
 
   // 優惠碼折扣驗證（若有傳入）
   let discountAmount = 0
