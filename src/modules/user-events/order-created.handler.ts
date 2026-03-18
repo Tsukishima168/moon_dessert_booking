@@ -3,7 +3,7 @@
  * EventBus 'order.created' → 寫入 user_events
  * Phase 2：跨站行為追蹤
  */
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 interface OrderCreatedPayload {
   order: {
