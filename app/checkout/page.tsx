@@ -55,6 +55,8 @@ export default function CheckoutPage() {
   const [confirmedName, setConfirmedName] = useState('');
   const [confirmedAmount, setConfirmedAmount] = useState(0);
   const [linePayUrl, setLinePayUrl] = useState('');
+  const [savedItems, setSavedItems] = useState<Array<{ name: string; quantity: number; price: number }>>([]);
+  const [isLinePayLoading, setIsLinePayLoading] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
@@ -358,6 +360,9 @@ export default function CheckoutPage() {
       if (result.success) {
         const newOrderId = result.order_id;
         setOrderId(newOrderId);
+        setConfirmedName(data.customer_name);
+        setConfirmedAmount(finalPrice);
+        setSavedItems(items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })));
         // 儲存姓名電話到 profiles（登入用戶）
         if (loggedInUser?.id) {
           supabase.from('profiles').upsert({
@@ -428,6 +433,28 @@ export default function CheckoutPage() {
     }
   };
 
+  // LINE Pay 付款跳轉
+  const handleLinePayRedirect = async () => {
+    setIsLinePayLoading(true);
+    try {
+      const res = await fetch('/api/payment/linepay/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, amount: confirmedAmount, items: savedItems }),
+      });
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        alert(`LINE Pay 發起失敗：${data.message}`);
+      }
+    } catch {
+      alert('LINE Pay 連線失敗，請改用轉帳付款');
+    } finally {
+      setIsLinePayLoading(false);
+    }
+  };
+
   // 驗證優惠碼邏輯 (略過 UI 顯示部分直接用)
   const handleValidatePromo = async () => {
     if (!promoInput.trim()) return;
@@ -477,9 +504,18 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* 付款說明 */}
+          {/* LINE Pay 按鈕（主要付款） */}
+          <button
+            onClick={handleLinePayRedirect}
+            disabled={isLinePayLoading}
+            className="flex items-center justify-center gap-2 w-full bg-[#00B900] hover:bg-[#00a000] disabled:opacity-50 text-white py-4 tracking-widest text-sm transition-colors"
+          >
+            {isLinePayLoading ? '跳轉中…' : '立即用 LINE Pay 付款 →'}
+          </button>
+
+          {/* 轉帳備用方案 */}
           <div className="border border-moon-border/20 p-4 space-y-2 bg-moon-dark/20">
-            <p className="text-xs text-moon-muted tracking-wider mb-2">— 付款方式 —</p>
+            <p className="text-xs text-moon-muted tracking-wider mb-2">— 或改用轉帳 —</p>
             <p className="text-sm text-moon-text">LINE Bank（824）連線商業銀行</p>
             <p className="text-sm text-moon-text">帳號：111007479473</p>
             <p className="text-xs text-moon-muted mt-2">
@@ -488,13 +524,13 @@ export default function CheckoutPage() {
             <p className="text-xs text-moon-muted">完成後請在 LINE 回傳後五碼</p>
           </div>
 
-          {/* LINE 按鈕（手動觸發） */}
+          {/* LINE 訊息按鈕（轉帳用） */}
           {linePayUrl && (
             <a
               href={linePayUrl}
-              className="flex items-center justify-center gap-2 w-full bg-[#00B900] hover:bg-[#00a000] text-white py-4 tracking-widest text-sm transition-colors"
+              className="flex items-center justify-center gap-2 w-full border border-[#00B900]/40 text-[#00B900] hover:bg-[#00B900]/10 py-3 tracking-widest text-sm transition-colors"
             >
-              前往 LINE 完成確認 →
+              前往 LINE 回報轉帳 →
             </a>
           )}
 
