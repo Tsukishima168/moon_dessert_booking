@@ -3,7 +3,7 @@
  * EventBus 'order.created' → 寫入 user_events
  * Phase 2：跨站行為追蹤
  */
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 interface OrderCreatedPayload {
   order: {
@@ -17,10 +17,10 @@ interface OrderCreatedPayload {
 }
 
 export async function handleOrderCreatedUserEvent(
-  payload: OrderCreatedPayload
+  payload: Record<string, unknown>
 ): Promise<void> {
-  const { order } = payload
-  if (!order.user_id) return  // 訪客訂單，無 user_id，略過
+  const order = (payload as unknown as OrderCreatedPayload).order
+  if (!order?.user_id) return  // 訪客訂單，無 user_id，略過
 
   try {
     const admin = createAdminClient()
