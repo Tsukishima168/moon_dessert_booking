@@ -1,11 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2, Mail, ArrowRight, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
+import { ensureServerSession } from '@/lib/client-auth';
 
 export default function LoginPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -19,15 +24,29 @@ export default function LoginPage() {
         }
     }, [cooldown]);
 
+    useEffect(() => {
+        const restoreLogin = async () => {
+            const user = await ensureServerSession(4, 200);
+            if (!user) return;
+
+            const redirect = searchParams?.get('redirect') || '/account';
+            router.replace(redirect);
+        };
+
+        void restoreLogin();
+    }, [router, searchParams]);
+
     const handleGoogleLogin = async () => {
         if (loading) return;
         setLoading(true);
         setMessage(null);
         try {
+            const redirect = searchParams?.get('redirect') || '/account';
+            const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`;
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
+                    redirectTo: callbackUrl,
                 },
             });
             if (error) throw error;
@@ -46,10 +65,12 @@ export default function LoginPage() {
         setMessage(null);
 
         try {
+            const redirect = searchParams?.get('redirect') || '/account';
+            const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`;
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    emailRedirectTo: callbackUrl,
                 },
             });
 
@@ -137,7 +158,7 @@ export default function LoginPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
                                         placeholder="name@example.com"
-                                        className="w-full bg-moon-black border border-moon-border pl-10 pr-4 py-3 text-white text-sm focus:border-moon-accent outline-none transition-colors placeholder:text-gray-700"
+                                        className="w-full bg-moon-black border border-moon-border pl-10 pr-4 py-3 text-moon-text text-sm focus:border-moon-accent outline-none transition-colors placeholder:text-moon-muted"
                                     />
                                 </div>
                             </div>
@@ -150,7 +171,7 @@ export default function LoginPage() {
                             <button
                                 type="submit"
                                 disabled={loading || cooldown > 0}
-                                className="w-full bg-moon-accent text-moon-black py-3 text-sm tracking-widest font-medium hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+                                className="w-full bg-moon-accent text-moon-black py-3 text-sm tracking-widest font-medium hover:bg-moon-text transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
                             >
                                 {loading ? (
                                     <Loader2 className="animate-spin w-4 h-4" />
@@ -176,7 +197,7 @@ export default function LoginPage() {
                             <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <CheckCircle className="w-8 h-8 text-green-500" />
                             </div>
-                            <h3 className="text-xl text-white font-light">
+                            <h3 className="text-xl text-moon-text font-light">
                                 Check Your Email
                             </h3>
                             <p className="text-moon-muted text-sm leading-relaxed">
@@ -186,7 +207,7 @@ export default function LoginPage() {
                                 <p>沒收到信？請檢查垃圾郵件夾，或</p>
                                 <button
                                     onClick={() => { setMessage(null); setCooldown(0); }}
-                                    className="text-white underline hover:text-moon-accent mt-1"
+                                    className="mt-1 text-moon-text underline hover:text-moon-accent"
                                 >
                                     重新輸入 Email
                                 </button>
@@ -197,7 +218,7 @@ export default function LoginPage() {
 
                 {/* Footer */}
                 <div className="text-center">
-                    <Link href="/" className="text-xs text-moon-muted hover:text-white transition-colors">
+                    <Link href="/" className="text-xs text-moon-muted hover:text-moon-accent transition-colors">
                         ← Back to Home
                     </Link>
                 </div>

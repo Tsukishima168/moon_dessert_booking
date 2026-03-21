@@ -6,7 +6,8 @@ import Navbar from '@/components/Navbar';
 import CartSidebar from '@/components/CartSidebar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import FacebookPixel from '@/components/FacebookPixel';
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 // 網站基本資訊（計畫1：安南區・果菜市場・本原街在地）
 const siteConfig = {
@@ -84,11 +85,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-TW">
+    <html lang="zh-TW" className="font-sans" suppressHydrationWarning>
       <head>
         {/* Viewport and theme */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#0A0A0A" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('moonmoon-theme');
+                  var resolved = theme === 'light' ? 'light' : 'dark';
+                  document.documentElement.dataset.theme = resolved;
+                  document.documentElement.style.colorScheme = resolved;
+                } catch (error) {
+                  document.documentElement.dataset.theme = 'dark';
+                  document.documentElement.style.colorScheme = 'dark';
+                }
+              })();
+            `,
+          }}
+        />
 
         {/* JSON-LD Structured Data - LocalBusiness */}
         <script

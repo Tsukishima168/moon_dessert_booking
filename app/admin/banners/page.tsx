@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff, Plus, Edit, Trash2, BarChart3 } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
+import { LoadingState } from '@/components/shared/loading-state';
+import { PageHeader } from '@/components/shared/page-header';
+import { SearchFilterBar } from '@/components/shared/search-filter-bar';
 
 interface Banner {
     id: string;
@@ -28,6 +32,8 @@ export default function BannersAdminPage() {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
 
     useEffect(() => {
         fetchBanners();
@@ -100,50 +106,99 @@ export default function BannersAdminPage() {
         fetchBanners();
     };
 
+    const filteredBanners = banners.filter((banner) => {
+        const matchesSearch = !searchTerm || [
+            banner.title,
+            banner.description,
+            banner.link_text,
+        ].some((value) => value?.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesStatus = statusFilter === 'all'
+            || (statusFilter === 'active' && banner.is_active)
+            || (statusFilter === 'inactive' && !banner.is_active);
+        return matchesSearch && matchesStatus;
+    });
+
+    const activeCount = banners.filter(banner => banner.is_active).length;
+    const inactiveCount = banners.length - activeCount;
+    const heroCount = banners.filter(banner => banner.display_type === 'hero').length;
+    const announcementCount = banners.filter(banner => banner.display_type === 'announcement').length;
+
     if (loading) {
-        return (
-            <div className="min-h-screen bg-moon-black flex items-center justify-center">
-                <div className="text-moon-muted">載入中...</div>
-            </div>
-        );
+        return <LoadingState fullScreen text="載入 Banner 中..." className="bg-moon-black" />;
     }
 
     return (
         <div className="min-h-screen bg-moon-black p-6">
-            <div className="max-w-6xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-2xl font-light text-moon-accent tracking-wider mb-2">
-                            📢 Banner 管理
-                        </h1>
-                        <p className="text-sm text-moon-muted">
-                            管理首頁 Banner 和促銷活動
-                        </p>
-                    </div>
-                    <button
-                        onClick={handleCreate}
-                        className="flex items-center gap-2 bg-moon-accent text-moon-black px-6 py-3 hover:bg-moon-text transition-colors"
-                    >
-                        <Plus size={20} />
-                        新增 Banner
-                    </button>
+            <div className="max-w-6xl mx-auto space-y-6">
+                <PageHeader
+                    title="Banner 管理"
+                    description="管理首頁 Banner 與促銷露出。"
+                    meta={`目前 ${filteredBanners.length} 筆`}
+                    action={(
+                        <button
+                            onClick={handleCreate}
+                            className="flex items-center gap-2 bg-moon-accent text-moon-black px-6 py-3 hover:bg-moon-text transition-colors"
+                        >
+                            <Plus size={20} />
+                            新增 Banner
+                        </button>
+                    )}
+                />
+
+                <SearchFilterBar
+                    searchValue={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    searchPlaceholder="搜尋 Banner 標題或描述"
+                    filters={[
+                        { value: 'all', label: '全部' },
+                        { value: 'active', label: '啟用中' },
+                        { value: 'inactive', label: '已停用' },
+                    ]}
+                    activeFilter={statusFilter}
+                    onFilterChange={setStatusFilter}
+                />
+
+                <div className="grid gap-4 md:grid-cols-4">
+                    <BannerSummaryCard
+                        label="前台顯示中"
+                        value={`${activeCount} 筆`}
+                        description={activeCount > 0 ? '至少會顯示 1 個 active Banner' : '目前前台不會顯示任何 Banner'}
+                    />
+                    <BannerSummaryCard
+                        label="已關閉"
+                        value={`${inactiveCount} 筆`}
+                        description="這些 Banner 會保留在後台，但前台不會看到"
+                    />
+                    <BannerSummaryCard
+                        label="Hero Banner"
+                        value={`${heroCount} 筆`}
+                        description="大型主視覺橫幅"
+                    />
+                    <BannerSummaryCard
+                        label="公告條"
+                        value={`${announcementCount} 筆`}
+                        description="頂部簡短提示用"
+                    />
                 </div>
 
                 {/* Banner List */}
-                {banners.length === 0 ? (
-                    <div className="border border-moon-border p-12 text-center">
-                        <p className="text-moon-muted mb-4">尚無 Banner</p>
-                        <button
-                            onClick={handleCreate}
-                            className="text-moon-accent hover:underline"
-                        >
-                            建立第一個 Banner →
-                        </button>
-                    </div>
+                {filteredBanners.length === 0 ? (
+                    <EmptyState
+                        title={banners.length === 0 ? '尚無 Banner' : '沒有符合條件的 Banner'}
+                        description={banners.length === 0 ? '如果你暫時不想在首頁放任何橫幅，也可以維持空白。' : '可以調整搜尋字或篩選條件再試一次。'}
+                        className="border-moon-border bg-moon-dark/20"
+                        action={banners.length === 0 ? (
+                            <button
+                                onClick={handleCreate}
+                                className="text-moon-accent hover:underline"
+                            >
+                                建立第一個 Banner →
+                            </button>
+                        ) : undefined}
+                    />
                 ) : (
                     <div className="space-y-4">
-                        {banners.map((banner) => (
+                        {filteredBanners.map((banner) => (
                             <BannerCard
                                 key={banner.id}
                                 banner={banner}
@@ -184,6 +239,10 @@ function BannerCard({
     const ctr = banner.view_count > 0
         ? ((banner.click_count / banner.view_count) * 100).toFixed(1)
         : '0';
+    const visibilityLabel = banner.is_active ? '顯示中' : '已關閉';
+    const visibilityTone = banner.is_active
+        ? 'border-green-500/30 bg-green-500/10 text-green-400'
+        : 'border-moon-border bg-moon-border/10 text-moon-muted';
 
     return (
         <div className="border border-moon-border bg-moon-dark/30 p-6">
@@ -215,15 +274,9 @@ function BannerCard({
                                 <h3 className="text-lg text-moon-text font-light">
                                     {banner.title}
                                 </h3>
-                                {banner.is_active ? (
-                                    <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 border border-green-500/30">
-                                        啟用中
-                                    </span>
-                                ) : (
-                                    <span className="text-xs px-2 py-1 bg-moon-border/20 text-moon-muted border border-moon-border">
-                                        已停用
-                                    </span>
-                                )}
+                                <span className={`border px-2 py-1 text-xs ${visibilityTone}`}>
+                                    {visibilityLabel}
+                                </span>
                                 {isExpired && (
                                     <span className="text-xs px-2 py-1 bg-red-500/20 text-red-400 border border-red-500/30">
                                         已過期
@@ -241,6 +294,7 @@ function BannerCard({
                                 </p>
                             )}
                             <div className="flex items-center gap-4 text-xs text-moon-muted/60">
+                                <span>模式: {banner.display_type === 'hero' ? 'Hero' : '公告條'}</span>
                                 <span>優先級: {banner.priority}</span>
                                 {banner.start_date && (
                                     <span>開始: {new Date(banner.start_date).toLocaleDateString()}</span>
@@ -255,27 +309,40 @@ function BannerCard({
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={onToggleActive}
-                                className="p-2 border border-moon-border hover:bg-moon-border/20 transition-colors"
-                                title={banner.is_active ? '停用' : '啟用'}
+                                className={`inline-flex items-center gap-2 border px-3 py-2 text-sm transition-colors ${
+                                    banner.is_active
+                                        ? 'border-red-500/30 text-red-300 hover:bg-red-500/10'
+                                        : 'border-green-500/30 text-green-300 hover:bg-green-500/10'
+                                }`}
+                                title={banner.is_active ? '停用 Banner' : '啟用 Banner'}
                             >
-                                {banner.is_active ? <EyeOff size={18} /> : <Eye size={18} />}
+                                {banner.is_active ? <EyeOff size={16} /> : <Eye size={16} />}
+                                {banner.is_active ? '關閉顯示' : '立即顯示'}
                             </button>
                             <button
                                 onClick={onEdit}
-                                className="p-2 border border-moon-border hover:bg-moon-border/20 transition-colors"
+                                className="inline-flex items-center gap-2 border border-moon-border px-3 py-2 text-sm hover:bg-moon-border/20 transition-colors"
                                 title="編輯"
                             >
-                                <Edit size={18} />
+                                <Edit size={16} />
+                                編輯
                             </button>
                             <button
                                 onClick={onDelete}
-                                className="p-2 border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                                className="inline-flex items-center gap-2 border border-red-500/30 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                                 title="刪除"
                             >
-                                <Trash2 size={18} />
+                                <Trash2 size={16} />
+                                刪除
                             </button>
                         </div>
                     </div>
+
+                    <p className="text-xs text-moon-muted">
+                        {banner.is_active
+                            ? '這筆 Banner 目前有資格出現在前台；若同時有多筆 active，會依優先級排序只顯示第一筆。'
+                            : '這筆 Banner 目前只保留在後台，不會出現在前台。'}
+                    </p>
 
                     {/* Statistics */}
                     <div className="flex items-center gap-6 mt-4 pt-4 border-t border-moon-border/30">
@@ -435,6 +502,9 @@ function BannerForm({
 
                     {/* 樣式設定 */}
                     <div className="space-y-4 mb-6 pb-6 border-b border-moon-border">
+                        <div className="rounded border border-moon-border/60 bg-moon-black/40 px-4 py-3 text-sm text-moon-muted">
+                            若全部 Banner 都關閉，前台首頁就不會顯示任何橫幅。
+                        </div>
                         <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm text-moon-muted mb-2">背景色</label>
@@ -473,19 +543,22 @@ function BannerForm({
                                     onChange={(e) => setFormData({ ...formData, display_type: e.target.value as 'hero' | 'announcement' })}
                                     className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
                                 >
-                                    <option value="hero">Hero Banner (大型橫幅)</option>
-                                    <option value="announcement">Announcement (頂部公告)</option>
+                                    <option value="hero">Hero Banner（大型橫幅）</option>
+                                    <option value="announcement">Announcement（頂部公告）</option>
                                 </select>
                             </div>
                             <div className="flex items-end">
-                                <label className="flex items-center gap-3 cursor-pointer">
+                                <label className="flex items-center gap-3 cursor-pointer rounded border border-moon-border px-4 py-3">
                                     <input
                                         type="checkbox"
                                         checked={formData.is_active}
                                         onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                                         className="w-5 h-5"
                                     />
-                                    <span className="text-moon-text">立即啟用</span>
+                                    <div>
+                                        <p className="text-moon-text">立即顯示</p>
+                                        <p className="text-xs text-moon-muted">打開後才會進入前台排序</p>
+                                    </div>
                                 </label>
                             </div>
                         </div>
@@ -592,6 +665,24 @@ function BannerForm({
                     </div>
                 </form>
             </div>
+        </div>
+    );
+}
+
+function BannerSummaryCard({
+    label,
+    value,
+    description,
+}: {
+    label: string;
+    value: string;
+    description: string;
+}) {
+    return (
+        <div className="border border-moon-border bg-moon-dark/30 p-4">
+            <p className="text-xs tracking-widest text-moon-muted">{label}</p>
+            <p className="mt-2 text-2xl font-light text-moon-accent">{value}</p>
+            <p className="mt-2 text-xs leading-relaxed text-moon-muted">{description}</p>
         </div>
     );
 }

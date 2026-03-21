@@ -1,23 +1,37 @@
 import { createClient } from '@/lib/supabase-server';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
-import { getUserOrders } from '@/src/services/order.service';
 
 export async function GET() {
   try {
     const supabase = createClient();
 
-    const { data: { user } } = await supabase.auth.getUser();
+    // 取得當前用戶
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const orders = await getUserOrders(user.id);
+    // 使用 admin client 查詢用戶訂單（繞過 RLS）
+    const adminClient = createAdminClient();
+    const { data: orders, error } = await adminClient
+      .from('orders')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-    return NextResponse.json(orders);
+    if (error) throw error;
+
+    return NextResponse.json(orders || []);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch orders';
     console.error('查詢訂單錯誤:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    );
   }
 }

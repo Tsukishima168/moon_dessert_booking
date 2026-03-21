@@ -1,89 +1,50 @@
 import { createClient } from '@/lib/supabase-server';
-import { NextRequest, NextResponse } from 'next/server';
-import { findOrdersByUserId } from '@/src/repositories/order.repository';
-import { updateOrderStatus } from '@/src/repositories/order.repository';
+import { NextResponse } from 'next/server';
 
-type RouteContext = { params: { orderId: string } };
-
-/**
- * GET /api/user/orders/[orderId]
- * 查詢特定訂單詳細資料（僅限本人）
- * orderId 為 UUID (orders.id)
- */
 export async function GET(
-  _request: NextRequest,
-  { params }: RouteContext
+  request: Request,
+  { params }: { params: { orderId: string } }
 ) {
   try {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+
+    // 取得當前用戶
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 查詢此用戶所有訂單後，比對 UUID（防止越權）
-    const orders = await findOrdersByUserId(user.id);
-    const order = orders.find(o => o.id === params.orderId);
+    // 查詢訂單
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', params.orderId)
+      .eq('user_id', user.id)
+      .single();
 
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-
-    return NextResponse.json(order);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch order';
-    console.error('[GET /api/user/orders/[orderId]] 錯誤:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
-
-/**
- * POST /api/user/orders/[orderId]/cancel — 透過 action 欄位取消訂單
- * Body: { action: 'cancel' }
- * 僅允許取消 pending 狀態的訂單
- */
-export async function POST(
-  request: NextRequest,
-  { params }: RouteContext
-) {
-  try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json() as unknown;
-    const action = (body as { action?: unknown }).action;
-
-    if (action !== 'cancel') {
-      return NextResponse.json({ error: '不支援的操作' }, { status: 400 });
-    }
-
-    // 確認訂單屬於此用戶
-    const orders = await findOrdersByUserId(user.id);
-    const order = orders.find(o => o.id === params.orderId);
-
-    if (!order) {
-      return NextResponse.json({ error: '訂單不存在或無權限' }, { status: 404 });
-    }
-
-    // 只允許取消 pending 狀態的訂單
-    if (order.status !== 'pending') {
+    if (error || !order) {
       return NextResponse.json(
-        { error: `無法取消此訂單（目前狀態：${order.status}），請聯繫店家` },
-        { status: 422 }
+        { error: 'Order not found' },
+        { status: 404 }
       );
     }
 
-    await updateOrderStatus(order.order_id, 'cancelled');
+    // 目前正式下單流程是把 items 存在 orders.items JSON 欄位
+    // 這裡直接回傳該欄位，避免依賴不存在或未同步的 order_items 表
+    const items = Array.isArray(order.items) ? order.items : [];
 
-    return NextResponse.json({ success: true, message: '訂單已取消' });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to cancel order';
-    console.error('[POST /api/user/orders/[orderId]] 錯誤:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({
+      ...order,
+      items,
+    });
+  } catch (error: any) {
+    console.error('查詢訂單錯誤:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch order' },
+      { status: 500 }
+    );
   }
 }

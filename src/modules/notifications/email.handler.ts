@@ -16,6 +16,7 @@ export async function handleOrderCreatedEmail(
   payload: Record<string, unknown>
 ): Promise<void> {
   const order = payload.order as (Order & {
+    email?: string | null
     payment_date?: string | null
     delivery_method?: string | null
     delivery_address?: string | null
@@ -59,7 +60,7 @@ export async function handleOrderCreatedEmail(
 export async function handleOrderStatusUpdatedEmail(
   payload: Record<string, unknown>
 ): Promise<void> {
-  const order = payload.order as Order | undefined
+  const order = payload.order as (Order & { email?: string | null }) | undefined
   const oldStatus = payload.oldStatus as string | undefined
   const newStatus = payload.newStatus as string | undefined
 

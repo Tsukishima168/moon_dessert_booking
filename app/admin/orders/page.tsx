@@ -3,19 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Loader2, RefreshCw, Clock, CheckCircle, Truck, XCircle,
-  ChevronRight, Search, Download,
+  RefreshCw,
+  ChevronRight,
 } from 'lucide-react';
-
-const ORDER_STATUS = {
-  pending:   { label: '待付款',  color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  paid:      { label: '已付款',  color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
-  ready:     { label: '可取貨',  color: 'text-green-400',  bg: 'bg-green-400/10'  },
-  completed: { label: '完成',    color: 'text-moon-muted', bg: 'bg-moon-muted/10' },
-  cancelled: { label: '已取消',  color: 'text-red-400',    bg: 'bg-red-400/10'    },
-} as const;
-
-type OrderStatus = keyof typeof ORDER_STATUS;
+import { EmptyState } from '@/components/shared/empty-state';
+import { LoadingState } from '@/components/shared/loading-state';
+import { PageHeader } from '@/components/shared/page-header';
+import { SearchFilterBar } from '@/components/shared/search-filter-bar';
+import { getOrderStatusMeta, StatusBadge } from '@/components/shared/status-badge';
 
 interface OrderItem {
   name: string;
@@ -34,17 +29,8 @@ interface AdminOrder {
   total_price: number;
   status: string;
   payment_method: string | null;
-  linepay_transaction_id?: string | null;
   created_at: string;
 }
-
-const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  cash: '現金',
-  transfer: '轉帳',
-  line_pay: 'LINE Pay',
-};
-
-const PAYMENT_FILTERS = ['all', 'cash', 'transfer', 'line_pay'] as const;
 
 function buildItemsSummary(items: OrderItem[]): string {
   return items
@@ -69,10 +55,7 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [linePayGapOnly, setLinePayGapOnly] = useState(false);
-  const [exporting, setExporting] = useState(false);
 
   const load = async (status: string) => {
     setLoading(true);
@@ -92,37 +75,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => { load(statusFilter); }, [statusFilter]);
 
-  const handleExportCSV = async () => {
-    setExporting(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') params.set('status', statusFilter);
-      const qs = params.size > 0 ? `?${params.toString()}` : '';
-      const res = await fetch(`/api/admin/orders/export${qs}`);
-      if (!res.ok) throw new Error('匯出失敗');
-      const blob = await res.blob();
-      const today = new Date().toISOString().slice(0, 10);
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `orders_${today}.csv`;
-      link.click();
-      URL.revokeObjectURL(link.href);
-    } catch (e) {
-      console.error('CSV 匯出錯誤:', e);
-    } finally {
-      setExporting(false);
-    }
-  };
-
   const filtered = orders.filter(o => {
-    if (paymentFilter !== 'all' && (o.payment_method ?? '') !== paymentFilter) {
-      return false;
-    }
-
-    if (linePayGapOnly && !(o.payment_method === 'line_pay' && !o.linepay_transaction_id)) {
-      return false;
-    }
-
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -132,142 +85,61 @@ export default function AdminOrdersPage() {
     );
   });
 
-  const missingLinePayCount = orders.filter(
-    order => order.payment_method === 'line_pay' && !order.linepay_transaction_id
-  ).length;
-
   return (
     <div className="min-h-screen bg-moon-black">
       {/* Header */}
       <header className="border-b border-moon-border bg-moon-dark sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-moon-muted hover:text-moon-text transition-colors text-sm"
-            >
-              ← 後台
-            </button>
-            <span className="text-moon-border">|</span>
-            <h1 className="text-sm tracking-widest text-moon-text">訂單管理</h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => load(statusFilter)}
-              disabled={loading}
-              className="p-2 text-moon-muted hover:text-moon-accent transition-colors"
-            >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
+          <PageHeader
+            title="訂單管理"
+            description="查看、搜尋與處理目前的訂單。"
+            meta="從這裡進入單筆訂單頁做細部處理。"
+            className="flex-1"
+          />
+          <button
+            onClick={() => load(statusFilter)}
+            disabled={loading}
+            className="p-2 text-moon-muted hover:text-moon-accent transition-colors"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        {/* 篩選列 */}
-        <div className="flex flex-wrap gap-3 items-start justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-1.5">
-              {STATUS_FILTERS.map(s => {
-                const cfg = s !== 'all' ? ORDER_STATUS[s as OrderStatus] : null;
-                return (
-                  <button
-                    key={s}
-                    onClick={() => setStatusFilter(s)}
-                    className={`px-3 py-1.5 text-xs tracking-wider border transition-colors ${
-                      statusFilter === s
-                        ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
-                        : s === 'cancelled'
-                        ? 'border-red-500/30 text-red-400/70 hover:border-red-500/60'
-                        : 'border-moon-border text-moon-muted hover:border-moon-muted'
-                    }`}
-                  >
-                    {s === 'all' ? '全部狀態' : cfg?.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {PAYMENT_FILTERS.map(method => (
-                <button
-                  key={method}
-                  onClick={() => setPaymentFilter(method)}
-                  className={`px-3 py-1.5 text-xs tracking-wider border transition-colors ${
-                    paymentFilter === method
-                      ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
-                      : 'border-moon-border text-moon-muted hover:border-moon-muted'
-                  }`}
-                >
-                  {method === 'all' ? '全部付款' : PAYMENT_METHOD_LABEL[method]}
-                </button>
-              ))}
-              <button
-                onClick={() => setLinePayGapOnly(value => !value)}
-                className={`px-3 py-1.5 text-xs tracking-wider border transition-colors ${
-                  linePayGapOnly
-                    ? 'border-yellow-300/50 bg-yellow-300/10 text-yellow-300'
-                    : 'border-moon-border text-moon-muted hover:border-yellow-300/40 hover:text-yellow-300'
-                }`}
-              >
-                只看 Line Pay 未回填
-              </button>
-            </div>
-          </div>
-          {/* 搜尋 + 匯出 */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-moon-muted" />
-              <input
-                type="text"
-                placeholder="搜尋訂單號 / 姓名 / 電話"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs bg-moon-dark border border-moon-border text-moon-text placeholder:text-moon-muted/50 focus:outline-none focus:border-moon-accent w-56 transition-colors"
-              />
-            </div>
-            <button
-              onClick={handleExportCSV}
-              disabled={exporting}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-moon-border text-moon-muted hover:border-moon-accent hover:text-moon-accent transition-colors disabled:opacity-50"
-            >
-              {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-              匯出 CSV
-            </button>
-          </div>
-        </div>
+        <SearchFilterBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="搜尋訂單號 / 姓名 / 電話"
+          filters={STATUS_FILTERS.map((status) => ({
+            value: status,
+            label: status === 'all' ? '全部' : getOrderStatusMeta(status).label,
+          }))}
+          activeFilter={statusFilter}
+          onFilterChange={setStatusFilter}
+        />
 
         {/* 計數 */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-moon-muted">
-          <p>
-            共 <span className="text-moon-text">{filtered.length}</span> 筆
-          </p>
-          <p>
-            Line Pay 未回填 <span className="text-yellow-300">{missingLinePayCount}</span> 筆
-          </p>
-          {paymentFilter !== 'all' && (
-            <p>
-              付款方式：<span className="text-moon-text">{PAYMENT_METHOD_LABEL[paymentFilter]}</span>
-            </p>
-          )}
-          {linePayGapOnly && <p className="text-yellow-300">已啟用缺漏快篩</p>}
-        </div>
+        <p className="text-xs text-moon-muted">
+          共 <span className="text-moon-text">{filtered.length}</span> 筆
+        </p>
 
         {/* 表格 */}
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="animate-spin text-moon-accent" size={28} />
-          </div>
+          <LoadingState text="載入訂單中..." />
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-moon-muted text-sm">沒有符合的訂單</div>
+          <EmptyState
+            title="沒有符合的訂單"
+            description="換個篩選條件，或清空搜尋關鍵字再試一次。"
+          />
         ) : (
           <div className="border border-moon-border overflow-x-auto">
-            <table className="w-full text-xs min-w-[860px]">
+            <table className="w-full text-xs min-w-[700px]">
               <thead>
                 <tr className="border-b border-moon-border bg-moon-dark/60">
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">訂單編號</th>
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">客人</th>
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">電話</th>
-                  <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">付款資訊</th>
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">取餐時間</th>
                   <th className="text-left px-4 py-3 text-moon-muted font-normal tracking-wider">品項</th>
                   <th className="text-right px-4 py-3 text-moon-muted font-normal tracking-wider">金額</th>
@@ -277,7 +149,6 @@ export default function AdminOrdersPage() {
               </thead>
               <tbody>
                 {filtered.map((order, i) => {
-                  const statusCfg = ORDER_STATUS[order.status as OrderStatus] ?? ORDER_STATUS.pending;
                   const price = order.final_price ?? order.total_price ?? 0;
                   return (
                     <tr
@@ -292,18 +163,6 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-4 py-3 text-moon-text">{order.customer_name}</td>
                       <td className="px-4 py-3 text-moon-muted">{order.phone}</td>
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <p className="text-moon-text">
-                            {PAYMENT_METHOD_LABEL[order.payment_method || ''] || '未設定'}
-                          </p>
-                          {order.payment_method === 'line_pay' && (
-                            <p className={`text-[11px] font-mono ${order.linepay_transaction_id ? 'text-moon-accent' : 'text-yellow-300'}`}>
-                              {order.linepay_transaction_id || '待回填交易號'}
-                            </p>
-                          )}
-                        </div>
-                      </td>
                       <td className="px-4 py-3 text-moon-muted whitespace-nowrap">
                         {order.pickup_time}
                       </td>
@@ -314,9 +173,7 @@ export default function AdminOrdersPage() {
                         ${price.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] ${statusCfg.bg} ${statusCfg.color}`}>
-                          {statusCfg.label}
-                        </span>
+                        <StatusBadge status={order.status} />
                       </td>
                       <td className="px-4 py-3 text-moon-muted">
                         <ChevronRight size={14} />

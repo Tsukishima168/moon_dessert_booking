@@ -5,14 +5,14 @@
 // 需要在父層 layout 或 Server Component 中設定
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useCartStore } from '@/store/cartStore';
-import { Calendar, Phone, User, Loader2, CheckCircle, Mail, Tag, X, MapPin, LogIn } from 'lucide-react';
+import { CheckCircle, LogIn, MapPin, RefreshCw, Tag, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { TAIWAN_CITIES } from '@/lib/taiwan-data';
 import { supabase } from '@/lib/supabase'; // Import Supabase
+import { getResolvedUser } from '@/lib/client-auth';
 import liff from '@line/liff';
 
 declare global {
@@ -37,7 +37,6 @@ interface CheckoutFormData {
 }
 
 export default function CheckoutPage() {
-  const router = useRouter();
   const {
     items,
     getTotalPrice,
@@ -54,12 +53,13 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState('');
   const [confirmedName, setConfirmedName] = useState('');
   const [confirmedAmount, setConfirmedAmount] = useState(0);
-  const [confirmedEmail, setConfirmedEmail] = useState('');
   const [linePayUrl, setLinePayUrl] = useState('');
-  const [submitError, setSubmitError] = useState('');
+  const [savedItems, setSavedItems] = useState<Array<{ name: string; quantity: number; price: number }>>([]);
+  const [isLinePayLoading, setIsLinePayLoading] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
+  const [promoMessage, setPromoMessage] = useState('');
   const [availableDates, setAvailableDates] = useState<Record<string, { available: boolean; reason?: string }>>({});
   const [loadingDates, setLoadingDates] = useState(false);
   const [reservationRules, setReservationRules] = useState<any>(null);
@@ -88,38 +88,69 @@ export default function CheckoutPage() {
 
   // Auth State
   const [loggedInUser, setLoggedInUser] = useState<{ email: string; id: string } | null>(null);
+  const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'guest'>('loading');
+  const [authMessage, setAuthMessage] = useState('');
 
-  // 從 API 載入用戶資料（不直接查 DB）
-  const loadUserProfile = async (_userId: string, email: string) => {
+  // 從 API 載入用戶資料
+  const loadUserProfile = async (email: string) => {
     try {
-      const res = await fetch('/api/user/profile');
-      if (res.ok) {
-        const profile: { full_name?: string; phone?: string } = await res.json();
-        if (profile?.full_name) setValue('customer_name', profile.full_name);
-        if (profile?.phone) setValue('phone', profile.phone);
+      const response = await fetch('/api/user/profile');
+      if (!response.ok) throw new Error('載入會員資料失敗');
+
+      const profile = await response.json();
+      if (profile?.full_name) setValue('customer_name', profile.full_name);
+      if (profile?.phone) setValue('phone', profile.phone);
+      if (profile?.email) {
+        setValue('email', profile.email);
+        return;
       }
-    } catch { }
+    } catch {
+      // ignore
+    }
     setValue('email', email);
   };
 
-  useEffect(() => {
-    // 1. 立即讀取當前 session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const { id, email } = session.user;
-        setLoggedInUser({ email: email || '', id });
-        loadUserProfile(id, email || '');
+  const resolveCheckoutSession = async () => {
+    try {
+      setAuthStatus('loading');
+      setAuthMessage('');
+
+      const user = await getResolvedUser();
+      if (!user) {
+        setLoggedInUser(null);
+        setAuthStatus('guest');
+        setAuthMessage('尚未登入也可以下單；若要自動帶入會員資料，請先登入。');
+        return;
       }
-    });
+
+      const nextUser = { email: user.email || '', id: user.id };
+      setLoggedInUser(nextUser);
+      setAuthStatus('authenticated');
+      setAuthMessage('會員資料已同步，姓名 / 電話 / Email 會自動帶入。');
+      await loadUserProfile(nextUser.email);
+    } catch (error) {
+      console.error('確認會員 session 失敗:', error);
+      setLoggedInUser(null);
+      setAuthStatus('guest');
+      setAuthMessage('目前無法確認會員登入狀態，你仍可先手動下單。');
+    }
+  };
+
+  useEffect(() => {
+    void resolveCheckoutSession();
 
     // 2. 監聽 Auth 狀態變更
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const { id, email } = session.user;
         setLoggedInUser({ email: email || '', id });
-        loadUserProfile(id, email || '');
+        setAuthStatus('authenticated');
+        setAuthMessage('會員資料已同步，姓名 / 電話 / Email 會自動帶入。');
+        void loadUserProfile(email || '');
       } else {
         setLoggedInUser(null);
+        setAuthStatus('guest');
+        setAuthMessage('尚未登入也可以下單；若要自動帶入會員資料，請先登入。');
       }
     });
 
@@ -253,13 +284,6 @@ export default function CheckoutPage() {
 
   // 監聽日期變化
   const watchedPickupDate = watch('pickup_date');
-  const watchedCustomerName = watch('customer_name');
-  const watchedPhone = watch('phone');
-  const watchedEmail = watch('email');
-  const watchedPickupTime = watch('pickup_time');
-  const watchedDeliveryCity = watch('delivery_city');
-  const watchedDeliveryDistrict = watch('delivery_district');
-  const watchedDeliveryAddressDetail = watch('delivery_address_detail');
   useEffect(() => {
     if (watchedPickupDate) {
       setSelectedDate(watchedPickupDate);
@@ -291,76 +315,10 @@ export default function CheckoutPage() {
     normalizePrices();
   }, [normalizePrices]);
 
-  const checkoutChecklist = useMemo(() => {
-    const contactReady =
-      !!watchedCustomerName?.trim() &&
-      !!watchedPhone?.trim() &&
-      !!watchedEmail?.trim();
-    const dateReady =
-      !!selectedDate &&
-      (watchedDeliveryMethod === 'pickup' ? !!watchedPickupTime : true) &&
-      !!dateValidation?.valid;
-    const addressReady =
-      watchedDeliveryMethod === 'pickup'
-        ? true
-        : !!watchedDeliveryCity && !!watchedDeliveryDistrict && !!watchedDeliveryAddressDetail?.trim();
-
-    return [
-      {
-        id: 'contact',
-        label: '聯絡資訊',
-        detail: contactReady ? '姓名 / 電話 / Email 已完成' : '請填寫基本聯絡資訊',
-        done: contactReady,
-      },
-      {
-        id: 'date',
-        label: watchedDeliveryMethod === 'pickup' ? '取貨時間' : '到貨日期',
-        detail: dateReady
-          ? watchedDeliveryMethod === 'pickup'
-            ? `${selectedDate} ${watchedPickupTime}`
-            : `${selectedDate} 宅配`
-          : watchedDeliveryMethod === 'pickup'
-            ? '請選擇取貨日期與時段'
-            : '請選擇到貨日期',
-        done: dateReady,
-      },
-      {
-        id: 'address',
-        label: watchedDeliveryMethod === 'pickup' ? '取貨方式' : '配送地址',
-        detail: watchedDeliveryMethod === 'pickup'
-          ? '門市自取'
-          : addressReady
-            ? `${watchedDeliveryCity}${watchedDeliveryDistrict}${watchedDeliveryAddressDetail}`
-            : '請補齊宅配地址',
-        done: addressReady,
-      },
-    ];
-  }, [
-    watchedCustomerName,
-    watchedPhone,
-    watchedEmail,
-    selectedDate,
-    watchedPickupTime,
-    dateValidation,
-    watchedDeliveryMethod,
-    watchedDeliveryCity,
-    watchedDeliveryDistrict,
-    watchedDeliveryAddressDetail,
-  ]);
-
-  const completedChecklistCount = checkoutChecklist.filter((item) => item.done).length;
-  const incompleteChecklistCount = checkoutChecklist.length - completedChecklistCount;
-  const checklistProgress = Math.round(
-    (completedChecklistCount / checkoutChecklist.length) * 100
-  );
-  const isCheckoutReady = incompleteChecklistCount === 0 && !isSubmitting;
-
   // 提交訂單
   const onSubmit = async (data: CheckoutFormData) => {
-    setSubmitError('');
-
     if (dateValidation && !dateValidation.valid) {
-      setSubmitError(dateValidation.reason);
+      alert(dateValidation.reason);
       return;
     }
 
@@ -434,13 +392,16 @@ export default function CheckoutPage() {
         setOrderId(newOrderId);
         setConfirmedName(data.customer_name);
         setConfirmedAmount(finalPrice);
-        setConfirmedEmail(data.email);
-        // 儲存姓名電話到 profiles（登入用戶）—— 透過 API 不直接寫 DB
+        setSavedItems(items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })));
+        // 儲存姓名電話到 profile（登入用戶）
         if (loggedInUser?.id) {
           fetch('/api/user/profile', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_name: data.customer_name, phone: data.phone }),
+            body: JSON.stringify({
+              full_name: data.customer_name,
+              phone: data.phone,
+            }),
           }).catch(() => { });
         }
         setOrderSuccess(true);
@@ -494,13 +455,35 @@ export default function CheckoutPage() {
         setLinePayUrl(lineUrl);
 
       } else {
-        setSubmitError(`訂單失敗：${result.message}`);
+      alert(`訂單失敗：${result.message}`);
       }
     } catch (error) {
       console.error('訂單錯誤:', error);
-      setSubmitError('系統錯誤，請重試');
+      alert('系統錯誤，請重試');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // LINE Pay 付款跳轉
+  const handleLinePayRedirect = async () => {
+    setIsLinePayLoading(true);
+    try {
+      const res = await fetch('/api/payment/linepay/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, amount: confirmedAmount, items: savedItems }),
+      });
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        alert(`LINE Pay 發起失敗：${data.message}`);
+      }
+    } catch {
+      alert('LINE Pay 連線失敗，請改用轉帳付款');
+    } finally {
+      setIsLinePayLoading(false);
     }
   };
 
@@ -508,6 +491,8 @@ export default function CheckoutPage() {
   const handleValidatePromo = async () => {
     if (!promoInput.trim()) return;
     setPromoLoading(true);
+    setPromoError('');
+    setPromoMessage('');
     try {
       const response = await fetch('/api/promo-code/validate', {
         method: 'POST',
@@ -516,14 +501,56 @@ export default function CheckoutPage() {
       });
       const result = await response.json();
       if (result.success && result.data.valid) {
-        setPromoCode(promoInput.toUpperCase().trim(), result.data.discount_amount);
-        setPromoInput(''); setPromoError('');
+        const normalizedCode = promoInput.toUpperCase().trim();
+        setPromoCode(normalizedCode, result.data.discount_amount);
+        setPromoInput('');
+        setPromoError('');
+        setPromoMessage(result.message || `已成功套用 ${normalizedCode}`);
       } else {
-        setPromoError(result.data?.message || '優惠碼無效');
+        clearPromoCode();
+        setPromoError(result.message || result.data?.message || '優惠碼無效');
       }
-    } catch (error) { setPromoError('驗證失敗'); }
+    } catch (error) {
+      clearPromoCode();
+      setPromoError('驗證失敗，請稍後再試');
+    }
     finally { setPromoLoading(false); }
   };
+
+  const handleRemovePromo = () => {
+    clearPromoCode();
+    setPromoError('');
+    setPromoMessage('已移除優惠碼。');
+  };
+
+  useEffect(() => {
+    if (!promoCode) {
+      return;
+    }
+
+    const revalidatePromo = async () => {
+      try {
+        const response = await fetch('/api/promo-code/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: promoCode, orderAmount: totalPrice }),
+        });
+        const result = await response.json();
+
+        if (result.success && result.data.valid) {
+          setPromoCode(promoCode, result.data.discount_amount);
+          return;
+        }
+
+        clearPromoCode();
+        setPromoError(result.message || '優惠碼已不符合目前訂單條件');
+      } catch (error) {
+        console.error('重新驗證優惠碼失敗:', error);
+      }
+    };
+
+    void revalidatePromo();
+  }, [promoCode, totalPrice, setPromoCode, clearPromoCode]);
 
   // 成功畫面：顯示訂單資訊 + 手動前往 LINE 按鈕
   if (orderSuccess) {
@@ -551,26 +578,20 @@ export default function CheckoutPage() {
               <span className="text-moon-muted">應付金額</span>
               <span className="text-moon-accent font-light">NT$ {confirmedAmount}</span>
             </div>
-            {confirmedEmail && (
-              <div className="flex justify-between text-sm">
-                <span className="text-moon-muted">通知信箱</span>
-                <span className="text-moon-text break-all text-right">{confirmedEmail}</span>
-              </div>
-            )}
           </div>
 
-          <div className="border border-moon-border/20 p-4 space-y-3 bg-moon-dark/20">
-            <p className="text-xs text-moon-muted tracking-wider">— 接下來請做這 3 步 —</p>
-            <div className="space-y-2 text-sm">
-              <p className="text-moon-text">1. 依下方帳號完成轉帳，備註填 <span className="text-moon-accent font-mono">{orderId}</span></p>
-              <p className="text-moon-text">2. 點擊 LINE 按鈕，把訂單資訊直接傳給月島甜點</p>
-              <p className="text-moon-text">3. 等待我們確認款項後，會再通知你可取貨 / 出貨</p>
-            </div>
-          </div>
+          {/* LINE Pay 按鈕（主要付款） */}
+          <button
+            onClick={handleLinePayRedirect}
+            disabled={isLinePayLoading}
+            className="flex items-center justify-center gap-2 w-full bg-[#00B900] hover:bg-[#00a000] disabled:opacity-50 text-white py-4 tracking-widest text-sm transition-colors"
+          >
+            {isLinePayLoading ? '跳轉中…' : '立即用 LINE Pay 付款 →'}
+          </button>
 
-          {/* 付款說明 */}
+          {/* 轉帳備用方案 */}
           <div className="border border-moon-border/20 p-4 space-y-2 bg-moon-dark/20">
-            <p className="text-xs text-moon-muted tracking-wider mb-2">— 付款方式 —</p>
+            <p className="text-xs text-moon-muted tracking-wider mb-2">— 或改用轉帳 —</p>
             <p className="text-sm text-moon-text">LINE Bank（824）連線商業銀行</p>
             <p className="text-sm text-moon-text">帳號：111007479473</p>
             <p className="text-xs text-moon-muted mt-2">
@@ -579,30 +600,30 @@ export default function CheckoutPage() {
             <p className="text-xs text-moon-muted">完成後請在 LINE 回傳後五碼</p>
           </div>
 
-          {/* LINE 按鈕（手動觸發） */}
+          {/* LINE 訊息按鈕（轉帳用） */}
           {linePayUrl && (
             <a
               href={linePayUrl}
-              className="flex items-center justify-center gap-2 w-full bg-[#00B900] hover:bg-[#00a000] text-white py-4 tracking-widest text-sm transition-colors"
+              className="flex items-center justify-center gap-2 w-full border border-[#00B900]/40 text-[#00B900] hover:bg-[#00B900]/10 py-3 tracking-widest text-sm transition-colors"
             >
-              前往 LINE 完成確認 →
+              前往 LINE 回報轉帳 →
             </a>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Link
-              href={confirmedEmail ? `/auth/login?email=${encodeURIComponent(confirmedEmail)}` : '/auth/login'}
-              className="flex items-center justify-center border border-moon-border text-moon-text py-3 text-xs tracking-widest hover:border-moon-accent hover:text-moon-accent transition-colors"
-            >
-              查詢我的訂單
-            </Link>
-            <Link
-              href="/"
-              className="flex items-center justify-center text-center text-xs text-moon-muted underline underline-offset-4 py-3"
-            >
-              返回首頁
-            </Link>
-          </div>
+          <p className="text-center text-xs text-moon-muted/60">
+            訂單確認信已發送至您的信箱（若有填寫）
+          </p>
+
+          <Link href="/" className="block text-center text-xs text-moon-muted underline underline-offset-4">
+            返回首頁
+          </Link>
+
+          <Link
+            href="/account"
+            className="block text-center text-xs text-moon-muted underline underline-offset-4 transition-colors hover:text-moon-accent"
+          >
+            前往會員中心
+          </Link>
         </div>
       </div>
     );
@@ -614,14 +635,19 @@ export default function CheckoutPage() {
         <div className="text-center">
           <h2 className="text-2xl font-light text-moon-accent mb-4">購物車是空的</h2>
           <p className="text-sm text-moon-muted mb-6">先選一些甜點再來結帳吧</p>
-          <Link href="/"><button className="border border-moon-border px-8 py-3 text-moon-text hover:bg-moon-border">返回選購</button></Link>
+          <Link
+            href="/"
+            className="inline-flex border border-moon-border px-8 py-3 text-moon-text transition-colors hover:bg-moon-border"
+          >
+            返回選購
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-moon-black py-8 sm:py-12 lg:py-16 pb-28 lg:pb-16">
+    <div className="min-h-screen bg-moon-black py-8 sm:py-12 lg:py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* 步驟引導 */}
         <div className="flex justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
@@ -644,55 +670,6 @@ export default function CheckoutPage() {
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-moon-accent text-center mb-8 sm:mb-12 lg:mb-16 tracking-wider">
           填寫訂單
         </h1>
-
-        <div className="max-w-3xl mx-auto mb-6 sm:mb-8">
-          <div className="border border-moon-border bg-moon-dark/60 p-4 sm:p-5 space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs tracking-widest text-moon-muted">CHECKOUT PROGRESS</p>
-                <p className="text-sm text-moon-text mt-1">
-                  已完成 {completedChecklistCount} / {checkoutChecklist.length} 項
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xl text-moon-accent font-light">{checklistProgress}%</p>
-                <p className="text-[10px] text-moon-muted">
-                  {incompleteChecklistCount === 0 ? '可以送出訂單' : `剩 ${incompleteChecklistCount} 項待完成`}
-                </p>
-              </div>
-            </div>
-            <div className="h-1 bg-moon-black">
-              <div
-                className="h-full bg-moon-accent transition-all duration-300"
-                style={{ width: `${checklistProgress}%` }}
-              />
-            </div>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {checkoutChecklist.map((item) => (
-                <div
-                  key={item.id}
-                  className={`border px-3 py-3 space-y-1 ${
-                    item.done ? 'border-moon-accent/50 bg-moon-accent/5' : 'border-moon-border/60 bg-moon-black/30'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
-                        item.done ? 'bg-moon-accent text-moon-black' : 'border border-moon-border text-moon-muted'
-                      }`}
-                    >
-                      {item.done ? '✓' : '·'}
-                    </span>
-                    <p className={`text-xs tracking-wider ${item.done ? 'text-moon-accent' : 'text-moon-muted'}`}>
-                      {item.label}
-                    </p>
-                  </div>
-                  <p className="text-xs text-moon-text/80 leading-relaxed">{item.detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* 左側：訂單總覽 */}
@@ -734,7 +711,7 @@ export default function CheckoutPage() {
 
           {/* 右側：表單 */}
           <div>
-            <form id="checkout-form" onSubmit={handleSubmit(onSubmit)} className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 space-y-6">
 
               {/* Promo Code */}
               <div className="space-y-2">
@@ -743,41 +720,73 @@ export default function CheckoutPage() {
                   <input
                     value={promoInput}
                     onChange={e => setPromoInput(e.target.value)}
-                    className="flex-1 bg-moon-black border border-moon-border px-3 py-2 text-white text-sm focus:border-moon-accent outline-none placeholder:text-gray-500"
+                    className="flex-1 bg-moon-black border border-moon-border px-3 py-2 text-moon-text text-sm focus:border-moon-accent outline-none placeholder:text-moon-muted"
                     placeholder="若有優惠碼請輸入"
                   />
-                  <button type="button" onClick={handleValidatePromo} className="px-4 bg-moon-gray text-white text-xs hover:bg-white hover:text-black transition-colors">套用</button>
+                  <button
+                    type="button"
+                    onClick={handleValidatePromo}
+                    disabled={promoLoading}
+                    className="px-4 bg-moon-gray text-white text-xs hover:bg-white hover:text-black transition-colors disabled:opacity-50"
+                  >
+                    {promoLoading ? '驗證中...' : '套用'}
+                  </button>
                 </div>
-                {promoCode && <p className="text-xs text-moon-accent">已套用：{promoCode}</p>}
+                {promoCode ? (
+                  <div className="flex items-center justify-between rounded border border-moon-accent/30 bg-moon-accent/10 px-3 py-2 text-xs">
+                    <div className="space-y-1">
+                      <p className="text-moon-accent">已套用優惠碼：{promoCode}</p>
+                      <p className="text-moon-muted">本次折扣：NT$ {discountAmount}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="text-moon-muted transition-colors hover:text-moon-accent"
+                    >
+                      移除
+                    </button>
+                  </div>
+                ) : null}
+                {promoMessage && <p className="text-xs text-green-400">{promoMessage}</p>}
                 {promoError && <p className="text-xs text-red-400">{promoError}</p>}
               </div>
-
-              {submitError && (
-                <div className="border border-red-400/30 bg-red-400/5 px-4 py-3 text-sm text-red-300">
-                  {submitError}
-                </div>
-              )}
 
               {/* Personal Info */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-moon-border pb-2">
                   <h3 className="text-sm font-light text-moon-accent">聯絡資訊</h3>
-                  {loggedInUser ? (
+                  {authStatus === 'loading' ? (
+                    <span className="text-xs text-moon-muted">正在確認會員登入狀態...</span>
+                  ) : loggedInUser ? (
                     <span className="text-xs text-moon-accent bg-moon-accent/10 px-2 py-1 rounded flex items-center gap-1">
                       <User size={12} /> 會員：{loggedInUser.email}
                     </span>
                   ) : (
-                    <Link href="/auth/login" className="text-xs text-moon-muted hover:text-white flex items-center gap-1 underline decoration-dotted">
+                    <Link href="/auth/login?redirect=/checkout" className="text-xs text-moon-muted hover:text-moon-accent flex items-center gap-1 underline decoration-dotted">
                       <LogIn size={12} /> 已是會員？登入
                     </Link>
                   )}
+                </div>
+                <div className="rounded border border-moon-border/60 bg-moon-black/40 px-3 py-3 text-xs text-moon-muted">
+                  <div className="flex items-center justify-between gap-3">
+                    <p>{authMessage || '登入後可自動帶入會員姓名、電話與 Email。'}</p>
+                    {authStatus !== 'authenticated' ? (
+                      <button
+                        type="button"
+                        onClick={() => void resolveCheckoutSession()}
+                        className="shrink-0 text-moon-accent transition-colors hover:text-moon-text"
+                      >
+                        <RefreshCw className="size-4" />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-moon-muted block mb-1">姓名 <span className="text-moon-accent">*</span></label>
                   <input
                     {...register('customer_name', { required: '請填寫姓名' })}
                     placeholder="例：王小明"
-                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-500"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                   />
                   {errors.customer_name && <p className="text-xs text-red-400 mt-1">{errors.customer_name.message}</p>}
                 </div>
@@ -787,7 +796,7 @@ export default function CheckoutPage() {
                     type="tel"
                     {...register('phone', { required: '請填寫聯絡電話' })}
                     placeholder="例：0912-345-678"
-                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-500"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                   />
                   {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone.message}</p>}
                 </div>
@@ -797,7 +806,7 @@ export default function CheckoutPage() {
                     type="email"
                     {...register('email', { required: '請填寫 Email' })}
                     placeholder="例：example@gmail.com"
-                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-500"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                   />
                   <p className="text-[10px] text-moon-muted mt-1">
                     訂單確認與匯款資訊將寄至此信箱
@@ -902,7 +911,7 @@ export default function CheckoutPage() {
                   <div className="bg-moon-black/50 p-4 border border-moon-border flex items-start gap-3">
                     <MapPin className="text-moon-accent mt-1" size={16} />
                     <div>
-                      <p className="text-white text-sm">月島甜點店</p>
+                      <p className="text-moon-text text-sm">月島甜點店</p>
                       <p className="text-moon-muted text-xs">台南市安南區本原街一段97巷</p>
                     </div>
                   </div>
@@ -916,7 +925,7 @@ export default function CheckoutPage() {
                             setSelectedCity(e.target.value);
                             setSelectedDistrict('');
                           }}
-                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
                         >
                           <option value="">請選擇縣市</option>
                           {TAIWAN_CITIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
@@ -927,7 +936,7 @@ export default function CheckoutPage() {
                         <select
                           {...register('delivery_district', { required: watchedDeliveryMethod === 'delivery' ? '請選擇區域' : false })}
                           onChange={(e) => setSelectedDistrict(e.target.value)}
-                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
                         >
                           <option value="">請選擇區域</option>
                           {districts.map(d => <option key={d} value={d}>{d}</option>)}
@@ -939,7 +948,7 @@ export default function CheckoutPage() {
                       <input
                         {...register('delivery_address_detail', { required: watchedDeliveryMethod === 'delivery' ? '請輸入詳細地址' : false })}
                         placeholder="例：中正路 123 號"
-                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none placeholder:text-gray-500"
+                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                       />
                       {errors.delivery_address_detail && <p className="text-xs text-red-400 mt-1">{errors.delivery_address_detail.message}</p>}
                     </div>
@@ -947,7 +956,7 @@ export default function CheckoutPage() {
                       {...register('delivery_notes')}
                       placeholder="備註 (選填)"
                       rows={2}
-                      className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                      className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
                     />
                   </div>
                 )}
@@ -955,42 +964,14 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={!isCheckoutReady}
-                className="hidden lg:block w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-white transition-colors disabled:opacity-50 disabled:hover:bg-moon-accent"
+                disabled={isSubmitting}
+                className="w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-moon-text transition-colors disabled:opacity-50"
               >
                 {isSubmitting ? '處理中，請稍候...' : `送出訂單 · 總計 $${finalPrice}`}
               </button>
 
-              <p className="hidden lg:block text-[11px] text-moon-muted">
-                送出後會建立訂單編號、寄出確認信，並提供 LINE 一鍵回傳付款資訊。
-              </p>
-
             </form>
           </div>
-        </div>
-      </div>
-
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-moon-border bg-moon-dark/95 backdrop-blur lg:hidden">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] tracking-widest text-moon-muted">MOBILE CHECKOUT</p>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-moon-accent text-lg font-light">${finalPrice}</p>
-              <p className="text-[11px] text-moon-muted text-right">
-                {incompleteChecklistCount === 0
-                  ? '資料已齊，準備送出'
-                  : `剩 ${incompleteChecklistCount} 項待完成`}
-              </p>
-            </div>
-          </div>
-          <button
-            type="submit"
-            form="checkout-form"
-            disabled={!isCheckoutReady}
-            className="shrink-0 bg-moon-accent text-moon-black px-4 py-3 text-xs tracking-widest disabled:opacity-50"
-          >
-            {isSubmitting ? '送出中' : '送出訂單'}
-          </button>
         </div>
       </div>
     </div>

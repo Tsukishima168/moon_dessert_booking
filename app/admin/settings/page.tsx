@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Settings, Save, Calendar, Clock, Truck, DollarSign } from 'lucide-react';
+import { Settings, Save, Calendar, Clock, DollarSign } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
+import { LoadingState } from '@/components/shared/loading-state';
+import { PageHeader } from '@/components/shared/page-header';
 
 interface ReservationRules {
     min_advance_days: number;
@@ -106,17 +109,17 @@ export default function SettingsPage() {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-moon-black flex items-center justify-center">
-                <div className="text-moon-muted">載入中...</div>
-            </div>
-        );
+        return <LoadingState fullScreen text="載入設定中..." className="bg-moon-black" />;
     }
 
     if (!settings) {
         return (
-            <div className="min-h-screen bg-moon-black flex items-center justify-center">
-                <div className="text-red-400">無法載入設定</div>
+            <div className="min-h-screen bg-moon-black flex items-center justify-center px-4">
+                <EmptyState
+                    title="無法載入設定"
+                    description="可以重新整理頁面，或稍後再試一次。"
+                    className="w-full max-w-md border-moon-border bg-moon-dark/30"
+                />
             </div>
         );
     }
@@ -124,18 +127,13 @@ export default function SettingsPage() {
     return (
         <div className="min-h-screen bg-moon-black p-6">
             <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Settings className="text-moon-accent" size={28} />
-                        <h1 className="text-2xl font-light text-moon-accent tracking-wider">
-                            營業設定
-                        </h1>
-                    </div>
-                    <p className="text-sm text-moon-muted">
-                        管理預訂規則、產能限制、營業時間等參數
-                    </p>
-                </div>
+                <PageHeader
+                    title="營業設定"
+                    description="管理預訂規則、產能限制與前台可預約邊界。"
+                    icon={<Settings className="text-moon-accent" size={22} />}
+                    meta="這裡改的是店家營運參數，不會直接曝光敏感資訊"
+                    className="mb-8"
+                />
 
                 {/* Message */}
                 {message && (

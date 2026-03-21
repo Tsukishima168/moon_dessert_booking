@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { clearServerSession } from '@/lib/client-auth';
 
 /**
  * Client-side auth callback page.
@@ -42,9 +43,27 @@ export default function AuthCallbackPage() {
                 }
             }
 
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                try {
+                    await fetch('/api/auth/set-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            access_token: session.access_token,
+                            refresh_token: session.refresh_token,
+                        }),
+                    });
+                } catch (err) {
+                    console.error('Failed to persist callback session:', err);
+                }
+            } else {
+                await clearServerSession();
+            }
+
             // 檢查 URL 是否有 redirect 參數（例如從 admin 跳過來的）
             const redirect = new URLSearchParams(window.location.search).get('redirect');
-            router.replace(redirect || '/');
+            router.replace(redirect || '/account');
         };
 
         handleCallback();

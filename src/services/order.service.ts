@@ -1,8 +1,7 @@
-import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
-import { validatePromoCode } from '@/lib/supabase'
-import { insertOrder, findOrdersByUserId } from '@/src/repositories/order.repository'
-import { EventBus } from '@/src/lib/event-bus'
 import { createAdminClient } from '@/lib/supabase-admin'
+import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
+import { insertOrder } from '@/src/repositories/order.repository'
+import { EventBus } from '@/src/lib/event-bus'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -29,12 +28,265 @@ export interface CreateOrderInput {
   utm_content?: string
   utm_term?: string
   user_id?: string
-  linepay_transaction_id?: string
 }
 
 export interface CreateOrderResult {
   orderId: string
   finalPrice: number
+}
+
+export class OrderValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'OrderValidationError'
+  }
+}
+
+interface MenuItemRow {
+  id: string
+  name: string
+  is_available: boolean | null
+}
+
+interface MenuVariantRow {
+  id: string
+  menu_item_id: string
+  variant_name: string | null
+  price: number | string | null
+}
+
+interface PromoCodeUsageReservation {
+  id: string
+  previousUsedCount: number
+}
+
+interface PromoCodeUsageRow {
+  id: string
+  used_count: number | null
+  max_uses: number | null
+  is_active: boolean | null
+  valid_from: string | null
+  valid_until: string | null
+  discount_type: 'percentage' | 'fixed' | null
+  discount_value: number | null
+  min_order_amount: number | null
+}
+
+function parsePrice(raw: string | number | null | undefined): number {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 0
+  if (raw === null || raw === undefined) return 0
+  const cleaned = String(raw).replace(/[^0-9.]/g, '')
+  const value = cleaned === '' ? NaN : Number(cleaned)
+  return Number.isFinite(value) ? value : 0
+}
+
+function calculateDeliveryFee(
+  deliveryMethod: string | undefined,
+  subtotal: number
+): number {
+  if (deliveryMethod !== 'delivery') return 0
+  return subtotal >= 2000 ? 0 : 150
+}
+
+async function recalculateOrderPricing(items: OrderItem[]) {
+  const adminClient = createAdminClient()
+
+  const { data: menuItems, error: menuItemsError } = await adminClient
+    .from('menu_items')
+    .select('id, name, is_available')
+
+  if (menuItemsError) {
+    console.warn('[recalculateOrderPricing] 無法讀取 menu_items，使用前端傳入價格:', menuItemsError.message)
+    const subtotal = items.reduce((sum, item) => sum + parsePrice(item.price) * item.quantity, 0)
+    return { canonicalItems: items, subtotal }
+  }
+
+  const { data: menuVariants, error: menuVariantsError } = await adminClient
+    .from('menu_variants')
+    .select('id, menu_item_id, variant_name, price')
+
+  const variants: MenuVariantRow[] = menuVariantsError || !menuVariants ? [] : menuVariants as MenuVariantRow[]
+  if (menuVariantsError) {
+    console.warn('[recalculateOrderPricing] 無法讀取 menu_variants，將只做可用性驗證:', menuVariantsError.message)
+  }
+
+  const canonicalItems = items.map((item) => {
+    // 先做可用性驗證（只要 menu_items 存在就能做）
+    const matchedMenuItem = (menuItems as MenuItemRow[]).find(
+      (menuItem) => menuItem.name === item.name
+    )
+    if (matchedMenuItem && matchedMenuItem.is_available === false) {
+      throw new OrderValidationError(`商品「${item.name}」目前不可訂購，請重新整理菜單`)
+    }
+
+    // 嘗試找匹配的 variant 以取得 canonical 價格
+    const matchedVariant = variants.find((variant) => {
+      const compositeId = item.id || ''
+      const exactCompositeMatch =
+        compositeId.startsWith(`${variant.menu_item_id}-`) &&
+        compositeId.endsWith(variant.id)
+
+      const fallbackMatch =
+        variant.variant_name === (item.variant_name ?? '標準') &&
+        (menuItems as MenuItemRow[]).some(
+          (menuItem) =>
+            menuItem.id === variant.menu_item_id &&
+            menuItem.name === item.name
+        )
+
+      return exactCompositeMatch || fallbackMatch
+    })
+
+    // 找到 variant 就用 canonical 價格，找不到就用前端傳入的價格（降級）
+    const canonicalPrice = matchedVariant
+      ? parsePrice(matchedVariant.price)
+      : parsePrice(item.price)
+
+    return {
+      ...item,
+      name: matchedMenuItem?.name ?? item.name,
+      variant_name: matchedVariant?.variant_name ?? item.variant_name ?? '標準',
+      price: canonicalPrice,
+    }
+  })
+
+  const subtotal = canonicalItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  )
+
+  return { canonicalItems, subtotal }
+}
+
+/**
+ * Server-side 優惠碼驗證（使用 admin client，不依賴瀏覽器 session）
+ */
+async function validatePromoCodeServer(
+  code: string,
+  orderAmount: number
+): Promise<PromoCodeValidation> {
+  const adminClient = createAdminClient()
+  const normalizedCode = code.toUpperCase().trim()
+
+  const { data: promoCode, error } = await adminClient
+    .from('promo_codes')
+    .select('id, discount_type, discount_value, min_order_amount, used_count, max_uses, valid_from, valid_until, is_active')
+    .eq('code', normalizedCode)
+    .eq('is_active', true)
+    .single()
+
+  if (error || !promoCode) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '找不到此優惠碼' }
+  }
+
+  const row = promoCode as PromoCodeUsageRow
+  const now = new Date()
+  if (row.valid_from && now < new Date(row.valid_from)) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼尚未生效' }
+  }
+  if (row.valid_until && now > new Date(row.valid_until)) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼已過期' }
+  }
+  const maxUses = row.max_uses === null ? null : Number(row.max_uses)
+  const usedCount = Number(row.used_count ?? 0)
+  if (maxUses !== null && usedCount >= maxUses) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼已達使用上限' }
+  }
+  if (row.min_order_amount && orderAmount < row.min_order_amount) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: `訂單未達最低消費 $${row.min_order_amount}` }
+  }
+
+  let discountAmount = 0
+  if (row.discount_type === 'percentage') {
+    discountAmount = Math.round((orderAmount * (row.discount_value ?? 0)) / 100)
+  } else {
+    discountAmount = row.discount_value ?? 0
+  }
+  discountAmount = Math.min(discountAmount, orderAmount)
+
+  return {
+    valid: true,
+    discount_amount: discountAmount,
+    final_amount: orderAmount - discountAmount,
+    message: '優惠碼套用成功',
+  }
+}
+
+async function reservePromoCodeUsage(
+  code: string
+): Promise<PromoCodeUsageReservation> {
+  const adminClient = createAdminClient()
+  const normalizedCode = code.toUpperCase().trim()
+
+  const { data: promoCode, error: promoCodeError } = await adminClient
+    .from('promo_codes')
+    .select('id, used_count, max_uses, is_active, valid_from, valid_until')
+    .eq('code', normalizedCode)
+    .eq('is_active', true)
+    .single()
+
+  if (promoCodeError || !promoCode) {
+    throw new OrderValidationError('找不到此優惠碼')
+  }
+
+  const promoCodeRow = promoCode as PromoCodeUsageRow
+  const previousUsedCount = Number(promoCodeRow.used_count ?? 0)
+  const maxUses =
+    promoCodeRow.max_uses === null ? null : Number(promoCodeRow.max_uses)
+
+  if (maxUses !== null && previousUsedCount >= maxUses) {
+    throw new OrderValidationError('此優惠碼已達使用上限')
+  }
+
+  const now = new Date()
+  const validFrom = promoCodeRow.valid_from
+    ? new Date(promoCodeRow.valid_from)
+    : null
+  const validUntil = promoCodeRow.valid_until
+    ? new Date(promoCodeRow.valid_until)
+    : null
+
+  if (validFrom && now < validFrom) {
+    throw new OrderValidationError('此優惠碼尚未生效')
+  }
+
+  if (validUntil && now > validUntil) {
+    throw new OrderValidationError('此優惠碼已過期')
+  }
+
+  let updateQuery = adminClient
+    .from('promo_codes')
+    .update({ used_count: previousUsedCount + 1 })
+    .eq('id', promoCodeRow.id)
+    .eq('used_count', previousUsedCount)
+
+  if (maxUses !== null) {
+    updateQuery = updateQuery.lt('used_count', maxUses)
+  }
+
+  const { data: updatedPromoCode, error: updateError } = await updateQuery
+    .select('id')
+    .maybeSingle()
+
+  if (updateError || !updatedPromoCode) {
+    throw new OrderValidationError('此優惠碼已達使用上限，請重新嘗試')
+  }
+
+  return { id: promoCodeRow.id, previousUsedCount }
+}
+
+async function rollbackPromoCodeUsage(
+  reservation: PromoCodeUsageReservation
+): Promise<void> {
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
+    .from('promo_codes')
+    .update({ used_count: reservation.previousUsedCount })
+    .eq('id', reservation.id)
+
+  if (error) {
+    console.error('優惠碼使用次數回滾失敗:', error)
+  }
 }
 
 /**
@@ -44,79 +296,38 @@ export interface CreateOrderResult {
  * @param authUserId - 從 supabase auth 取得的當前登入用戶 ID（未登入傳 null）
  * @returns 訂單 ID 與最終金額
  */
-/**
- * 從 DB 查詢 menu_variants 的實際單價，重新計算訂單金額
- * 防止前端傳入偽造的 price
- */
-async function recalculateItemsPrice(items: OrderItem[]): Promise<number> {
-  if (items.length === 0) return 0
-
-  const variantIds = items.map(item => item.id)
-  const adminClient = createAdminClient()
-
-  const { data: variants, error } = await adminClient
-    .from('menu_variants')
-    .select('id, price')
-    .in('id', variantIds)
-
-  if (error) throw error
-
-  const priceMap = new Map<string, number>(
-    (variants || []).map(v => {
-      const rawPrice = String(v.price).replace(/[^0-9.]/g, '')
-      return [String(v.id), rawPrice === '' ? 0 : Number(rawPrice)]
-    })
-  )
-
-  let total = 0
-  for (const item of items) {
-    const unitPrice = priceMap.get(item.id)
-    if (unitPrice === undefined) {
-      throw new Error(`品項不存在或已下架：${item.name}`)
-    }
-    if (item.quantity <= 0 || !Number.isInteger(item.quantity)) {
-      throw new Error(`品項數量無效：${item.name}`)
-    }
-    total += unitPrice * item.quantity
-  }
-  return total
-}
-
 export async function createOrder(
   input: CreateOrderInput,
   authUserId: string | null
 ): Promise<CreateOrderResult> {
-  // 手機格式驗證
-  const phoneRegex = /^[0-9]{8,12}$/
-  if (!phoneRegex.test(input.phone.replace(/[\s-]/g, ''))) {
-    throw new Error('手機號碼格式不正確')
+  // 手機格式驗證（接受 +886、09XX 等台灣常見格式）
+  const cleanedPhone = input.phone.replace(/[\s\-()+ ]/g, '')
+  const phoneRegex = /^[0-9]{8,15}$/
+  if (!phoneRegex.test(cleanedPhone)) {
+    throw new OrderValidationError('手機號碼格式不正確')
   }
 
-  // 伺服器端重新計算商品小計，防止前端偽造價格
-  const itemsSubtotal = await recalculateItemsPrice(input.items)
+  const { canonicalItems, subtotal } = await recalculateOrderPricing(input.items)
 
-  // 伺服器端計算運費，防止前端偽造
-  const method = input.delivery_method ?? 'pickup'
-  const deliveryFee = method === 'pickup'
-    ? 0
-    : itemsSubtotal >= 2000 ? 0 : 150
+  const deliveryFee = calculateDeliveryFee(input.delivery_method, subtotal)
 
-  // 優惠碼折扣驗證（若有傳入）
+  let promoCode: string | null = null
   let discountAmount = 0
+  let finalPrice = subtotal + deliveryFee
+  let promoUsageReservation: PromoCodeUsageReservation | null = null
+
   if (input.promo_code) {
-    const promoResult = await validatePromoCode(
-      input.promo_code.toUpperCase().trim(),
-      itemsSubtotal
-    )
-    if (!promoResult.valid) {
-      throw new Error(promoResult.message || '優惠碼無效')
+    const promoValidation = await validatePromoCodeServer(input.promo_code, subtotal)
+    if (!promoValidation.valid) {
+      throw new OrderValidationError(promoValidation.message)
     }
-    discountAmount = promoResult.discount_amount
+    promoCode = input.promo_code.toUpperCase().trim()
+    discountAmount = promoValidation.discount_amount
+    finalPrice = promoValidation.final_amount + deliveryFee
+    promoUsageReservation = await reservePromoCodeUsage(promoCode)
   }
 
-  // 以伺服器計算結果為準，前端傳入的 total_price 只作參考
-  const originalPrice = itemsSubtotal + deliveryFee
-  const finalPrice = Math.max(0, originalPrice - discountAmount)
+  const originalPrice = subtotal
 
   const orderId = `ORD${Date.now()}`
 
@@ -126,14 +337,14 @@ export async function createOrder(
     phone: input.phone,
     email: input.email ?? null,
     pickup_time: input.pickup_time,
-    items: input.items,
+    items: canonicalItems,
     total_price: finalPrice,
     original_price: originalPrice,
     final_price: finalPrice,
     discount_amount: discountAmount,
-    promo_code: input.promo_code ?? null,
+    promo_code: promoCode,
     payment_date: input.payment_date ?? null,
-    linepay_transaction_id: input.linepay_transaction_id ?? null,
+    linepay_transaction_id: null,
     delivery_method: input.delivery_method ?? 'pickup',
     delivery_address: input.delivery_address ?? null,
     delivery_fee: deliveryFee,
@@ -150,15 +361,22 @@ export async function createOrder(
     status: 'pending',
   } as const
 
-  const createdOrder = await insertOrder(orderData)
+  try {
+    await insertOrder(orderData)
+  } catch (error) {
+    if (promoUsageReservation) {
+      await rollbackPromoCodeUsage(promoUsageReservation)
+    }
+    throw error
+  }
 
-  console.log(`成功建立訂單: ${createdOrder.order_id}`)
+  console.log(`成功建立訂單: ${orderId}`)
 
   // Phase 2: emit("order.created") event bus
   // 所有後續副作用（加點、通知、integration）都由 event handlers 處理
   // 此處改為 fire-and-forget emit，不阻塞回應
   EventBus.emit('order.created', {
-    order: createdOrder,
+    order: orderData,
     metadata: {
       createdAt: new Date().toISOString(),
       source: 'shop',
@@ -167,7 +385,7 @@ export async function createOrder(
     console.error('事件發送錯誤（不影響訂單）:', error)
   })
 
-  return { orderId: createdOrder.order_id, finalPrice }
+  return { orderId, finalPrice }
 }
 
 /**
@@ -180,7 +398,7 @@ export async function applyPromoCode(
   code: string,
   subtotal: number
 ): Promise<PromoCodeValidation> {
-  return validatePromoCode(code.toUpperCase().trim(), subtotal)
+  return validatePromoCodeServer(code, subtotal)
 }
 
 /**
@@ -189,7 +407,8 @@ export async function applyPromoCode(
  * @returns Order 陣列
  */
 export async function getUserOrders(userId: string): Promise<Order[]> {
-  return findOrdersByUserId(userId)
+  // TODO: implement
+  throw new Error('Not implemented')
 }
 
 /**
@@ -201,6 +420,6 @@ export async function cancelOrder(
   orderId: string,
   requesterId: string
 ): Promise<void> {
-  // TODO: implement — 需確認訂單屬於 requesterId 且狀態為 pending
+  // TODO: implement
   throw new Error('Not implemented')
 }

@@ -29,7 +29,7 @@ interface NavItem {
   badge?: string;
 }
 
-const navItems: NavItem[] = [
+const coreNavItems: NavItem[] = [
   {
     label: '訂單管理',
     href: '/admin',
@@ -45,6 +45,24 @@ const navItems: NavItem[] = [
     href: '/admin/menu-availability',
     icon: <CalendarIcon width={20} height={20} />,
   },
+  {
+    label: '優惠碼',
+    href: '/admin/promo-codes',
+    icon: <Tag size={20} />,
+  },
+  {
+    label: '橫幅管理',
+    href: '/admin/banners',
+    icon: <ImageIcon size={20} />,
+  },
+  {
+    label: '設置',
+    href: '/admin/settings',
+    icon: <Settings size={20} />,
+  },
+];
+
+const devNavItems: NavItem[] = [
   {
     label: '客戶分析',
     href: '/admin/customer-analytics',
@@ -71,24 +89,9 @@ const navItems: NavItem[] = [
     icon: <Zap size={20} />,
   },
   {
-    label: '優惠碼',
-    href: '/admin/promo-codes',
-    icon: <Tag size={20} />,
-  },
-  {
-    label: '橫幅管理',
-    href: '/admin/banners',
-    icon: <ImageIcon size={20} />,
-  },
-  {
     label: 'Discord 設置',
     href: '/admin/discord-settings',
     icon: <BarChart3 size={20} />,
-  },
-  {
-    label: '設置',
-    href: '/admin/settings',
-    icon: <Settings size={20} />,
   },
 ];
 
@@ -96,12 +99,15 @@ export default function AdminSidebar() {
   const pathname = usePathname() || '';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isDevMode = process.env.NODE_ENV !== 'production';
+  const navItems = [...coreNavItems, ...(isDevMode ? devNavItems : [])];
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/admin/logout', { method: 'POST' });
+      // 只清除 admin_token cookie，不碰 Supabase user session
+      const response = await fetch('/api/admin/auth', { method: 'DELETE' });
       if (response.ok) {
-        window.location.href = '/';
+        window.location.href = '/admin';
       }
     } catch (error) {
       console.error('登出錯誤:', error);

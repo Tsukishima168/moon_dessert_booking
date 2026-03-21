@@ -37,7 +37,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-moon-dark">
+    <div className="admin-shell flex h-screen bg-moon-dark">
       <AdminSidebar />
       <main className="flex-1 overflow-auto">
         {children}
@@ -45,4 +45,3 @@ export default async function AdminLayout({
     </div>
   );
 }
-

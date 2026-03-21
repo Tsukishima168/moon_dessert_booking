@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { DragDropContext, Draggable, Droppable, DropResult } from '@hello-pangea/dnd';
-import { supabase } from '@/lib/supabase';
 
 // 訂單狀態配置（包含 cancelled 用於篩選顯示）
 const ORDER_STATUS = {
@@ -106,8 +105,9 @@ export default function AdminPage() {
     const [discordStatus, setDiscordStatus] = useState<DiscordStatus>({ isConnected: false, failedNotifications: 0 });
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
-        window.location.href = '/';
+        // 清除 admin_token cookie，不動 Supabase 用戶 session
+        await fetch('/api/admin/auth', { method: 'DELETE' });
+        window.location.href = '/admin';
     };
 
     const loadOrders = async () => {

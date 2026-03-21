@@ -90,6 +90,8 @@ export async function updateAdminOrderWithStatusEffects(
       updatedAt: updatedOrder.updated_at,
       previousStatus: previousOrder.status,
       currentStatus: updatedOrder.status,
+      triggerMode: 'status_change',
+      requestedChannel: 'all',
     }),
   }
 }

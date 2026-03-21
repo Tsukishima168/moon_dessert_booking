@@ -29,7 +29,16 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json(profile ?? { id: user.id, email: user.email });
+    // 若 profiles 表沒有 full_name，fallback 到 Google user_metadata
+    const metaName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? null;
+    const resolved = profile
+      ? {
+          ...profile,
+          full_name: profile.full_name || metaName,
+        }
+      : { id: user.id, email: user.email, full_name: metaName };
+
+    return NextResponse.json(resolved);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '查詢失敗';
     console.error('[GET /api/user/profile] 錯誤:', error);
