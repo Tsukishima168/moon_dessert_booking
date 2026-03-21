@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2, Plus, Minus, Save, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
+import { LoadingState } from '@/components/shared/loading-state';
+import { PageHeader } from '@/components/shared/page-header';
+import { StatusBadge } from '@/components/shared/status-badge';
 
 // ─── 型別 ──────────────────────────────────────────────────────────────────────
 
@@ -53,14 +57,6 @@ const ORDER_STATUS = {
   completed: '完成',
   cancelled: '已取消',
 } as const;
-
-const ORDER_STATUS_COLOR: Record<string, string> = {
-  pending:   'text-yellow-400 bg-yellow-400/10',
-  paid:      'text-blue-400 bg-blue-400/10',
-  ready:     'text-green-400 bg-green-400/10',
-  completed: 'text-moon-muted bg-moon-muted/10',
-  cancelled: 'text-red-400 bg-red-400/10',
-};
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
   cash:     '現金',
@@ -180,11 +176,7 @@ export default function AdminOrderEditPage() {
         body: JSON.stringify({
           pickup_time: pickup_time_value,
           items: form.items,
-          original_price: computedOriginal,
-          final_price: computedFinal,
-          total_price: computedFinal,
           discount_amount: form.discount_amount,
-          promo_code: form.promo_code || null,
           status: form.status,
           admin_notes: form.admin_notes || null,
           payment_method: form.payment_method || null,
@@ -241,22 +233,27 @@ export default function AdminOrderEditPage() {
 
   // ─── 渲染 ────────────────────────────────────────────────────────────────
 
-  if (loading) return (
-    <div className="min-h-screen bg-moon-black flex items-center justify-center">
-      <Loader2 className="animate-spin text-moon-accent" size={32} />
-    </div>
-  );
+  if (loading) {
+    return <LoadingState fullScreen text="載入訂單中..." className="bg-moon-black" />;
+  }
 
-  if (error || !order) return (
-    <div className="min-h-screen bg-moon-black flex flex-col items-center justify-center gap-4">
-      <p className="text-red-400">{error || '訂單不存在'}</p>
-      <button onClick={() => router.push('/admin/orders')} className="text-moon-muted hover:text-moon-text text-sm">
-        ← 返回列表
-      </button>
-    </div>
-  );
+  if (error || !order) {
+    return (
+      <div className="min-h-screen bg-moon-black flex items-center justify-center px-4">
+        <EmptyState
+          title={error || '訂單不存在'}
+          description="可以先返回訂單列表，再重新選擇一筆訂單。"
+          className="w-full max-w-md border-moon-border bg-moon-dark/30"
+          action={(
+            <button onClick={() => router.push('/admin/orders')} className="text-moon-accent hover:underline text-sm">
+              返回列表
+            </button>
+          )}
+        />
+      </div>
+    );
+  }
 
-  const statusColorClass = ORDER_STATUS_COLOR[order.status] ?? 'text-moon-muted bg-moon-muted/10';
   const summaryLines = buildChangeSummary();
 
   return (
@@ -264,14 +261,17 @@ export default function AdminOrderEditPage() {
       {/* Header */}
       <header className="border-b border-moon-border bg-moon-dark sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 flex-1">
             <button onClick={() => router.push('/admin/orders')} className="text-moon-muted hover:text-moon-text transition-colors">
               <ArrowLeft size={16} />
             </button>
-            <span className="font-mono text-moon-accent text-sm">{order.order_id}</span>
-            <span className={`px-2 py-0.5 text-[10px] ${statusColorClass}`}>
-              {ORDER_STATUS[order.status as keyof typeof ORDER_STATUS] ?? order.status}
-            </span>
+            <PageHeader
+              title={`訂單 ${order.order_id}`}
+              description="調整取餐時間、品項、金額與後台備註。"
+              meta="儲存前會先顯示變更摘要"
+              className="flex-1"
+            />
+            <StatusBadge status={order.status} showIcon />
           </div>
           <button
             onClick={handleSaveClick}
@@ -320,11 +320,15 @@ export default function AdminOrderEditPage() {
         {/* 商品項目 */}
         <section className="border border-moon-border bg-moon-dark/40 p-5">
           <h2 className="text-xs text-moon-muted tracking-widest mb-4">商品項目</h2>
-          <div className="space-y-3">
-            {form.items.length === 0 ? (
-              <p className="text-moon-muted text-sm">（已無品項）</p>
-            ) : (
-              form.items.map((item, idx) => (
+          {form.items.length === 0 ? (
+            <EmptyState
+              title="目前沒有品項"
+              description="這張訂單的品項已被調整為空。"
+              className="border-moon-border/50 bg-moon-black/30"
+            />
+          ) : (
+            <div className="space-y-3">
+              {form.items.map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-moon-text text-sm truncate">
@@ -351,9 +355,9 @@ export default function AdminOrderEditPage() {
                     </button>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* 金額小計 */}
           <div className="border-t border-moon-border/50 mt-4 pt-3 space-y-1 text-xs">
@@ -386,23 +390,15 @@ export default function AdminOrderEditPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] text-moon-muted block mb-1">優惠碼</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={form.promo_code}
-                  onChange={e => setForm(p => ({ ...p, promo_code: e.target.value.toUpperCase() }))}
-                  placeholder="輸入代碼"
-                  className="flex-1 bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-none focus:border-moon-accent transition-colors font-mono"
-                />
-                {form.promo_code && (
-                  <button
-                    onClick={() => setForm(p => ({ ...p, promo_code: '' }))}
-                    className="px-2 text-xs border border-moon-border text-moon-muted hover:border-red-400/60 hover:text-red-400 transition-colors"
-                  >
-                    清除
-                  </button>
-                )}
-              </div>
+              <input
+                type="text"
+                value={form.promo_code || '未使用'}
+                readOnly
+                className="w-full bg-moon-black/70 border border-moon-border text-moon-muted text-sm px-3 py-2 font-mono cursor-not-allowed"
+              />
+              <p className="mt-1 text-[10px] text-moon-muted">
+                優惠碼請由顧客結帳流程套用，後台僅顯示目前訂單紀錄。
+              </p>
             </div>
             <div>
               <label className="text-[10px] text-moon-muted block mb-1">折扣金額（$）</label>

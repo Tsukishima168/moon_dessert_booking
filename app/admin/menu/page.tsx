@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Plus, Trash2, ToggleRight, ToggleLeft, Search, X, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, ToggleRight, ToggleLeft, X, Loader2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
+import { EmptyState } from '@/components/shared/empty-state';
+import { LoadingState } from '@/components/shared/loading-state';
+import { PageHeader } from '@/components/shared/page-header';
+import { SearchFilterBar } from '@/components/shared/search-filter-bar';
 
 interface Variant {
     id?: string;
@@ -39,7 +43,6 @@ export default function MenuAdminPage() {
     const [items, setItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [searching, setSearching] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [showForm, setShowForm] = useState(false);
@@ -217,30 +220,26 @@ export default function MenuAdminPage() {
         }));
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-moon-black flex items-center justify-center">
-                <Loader2 className="animate-spin text-moon-accent" size={32} />
-            </div>
-        );
+        return <LoadingState fullScreen text="載入菜單中..." className="bg-moon-black" />;
     }
 
     return (
         <div className="min-h-screen bg-moon-black">
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-xl font-light text-moon-accent tracking-wider">菜單管理</h1>
-                        <p className="text-xs text-moon-muted mt-1">{items.length} 件商品</p>
-                    </div>
-                    <button
-                        onClick={openCreate}
-                        className="flex items-center gap-2 bg-moon-accent text-moon-black px-5 py-2.5 text-sm tracking-wider hover:bg-moon-text transition-colors"
-                    >
-                        <Plus size={16} />
-                        新增商品
-                    </button>
-                </div>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+                <PageHeader
+                    title="菜單管理"
+                    description="管理商品、分類、圖片與規格。"
+                    meta={`${items.length} 件商品`}
+                    action={(
+                        <button
+                            onClick={openCreate}
+                            className="flex items-center gap-2 bg-moon-accent text-moon-black px-5 py-2.5 text-sm tracking-wider hover:bg-moon-text transition-colors"
+                        >
+                            <Plus size={16} />
+                            新增商品
+                        </button>
+                    )}
+                />
 
                 {/* 錯誤訊息 */}
                 {error && (
@@ -259,38 +258,30 @@ export default function MenuAdminPage() {
                     </div>
                 )}
 
-                {/* 搜尋 + 篩選 */}
-                <div className="mb-6 flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-2.5 text-moon-muted" size={16} />
-                        <input
-                            type="text"
-                            placeholder="搜尋商品..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-moon-dark border border-moon-border text-moon-text text-sm placeholder-moon-muted focus:outline-none focus:border-moon-accent"
-                        />
-                    </div>
-                    <select
-                        value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="px-4 py-2 bg-moon-dark border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
-                    >
-                        <option value="all">所有分類</option>
-                        {categories.map((cat) => (
-                            <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
-                </div>
+                <SearchFilterBar
+                    searchValue={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    searchPlaceholder="搜尋商品名稱或描述"
+                    filters={[
+                        { value: 'all', label: '所有分類' },
+                        ...categories.map((cat) => ({ value: cat, label: cat })),
+                    ]}
+                    activeFilter={categoryFilter}
+                    onFilterChange={setCategoryFilter}
+                />
 
                 {/* 商品卡片 — 依分類分組 */}
                 {Object.keys(grouped).length === 0 ? (
-                    <div className="border border-moon-border p-16 text-center">
-                        <p className="text-moon-muted mb-4">沒有符合條件的商品</p>
-                        <button onClick={openCreate} className="text-moon-accent text-sm hover:underline">
-                            新增第一個商品 →
-                        </button>
-                    </div>
+                    <EmptyState
+                        title="沒有符合條件的商品"
+                        description="可以先調整搜尋或分類，或直接新增新的商品。"
+                        className="border-moon-border bg-moon-dark/30"
+                        action={(
+                            <button onClick={openCreate} className="text-moon-accent text-sm hover:underline">
+                                新增第一個商品 →
+                            </button>
+                        )}
+                    />
                 ) : (
                     <div className="space-y-10">
                         {Object.entries(grouped).map(([cat, catItems]) => (

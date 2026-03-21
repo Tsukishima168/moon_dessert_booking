@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Tag, Percent, DollarSign, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Tag, Percent, DollarSign, AlertCircle } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
+import { LoadingState } from '@/components/shared/loading-state';
+import { PageHeader } from '@/components/shared/page-header';
+import { SearchFilterBar } from '@/components/shared/search-filter-bar';
 
 interface PromoCode {
     id: string;
@@ -22,6 +26,8 @@ export default function PromoCodesPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [currentCode, setCurrentCode] = useState<Partial<PromoCode>>({});
     const [error, setError] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
 
     // 載入優惠碼
     const fetchCodes = async () => {
@@ -102,28 +108,55 @@ export default function PromoCodesPage() {
         setError('');
     };
 
-    if (loading) return <div className="p-8 text-moon-muted">載入中...</div>;
+    const filteredPromoCodes = promoCodes.filter((code) => {
+        const matchesSearch = !searchTerm || [
+            code.code,
+            code.description,
+        ].some((value) => value?.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesStatus = statusFilter === 'all'
+            || (statusFilter === 'active' && code.is_active)
+            || (statusFilter === 'inactive' && !code.is_active);
+        return matchesSearch && matchesStatus;
+    });
+
+    if (loading) {
+        return <LoadingState fullScreen text="載入優惠碼中..." className="bg-moon-black" />;
+    }
 
     return (
         <div className="space-y-6">
-            {/* 頁面標題 */}
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-light text-moon-accent tracking-wide flex items-center gap-3">
-                    <Tag className="w-6 h-6" />
-                    優惠碼管理
-                </h1>
-                <button
-                    onClick={() => openEdit()}
-                    className="bg-moon-accent text-moon-black px-4 py-2 text-sm tracking-wider hover:bg-white transition-colors flex items-center gap-2"
-                >
-                    <Plus size={16} />
-                    新增優惠碼
-                </button>
-            </div>
+            <PageHeader
+                title="優惠碼管理"
+                description="管理折扣碼、啟用狀態與使用資訊。"
+                icon={<Tag className="w-5 h-5" />}
+                meta={`目前 ${filteredPromoCodes.length} 筆`}
+                action={(
+                    <button
+                        onClick={() => openEdit()}
+                        className="bg-moon-accent text-moon-black px-4 py-2 text-sm tracking-wider hover:bg-white transition-colors flex items-center gap-2"
+                    >
+                        <Plus size={16} />
+                        新增優惠碼
+                    </button>
+                )}
+            />
+
+            <SearchFilterBar
+                searchValue={searchTerm}
+                onSearchChange={setSearchTerm}
+                searchPlaceholder="搜尋優惠碼或描述"
+                filters={[
+                    { value: 'all', label: '全部' },
+                    { value: 'active', label: '啟用中' },
+                    { value: 'inactive', label: '已停用' },
+                ]}
+                activeFilter={statusFilter}
+                onFilterChange={setStatusFilter}
+            />
 
             {/* 優惠碼列表 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {promoCodes.map((code) => (
+                {filteredPromoCodes.map((code) => (
                     <div
                         key={code.id}
                         className={`border ${code.is_active ? 'border-moon-border' : 'border-red-900/30'} bg-moon-dark/50 p-6 relative group transition-all hover:border-moon-border/80`}
@@ -172,9 +205,13 @@ export default function PromoCodesPage() {
                     </div>
                 ))}
 
-                {promoCodes.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-moon-muted border border-dashed border-moon-border/30">
-                        尚未建立任何優惠碼
+                {filteredPromoCodes.length === 0 && (
+                    <div className="col-span-full">
+                        <EmptyState
+                            title={promoCodes.length === 0 ? '尚未建立任何優惠碼' : '沒有符合條件的優惠碼'}
+                            description={promoCodes.length === 0 ? '可以先建立第一張折扣碼，之後再逐步擴充活動。' : '換個搜尋字或篩選條件，再試一次。'}
+                            className="border-dashed border-moon-border/30 bg-transparent"
+                        />
                     </div>
                 )}
             </div>

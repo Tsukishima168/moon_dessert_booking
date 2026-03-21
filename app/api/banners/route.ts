@@ -19,6 +19,14 @@ export async function GET() {
             .order('created_at', { ascending: false });
 
         if (error) {
+            const isMissingTable =
+                error.code === '42P01' ||
+                /relation .*banners.* does not exist/i.test(error.message || '');
+
+            if (isMissingTable) {
+                return NextResponse.json([]);
+            }
+
             console.error('取得 Banner 錯誤:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
@@ -37,15 +45,6 @@ export async function POST(request: NextRequest) {
 
         if (!bannerId || !action) {
             return NextResponse.json({ error: '缺少必要參數' }, { status: 400 });
-        }
-
-        const supabase = createClient();
-
-        // 更新統計
-        if (action === 'view') {
-            await supabase.rpc('increment_banner_views', { banner_id: bannerId });
-        } else if (action === 'click') {
-            await supabase.rpc('increment_banner_clicks', { banner_id: bannerId });
         }
 
         return NextResponse.json({ success: true });

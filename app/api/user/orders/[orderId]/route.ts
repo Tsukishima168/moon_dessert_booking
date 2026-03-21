@@ -32,15 +32,13 @@ export async function GET(
       );
     }
 
-    // 查詢訂單項目
-    const { data: items } = await supabase
-      .from('order_items')
-      .select('*')
-      .eq('order_id', params.orderId);
+    // 目前正式下單流程是把 items 存在 orders.items JSON 欄位
+    // 這裡直接回傳該欄位，避免依賴不存在或未同步的 order_items 表
+    const items = Array.isArray(order.items) ? order.items : [];
 
     return NextResponse.json({
       ...order,
-      items: items || [],
+      items,
     });
   } catch (error: any) {
     console.error('查詢訂單錯誤:', error);

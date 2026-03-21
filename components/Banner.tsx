@@ -34,7 +34,10 @@ export default function Banner() {
     const fetchBanners = async () => {
         try {
             const response = await fetch('/api/banners');
-            if (!response.ok) throw new Error('Failed to fetch banners');
+            if (!response.ok) {
+                setBanners([]);
+                return;
+            }
 
             const data = await response.json();
             const list = Array.isArray(data) ? data : [];
@@ -43,7 +46,7 @@ export default function Banner() {
                 if (b.id && b.id !== 'demo') trackBannerView(b.id);
             });
         } catch (error) {
-            console.error('取得 Banner 錯誤:', error);
+            // 表不存在或 API 失敗時，安靜返回不顯示 Banner
         } finally {
             setLoading(false);
         }
@@ -84,21 +87,8 @@ export default function Banner() {
         return null;
     }
 
-    // 無 Banner 時顯示預覽用示範（僅供開發/預覽，正式上線前可從後台新增真實 Banner）
-    const demoBanner: Banner = {
-        id: 'demo',
-        title: '🌹 本季精選 · 草莓系列預訂中',
-        description: '即日起預訂享早鳥優惠，限量供應',
-        image_url: 'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png',
-        background_color: '#d4a574',
-        text_color: '#0a0a0a',
-        display_type: 'hero',
-    };
-
-    const displayBanners = banners.length > 0 ? banners : [demoBanner];
-
     // 過濾已關閉的 Banner
-    const visibleBanners = displayBanners.filter(banner => !dismissedBanners.has(banner.id));
+    const visibleBanners = banners.filter(banner => !dismissedBanners.has(banner.id));
 
     if (visibleBanners.length === 0) {
         return null;

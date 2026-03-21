@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const colorVar = (variableName) => `rgb(var(${variableName}) / <alpha-value>)`
+
 module.exports = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,18 +11,43 @@ module.exports = {
     extend: {
       colors: {
         moon: {
-          black: '#0A0A0A',
-          dark: '#141414',
-          gray: '#1F1F1F',
-          border: '#2A2A2A',
-          text: '#E5E5E5',
-          muted: '#999999',
-          accent: '#FFFFFF',
-          gold: '#D4AF37',
+          black: colorVar('--moon-black'),
+          dark: colorVar('--moon-dark'),
+          gray: colorVar('--moon-gray'),
+          border: colorVar('--moon-border'),
+          text: colorVar('--moon-text'),
+          muted: colorVar('--moon-muted'),
+          accent: colorVar('--moon-accent'),
+          gold: colorVar('--moon-gold'),
         },
+        background: colorVar('--background'),
+        foreground: colorVar('--foreground'),
+        card: colorVar('--card'),
+        'card-foreground': colorVar('--card-foreground'),
+        popover: colorVar('--popover'),
+        'popover-foreground': colorVar('--popover-foreground'),
+        primary: colorVar('--primary'),
+        'primary-foreground': colorVar('--primary-foreground'),
+        secondary: colorVar('--secondary'),
+        'secondary-foreground': colorVar('--secondary-foreground'),
+        muted: colorVar('--muted'),
+        'muted-foreground': colorVar('--muted-foreground'),
+        accent: colorVar('--accent'),
+        'accent-foreground': colorVar('--accent-foreground'),
+        destructive: colorVar('--destructive'),
+        border: colorVar('--border'),
+        input: colorVar('--input'),
+        ring: colorVar('--ring'),
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'var(--radius-md)',
+        sm: 'calc(var(--radius-md) - 2px)',
+        xl: 'calc(var(--radius) + 4px)',
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        heading: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         serif: ['Georgia', 'serif'],
       },
     },

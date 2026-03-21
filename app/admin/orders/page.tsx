@@ -3,19 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Loader2, RefreshCw, Clock, CheckCircle, Truck, XCircle,
-  ChevronRight, Search,
+  RefreshCw,
+  ChevronRight,
 } from 'lucide-react';
-
-const ORDER_STATUS = {
-  pending:   { label: '待付款',  color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  paid:      { label: '已付款',  color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
-  ready:     { label: '可取貨',  color: 'text-green-400',  bg: 'bg-green-400/10'  },
-  completed: { label: '完成',    color: 'text-moon-muted', bg: 'bg-moon-muted/10' },
-  cancelled: { label: '已取消',  color: 'text-red-400',    bg: 'bg-red-400/10'    },
-} as const;
-
-type OrderStatus = keyof typeof ORDER_STATUS;
+import { EmptyState } from '@/components/shared/empty-state';
+import { LoadingState } from '@/components/shared/loading-state';
+import { PageHeader } from '@/components/shared/page-header';
+import { SearchFilterBar } from '@/components/shared/search-filter-bar';
+import { getOrderStatusMeta, StatusBadge } from '@/components/shared/status-badge';
 
 interface OrderItem {
   name: string;
@@ -95,16 +90,12 @@ export default function AdminOrdersPage() {
       {/* Header */}
       <header className="border-b border-moon-border bg-moon-dark sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-moon-muted hover:text-moon-text transition-colors text-sm"
-            >
-              ← 後台
-            </button>
-            <span className="text-moon-border">|</span>
-            <h1 className="text-sm tracking-widest text-moon-text">訂單管理</h1>
-          </div>
+          <PageHeader
+            title="訂單管理"
+            description="查看、搜尋與處理目前的訂單。"
+            meta="從這裡進入單筆訂單頁做細部處理。"
+            className="flex-1"
+          />
           <button
             onClick={() => load(statusFilter)}
             disabled={loading}
@@ -116,40 +107,17 @@ export default function AdminOrdersPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        {/* 篩選列 */}
-        <div className="flex flex-wrap gap-2 items-center justify-between">
-          <div className="flex flex-wrap gap-1.5">
-            {STATUS_FILTERS.map(s => {
-              const cfg = s !== 'all' ? ORDER_STATUS[s as OrderStatus] : null;
-              return (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`px-3 py-1.5 text-xs tracking-wider border transition-colors ${
-                    statusFilter === s
-                      ? 'border-moon-accent bg-moon-accent/10 text-moon-accent'
-                      : s === 'cancelled'
-                      ? 'border-red-500/30 text-red-400/70 hover:border-red-500/60'
-                      : 'border-moon-border text-moon-muted hover:border-moon-muted'
-                  }`}
-                >
-                  {s === 'all' ? '全部' : cfg?.label}
-                </button>
-              );
-            })}
-          </div>
-          {/* 搜尋 */}
-          <div className="relative">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-moon-muted" />
-            <input
-              type="text"
-              placeholder="搜尋訂單號 / 姓名 / 電話"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs bg-moon-dark border border-moon-border text-moon-text placeholder:text-moon-muted/50 focus:outline-none focus:border-moon-accent w-56 transition-colors"
-            />
-          </div>
-        </div>
+        <SearchFilterBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="搜尋訂單號 / 姓名 / 電話"
+          filters={STATUS_FILTERS.map((status) => ({
+            value: status,
+            label: status === 'all' ? '全部' : getOrderStatusMeta(status).label,
+          }))}
+          activeFilter={statusFilter}
+          onFilterChange={setStatusFilter}
+        />
 
         {/* 計數 */}
         <p className="text-xs text-moon-muted">
@@ -158,11 +126,12 @@ export default function AdminOrdersPage() {
 
         {/* 表格 */}
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="animate-spin text-moon-accent" size={28} />
-          </div>
+          <LoadingState text="載入訂單中..." />
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-moon-muted text-sm">沒有符合的訂單</div>
+          <EmptyState
+            title="沒有符合的訂單"
+            description="換個篩選條件，或清空搜尋關鍵字再試一次。"
+          />
         ) : (
           <div className="border border-moon-border overflow-x-auto">
             <table className="w-full text-xs min-w-[700px]">
@@ -180,7 +149,6 @@ export default function AdminOrdersPage() {
               </thead>
               <tbody>
                 {filtered.map((order, i) => {
-                  const statusCfg = ORDER_STATUS[order.status as OrderStatus] ?? ORDER_STATUS.pending;
                   const price = order.final_price ?? order.total_price ?? 0;
                   return (
                     <tr
@@ -205,9 +173,7 @@ export default function AdminOrdersPage() {
                         ${price.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] ${statusCfg.bg} ${statusCfg.color}`}>
-                          {statusCfg.label}
-                        </span>
+                        <StatusBadge status={order.status} />
                       </td>
                       <td className="px-4 py-3 text-moon-muted">
                         <ChevronRight size={14} />

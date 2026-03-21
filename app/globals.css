@@ -1,9 +1,106 @@
+@import "tw-animate-css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius: 0.75rem;
+  --radius-md: 0.625rem;
+
+  --moon-black: 10 10 10;
+  --moon-dark: 20 20 20;
+  --moon-gray: 31 31 31;
+  --moon-border: 42 42 42;
+  --moon-text: 229 229 229;
+  --moon-muted: 153 153 153;
+  --moon-accent: 255 255 255;
+  --moon-gold: 212 175 55;
+
+  --background: 10 10 10;
+  --foreground: 229 229 229;
+  --card: 20 20 20;
+  --card-foreground: 229 229 229;
+  --popover: 20 20 20;
+  --popover-foreground: 229 229 229;
+  --primary: 255 255 255;
+  --primary-foreground: 10 10 10;
+  --secondary: 31 31 31;
+  --secondary-foreground: 229 229 229;
+  --muted: 31 31 31;
+  --muted-foreground: 153 153 153;
+  --accent: 31 31 31;
+  --accent-foreground: 229 229 229;
+  --destructive: 239 68 68;
+  --border: 42 42 42;
+  --input: 42 42 42;
+  --ring: 255 255 255;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+
+  --moon-black: 247 243 236;
+  --moon-dark: 255 251 246;
+  --moon-gray: 240 232 222;
+  --moon-border: 220 209 195;
+  --moon-text: 42 35 30;
+  --moon-muted: 110 97 84;
+  --moon-accent: 28 24 22;
+  --moon-gold: 176 134 48;
+
+  --background: 247 243 236;
+  --foreground: 42 35 30;
+  --card: 255 251 246;
+  --card-foreground: 42 35 30;
+  --popover: 255 251 246;
+  --popover-foreground: 42 35 30;
+  --primary: 28 24 22;
+  --primary-foreground: 247 243 236;
+  --secondary: 240 232 222;
+  --secondary-foreground: 42 35 30;
+  --muted: 240 232 222;
+  --muted-foreground: 110 97 84;
+  --accent: 240 232 222;
+  --accent-foreground: 42 35 30;
+  --destructive: 220 38 38;
+  --border: 220 209 195;
+  --input: 220 209 195;
+  --ring: 28 24 22;
+}
+
+.admin-shell {
+  --moon-black: 10 10 10;
+  --moon-dark: 20 20 20;
+  --moon-gray: 31 31 31;
+  --moon-border: 42 42 42;
+  --moon-text: 229 229 229;
+  --moon-muted: 153 153 153;
+  --moon-accent: 255 255 255;
+  --moon-gold: 212 175 55;
+
+  --background: 10 10 10;
+  --foreground: 229 229 229;
+  --card: 20 20 20;
+  --card-foreground: 229 229 229;
+  --popover: 20 20 20;
+  --popover-foreground: 229 229 229;
+  --primary: 255 255 255;
+  --primary-foreground: 10 10 10;
+  --secondary: 31 31 31;
+  --secondary-foreground: 229 229 229;
+  --muted: 31 31 31;
+  --muted-foreground: 153 153 153;
+  --accent: 31 31 31;
+  --accent-foreground: 229 229 229;
+  --destructive: 239 68 68;
+  --border: 42 42 42;
+  --input: 42 42 42;
+  --ring: 255 255 255;
 }
 
 * {
@@ -19,31 +116,30 @@ body {
 }
 
 body {
-  color: #E5E5E5;
-  background: #0A0A0A;
-  font-family: var(--font-inter);
+  color: rgb(var(--foreground));
+  background: rgb(var(--background));
+  font-family: var(--font-sans, var(--font-inter));
   letter-spacing: 0.02em;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* 自訂滾動條 */
 ::-webkit-scrollbar {
   width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: rgb(var(--muted));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: rgb(var(--border));
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: rgb(var(--moon-muted));
 }
 
-/* 動畫 */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -59,7 +155,6 @@ body {
   animation: fadeIn 0.5s ease-out;
 }
 
-/* 載入動畫 */
 @keyframes pulse {
   0%,
   100% {
@@ -74,43 +169,43 @@ body {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Tiptap WYSIWYG editor styles */
 .ProseMirror {
   outline: none;
 }
 
 .ProseMirror p {
   margin: 0.5em 0;
-  color: #f5f0e8;
+  color: rgb(var(--moon-text));
   line-height: 1.7;
 }
 
 .ProseMirror h2 {
+  margin: 1em 0 0.5em;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #c9a96e;
-  margin: 1em 0 0.5em;
+  color: rgb(var(--moon-gold));
 }
 
 .ProseMirror h3 {
+  margin: 0.75em 0 0.4em;
   font-size: 1rem;
   font-weight: 600;
-  color: #c9a96e;
-  margin: 0.75em 0 0.4em;
+  color: rgb(var(--moon-gold));
 }
 
 .ProseMirror ul {
-  padding-left: 1.4em;
-  color: #f5f0e8;
   margin: 0.5em 0;
+  padding-left: 1.4em;
+  color: rgb(var(--moon-text));
 }
 
 .ProseMirror li {
   margin: 0.2em 0;
 }
 
-.ProseMirror strong {
-  color: #c9a96e;
+.ProseMirror strong,
+.ProseMirror a {
+  color: rgb(var(--moon-gold));
 }
 
 .ProseMirror em {
@@ -118,14 +213,27 @@ body {
 }
 
 .ProseMirror a {
-  color: #c9a96e;
   text-decoration: underline;
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #555;
-  pointer-events: none;
   height: 0;
+  color: rgb(var(--moon-muted));
+  pointer-events: none;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    @apply font-sans;
+  }
 }

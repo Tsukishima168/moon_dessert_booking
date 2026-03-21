@@ -18,6 +18,10 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          const hostname = request.nextUrl.hostname;
+          const shouldShareAcrossSubdomains =
+            hostname === 'kiwimu.com' || hostname.endsWith('.kiwimu.com');
+
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -25,7 +29,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, {
               ...options,
-              domain: '.kiwimu.com', // 跨子網域共享 session
+              ...(shouldShareAcrossSubdomains ? { domain: '.kiwimu.com' } : {}),
             })
           );
         },

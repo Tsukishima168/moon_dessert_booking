@@ -1,30 +1,42 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ShoppingCart, User, LogOut } from 'lucide-react';
-import { useCartStore } from '@/store/cartStore';
-import Link from 'next/link';
-import Image from 'next/image';
-import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { LogOut, ShoppingCart, User } from 'lucide-react';
+
+import ThemeToggle from '@/components/ThemeToggle';
+import { clearServerSession, getResolvedUser } from '@/lib/client-auth';
+import { supabase } from '@/lib/supabase';
+import { useCartStore } from '@/store/cartStore';
 
 export default function Navbar() {
+  const pathname = usePathname();
+  const router = useRouter();
   const { getTotalItems, toggleCart } = useCartStore();
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
-
-  // 避免伺服器與瀏覽器初始內容不一致（Hydration error）
-  // 先假設數量為 0，等到 client 端完成 hydration 再讀取實際購物車數量
+  const [authReady, setAuthReady] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [hasHydrated, setHasHydrated] = useState(false);
+
+  const isAdminRoute = pathname?.startsWith('/admin');
 
   useEffect(() => {
     setHasHydrated(true);
 
-    // 取得當前登入狀態
-    supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user ?? null));
+    const restoreAuth = async () => {
+      const user = await getResolvedUser();
+      setCurrentUser(user);
+      setAuthReady(true);
+    };
 
-    // 監聽登入/登出事件
+    void restoreAuth();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUser(session?.user ?? null);
+      setAuthReady(true);
     });
 
     return () => subscription.unsubscribe();
@@ -32,29 +44,44 @@ export default function Navbar() {
 
   const totalItems = hasHydrated ? getTotalItems() : 0;
 
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await supabase.auth.signOut();
+      await clearServerSession();
+      setCurrentUser(null);
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      console.error('登出失敗:', error);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
-    <nav className="bg-moon-black border-b border-moon-border sticky top-0 z-30 backdrop-blur-sm bg-opacity-90">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 sm:h-20">
-          {/* Logo */}
+    <nav
+      className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-sm ${isAdminRoute ? 'admin-shell' : ''}`}
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between sm:h-20">
           <Link href="/" className="flex items-center group">
             <Image
               src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1769501262/%E6%A8%99%E6%BA%96%E5%AD%97-04_swnuoh.png"
               alt="MOON MOON"
               width={120}
               height={40}
-              className="h-8 sm:h-10 w-auto group-hover:opacity-80 transition-opacity"
+              className="h-8 w-auto transition-opacity group-hover:opacity-80 sm:h-10"
               priority
             />
           </Link>
 
-          {/* 中間導航 - 月島網絡 */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden items-center gap-6 md:flex">
             <a
               href="https://map.kiwimu.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors flex items-center gap-1"
+              className="flex items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
             >
               品牌地圖
             </a>
@@ -62,64 +89,76 @@ export default function Navbar() {
               href="https://kiwimu.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors flex items-center gap-1"
+              className="flex items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
             >
               MBTI測驗
             </a>
-            {/* Passport Link - 暫時導向登入頁，未來指向獨立 Passport App */}
             <Link
               href="/auth/login"
-              className="text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors flex items-center gap-1"
+              className="flex items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
             >
               甜點護照
             </Link>
           </div>
 
-          {/* 右側按鈕區 */}
           <div className="flex items-center gap-2">
-            {currentUser ? (
-              // 已登入：顯示 email 縮寫 + 登出按鈕
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3">
-                  <User size={14} className="text-moon-accent" />
-                  <span className="text-xs text-moon-muted hidden sm:block truncate max-w-[120px]">
-                    {currentUser.email?.split('@')[0]}
-                  </span>
+            {!isAdminRoute ? <ThemeToggle /> : null}
+
+            {authReady ? (
+              currentUser ? (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/account"
+                    className="flex items-center gap-1.5 border border-moon-border px-3 py-3 transition-all hover:bg-moon-border sm:px-4"
+                    title="前往會員中心"
+                  >
+                    <User size={14} className="text-moon-accent" />
+                    <span className="hidden text-xs font-bold tracking-widest text-moon-text transition-colors hover:text-moon-accent sm:block">
+                      會員中心
+                    </span>
+                    <span className="hidden max-w-[120px] truncate text-[11px] text-moon-muted lg:block">
+                      {currentUser.email?.split('@')[0]}
+                    </span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    className="flex items-center gap-2 border border-moon-border bg-moon-black p-3 transition-all hover:bg-moon-border disabled:opacity-50 sm:px-4 sm:py-3"
+                    title="登出"
+                  >
+                    <span className="hidden text-xs font-bold tracking-widest text-moon-text sm:block">
+                      {loggingOut ? '登出中...' : '登出'}
+                    </span>
+                    <LogOut size={16} className="text-moon-text transition-colors" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => supabase.auth.signOut()}
-                  className="bg-moon-black border border-moon-border p-3 sm:py-3 sm:px-4 hover:bg-moon-border transition-all group flex items-center gap-2"
-                  title="登出"
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="border border-moon-border bg-moon-black p-3 transition-all hover:bg-moon-border sm:p-4"
                 >
-                  <span className="text-xs text-moon-text hidden sm:block group-hover:text-moon-accent transition-colors tracking-widest font-bold">登出</span>
-                  <LogOut size={16} className="text-moon-text group-hover:text-moon-accent transition-colors" />
-                </button>
-              </div>
+                  <User size={18} className="text-moon-text transition-colors sm:h-5 sm:w-5" />
+                </Link>
+              )
             ) : (
-              // 未登入：User icon 指向登入頁
-              <Link
-                href="/auth/login"
-                className="bg-moon-black border border-moon-border p-3 sm:p-4 hover:bg-moon-border transition-all group"
-              >
-                <User size={18} className="text-moon-text sm:w-5 sm:h-5 group-hover:text-moon-accent transition-colors" />
-              </Link>
+              <div className="border border-moon-border bg-moon-black p-3 opacity-60 sm:p-4">
+                <User size={18} className="text-moon-text sm:h-5 sm:w-5" />
+              </div>
             )}
 
-            <button
-              onClick={toggleCart}
-              className="relative group"
-            >
-              <div className="bg-moon-gray border border-moon-border p-3 sm:p-4 rounded-none hover:bg-moon-border transition-all">
-                <ShoppingCart size={18} className="text-moon-text sm:w-5 sm:h-5" />
-              </div>
+            {!isAdminRoute ? (
+              <button onClick={toggleCart} className="relative group">
+                <div className="rounded-none border border-moon-border bg-moon-gray p-3 transition-all hover:bg-moon-border sm:p-4">
+                  <ShoppingCart size={18} className="text-moon-text sm:h-5 sm:w-5" />
+                </div>
 
-              {/* 商品數量徽章 */}
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-moon-accent text-moon-black text-[10px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center">
-                  {totalItems}
-                </span>
-              )}
-            </button>
+                {totalItems > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-moon-accent text-[10px] font-bold text-moon-black sm:-right-2 sm:-top-2 sm:h-6 sm:w-6 sm:text-xs">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

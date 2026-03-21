@@ -19,6 +19,9 @@ export async function POST(request: NextRequest) {
         }
 
         const response = NextResponse.json({ success: true });
+        const hostname = request.nextUrl.hostname;
+        const shouldShareAcrossSubdomains =
+            hostname === 'kiwimu.com' || hostname.endsWith('.kiwimu.com');
 
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
                         cookiesToSet.forEach(({ name, value, options }) =>
                             response.cookies.set(name, value, {
                                 ...options,
-                                domain: '.kiwimu.com',
+                                ...(shouldShareAcrossSubdomains ? { domain: '.kiwimu.com' } : {}),
                             })
                         );
                     },
@@ -48,4 +51,26 @@ export async function POST(request: NextRequest) {
         console.error('POST /api/auth/set-session error:', error);
         return NextResponse.json({ error: 'Failed to set session' }, { status: 500 });
     }
+}
+
+export async function DELETE(request: NextRequest) {
+    const response = NextResponse.json({ success: true });
+    const hostname = request.nextUrl.hostname;
+    const shouldShareAcrossSubdomains =
+        hostname === 'kiwimu.com' || hostname.endsWith('.kiwimu.com');
+
+    const cookieOptions = {
+        path: '/',
+        maxAge: 0,
+        ...(shouldShareAcrossSubdomains ? { domain: '.kiwimu.com' } : {}),
+    };
+
+    request.cookies
+        .getAll()
+        .filter(({ name }) => name.startsWith('sb-'))
+        .forEach(({ name }) => {
+            response.cookies.set(name, '', cookieOptions);
+        });
+
+    return response;
 }

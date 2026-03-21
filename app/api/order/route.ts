@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-import { createOrder } from '@/src/services/order.service'
+import { createOrder, OrderValidationError } from '@/src/services/order.service'
 
 // POST /api/order - 建立新訂單
 export async function POST(request: NextRequest) {
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     console.error('API 錯誤 - 建立訂單:', error)
     const message =
       error instanceof Error ? error.message : '建立訂單失敗，請稍後再試'
-    return NextResponse.json({ success: false, message }, { status: 500 })
+    const status = error instanceof OrderValidationError ? 400 : 500
+    return NextResponse.json({ success: false, message }, { status })
   }
 }

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 避免重複確認
-    if (order.status === 'confirmed' || order.status === 'paid') {
+    if (['paid', 'ready', 'completed'].includes(order.status)) {
       return NextResponse.redirect(`${siteUrl}/order/success?orderId=${orderId}`);
     }
 
@@ -59,10 +59,11 @@ export async function GET(request: NextRequest) {
     }
 
     // 更新訂單狀態
+    // 這裡統一寫成 paid，避免進入系統其餘模組未收斂的 confirmed 狀態
     await supabase
       .from('orders')
       .update({
-        status: 'confirmed',
+        status: 'paid',
         payment_method: 'line_pay',
         linepay_transaction_id: transactionId,
         payment_date: new Date().toISOString(),

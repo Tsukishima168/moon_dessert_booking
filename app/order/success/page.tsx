@@ -32,14 +32,14 @@ function SuccessContent() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
-            href="/account/order"
+            href="/account"
             className="flex items-center justify-center border border-moon-border text-moon-text py-3 text-xs tracking-widest hover:border-moon-accent hover:text-moon-accent transition-colors"
           >
-            查詢我的訂單
+            前往會員中心
           </Link>
           <Link
             href="/"
-            className="flex items-center justify-center text-center text-xs text-moon-muted underline underline-offset-4 py-3"
+            className="flex items-center justify-center text-center text-xs text-moon-muted underline underline-offset-4 py-3 transition-colors hover:text-moon-accent"
           >
             返回首頁
           </Link>
