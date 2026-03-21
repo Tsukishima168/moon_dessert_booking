@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 function CancelContent() {
   const searchParams = useSearchParams();
-  const orderId = searchParams.get('orderId');
+  const orderId = searchParams?.get('orderId');
 
   return (
     <div className="min-h-screen bg-moon-black flex items-center justify-center p-4">

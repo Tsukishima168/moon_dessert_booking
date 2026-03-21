@@ -1,6 +1,5 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
-import { validatePromoCode } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
 import { EventBus } from '@/src/lib/event-bus'
 
@@ -68,6 +67,9 @@ interface PromoCodeUsageRow {
   is_active: boolean | null
   valid_from: string | null
   valid_until: string | null
+  discount_type: 'percentage' | 'fixed' | null
+  discount_value: number | null
+  min_order_amount: number | null
 }
 
 function parsePrice(raw: string | number | null | undefined): number {
@@ -93,16 +95,32 @@ async function recalculateOrderPricing(items: OrderItem[]) {
     .from('menu_items')
     .select('id, name, is_available')
 
-  if (menuItemsError) throw menuItemsError
+  if (menuItemsError) {
+    console.warn('[recalculateOrderPricing] 無法讀取 menu_items，使用前端傳入價格:', menuItemsError.message)
+    const subtotal = items.reduce((sum, item) => sum + parsePrice(item.price) * item.quantity, 0)
+    return { canonicalItems: items, subtotal }
+  }
 
   const { data: menuVariants, error: menuVariantsError } = await adminClient
     .from('menu_variants')
     .select('id, menu_item_id, variant_name, price')
 
-  if (menuVariantsError) throw menuVariantsError
+  const variants: MenuVariantRow[] = menuVariantsError || !menuVariants ? [] : menuVariants as MenuVariantRow[]
+  if (menuVariantsError) {
+    console.warn('[recalculateOrderPricing] 無法讀取 menu_variants，將只做可用性驗證:', menuVariantsError.message)
+  }
 
   const canonicalItems = items.map((item) => {
-    const matchedVariant = (menuVariants as MenuVariantRow[]).find((variant) => {
+    // 先做可用性驗證（只要 menu_items 存在就能做）
+    const matchedMenuItem = (menuItems as MenuItemRow[]).find(
+      (menuItem) => menuItem.name === item.name
+    )
+    if (matchedMenuItem && matchedMenuItem.is_available === false) {
+      throw new OrderValidationError(`商品「${item.name}」目前不可訂購，請重新整理菜單`)
+    }
+
+    // 嘗試找匹配的 variant 以取得 canonical 價格
+    const matchedVariant = variants.find((variant) => {
       const compositeId = item.id || ''
       const exactCompositeMatch =
         compositeId.startsWith(`${variant.menu_item_id}-`) &&
@@ -119,23 +137,16 @@ async function recalculateOrderPricing(items: OrderItem[]) {
       return exactCompositeMatch || fallbackMatch
     })
 
-    if (!matchedVariant) {
-      throw new OrderValidationError(`商品「${item.name}」規格資料已變動，請重新加入購物車`)
-    }
-
-    const matchedMenuItem = (menuItems as MenuItemRow[]).find(
-      (menuItem) => menuItem.id === matchedVariant.menu_item_id
-    )
-
-    if (!matchedMenuItem || matchedMenuItem.is_available === false) {
-      throw new OrderValidationError(`商品「${item.name}」目前不可訂購，請重新整理菜單`)
-    }
+    // 找到 variant 就用 canonical 價格，找不到就用前端傳入的價格（降級）
+    const canonicalPrice = matchedVariant
+      ? parsePrice(matchedVariant.price)
+      : parsePrice(item.price)
 
     return {
       ...item,
-      name: matchedMenuItem.name,
-      variant_name: matchedVariant.variant_name ?? item.variant_name ?? '標準',
-      price: parsePrice(matchedVariant.price),
+      name: matchedMenuItem?.name ?? item.name,
+      variant_name: matchedVariant?.variant_name ?? item.variant_name ?? '標準',
+      price: canonicalPrice,
     }
   })
 
@@ -145,6 +156,60 @@ async function recalculateOrderPricing(items: OrderItem[]) {
   )
 
   return { canonicalItems, subtotal }
+}
+
+/**
+ * Server-side 優惠碼驗證（使用 admin client，不依賴瀏覽器 session）
+ */
+async function validatePromoCodeServer(
+  code: string,
+  orderAmount: number
+): Promise<PromoCodeValidation> {
+  const adminClient = createAdminClient()
+  const normalizedCode = code.toUpperCase().trim()
+
+  const { data: promoCode, error } = await adminClient
+    .from('promo_codes')
+    .select('id, discount_type, discount_value, min_order_amount, used_count, max_uses, valid_from, valid_until, is_active')
+    .eq('code', normalizedCode)
+    .eq('is_active', true)
+    .single()
+
+  if (error || !promoCode) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '找不到此優惠碼' }
+  }
+
+  const row = promoCode as PromoCodeUsageRow
+  const now = new Date()
+  if (row.valid_from && now < new Date(row.valid_from)) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼尚未生效' }
+  }
+  if (row.valid_until && now > new Date(row.valid_until)) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼已過期' }
+  }
+  const maxUses = row.max_uses === null ? null : Number(row.max_uses)
+  const usedCount = Number(row.used_count ?? 0)
+  if (maxUses !== null && usedCount >= maxUses) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼已達使用上限' }
+  }
+  if (row.min_order_amount && orderAmount < row.min_order_amount) {
+    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: `訂單未達最低消費 $${row.min_order_amount}` }
+  }
+
+  let discountAmount = 0
+  if (row.discount_type === 'percentage') {
+    discountAmount = Math.round((orderAmount * (row.discount_value ?? 0)) / 100)
+  } else {
+    discountAmount = row.discount_value ?? 0
+  }
+  discountAmount = Math.min(discountAmount, orderAmount)
+
+  return {
+    valid: true,
+    discount_amount: discountAmount,
+    final_amount: orderAmount - discountAmount,
+    message: '優惠碼套用成功',
+  }
 }
 
 async function reservePromoCodeUsage(
@@ -251,7 +316,7 @@ export async function createOrder(
   let promoUsageReservation: PromoCodeUsageReservation | null = null
 
   if (input.promo_code) {
-    const promoValidation = await validatePromoCode(input.promo_code, subtotal)
+    const promoValidation = await validatePromoCodeServer(input.promo_code, subtotal)
     if (!promoValidation.valid) {
       throw new OrderValidationError(promoValidation.message)
     }
@@ -331,7 +396,7 @@ export async function applyPromoCode(
   code: string,
   subtotal: number
 ): Promise<PromoCodeValidation> {
-  return validatePromoCode(code, subtotal)
+  return validatePromoCodeServer(code, subtotal)
 }
 
 /**

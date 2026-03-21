@@ -14,8 +14,8 @@ const REASON_MAP: Record<string, string> = {
 
 function ErrorContent() {
   const searchParams = useSearchParams();
-  const reason = searchParams.get('reason') ?? 'server_error';
-  const code = searchParams.get('code');
+  const reason = searchParams?.get('reason') ?? 'server_error';
+  const code = searchParams?.get('code');
   const message = REASON_MAP[reason] ?? REASON_MAP.server_error;
 
   return (

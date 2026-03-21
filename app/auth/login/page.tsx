@@ -41,7 +41,7 @@ export default function LoginPage() {
         setLoading(true);
         setMessage(null);
         try {
-            const redirect = searchParams?.get('redirect') || '/';
+            const redirect = searchParams?.get('redirect') || '/account';
             const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`;
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -65,7 +65,7 @@ export default function LoginPage() {
         setMessage(null);
 
         try {
-            const redirect = searchParams?.get('redirect') || '/';
+            const redirect = searchParams?.get('redirect') || '/account';
             const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`;
             const { error } = await supabase.auth.signInWithOtp({
                 email,

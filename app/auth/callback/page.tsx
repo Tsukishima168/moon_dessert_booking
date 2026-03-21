@@ -63,7 +63,7 @@ export default function AuthCallbackPage() {
 
             // 檢查 URL 是否有 redirect 參數（例如從 admin 跳過來的）
             const redirect = new URLSearchParams(window.location.search).get('redirect');
-            router.replace(redirect || '/');
+            router.replace(redirect || '/account');
         };
 
         handleCallback();
