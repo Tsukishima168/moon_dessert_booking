@@ -71,7 +71,7 @@ export default function Navbar() {
               alt="MOON MOON"
               width={120}
               height={40}
-              className="h-8 w-auto transition-opacity group-hover:opacity-80 sm:h-10"
+              className="theme-logo h-8 w-auto transition-opacity group-hover:opacity-80 sm:h-10"
               priority
             />
           </Link>

@@ -91,3 +91,16 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+
+// DELETE /api/admin/auth - 清除 admin_token cookie（登出後台）
+export async function DELETE() {
+    const response = NextResponse.json({ success: true });
+    response.cookies.set('admin_token', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 0,
+    });
+    return response;
+}

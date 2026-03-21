@@ -237,3 +237,8 @@ body {
     @apply font-sans;
   }
 }
+
+/* 白色 logo 在淺色模式自動變黑 */
+html[data-theme='light'] .theme-logo {
+  filter: brightness(0);
+}
