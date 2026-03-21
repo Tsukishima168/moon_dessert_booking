@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     // 必填欄位守衛
     const { customer_name, phone, pickup_time, items, total_price } = body
-    if (!customer_name || !phone || !pickup_time || !items || !total_price) {
+    if (!customer_name || !phone || !pickup_time || !items || total_price === undefined || total_price === null) {
       return NextResponse.json(
         { success: false, message: '缺少必要欄位' },
         { status: 400 }

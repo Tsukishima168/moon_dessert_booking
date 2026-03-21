@@ -300,9 +300,10 @@ export async function createOrder(
   input: CreateOrderInput,
   authUserId: string | null
 ): Promise<CreateOrderResult> {
-  // 手機格式驗證
-  const phoneRegex = /^[0-9]{8,12}$/
-  if (!phoneRegex.test(input.phone.replace(/[\s-]/g, ''))) {
+  // 手機格式驗證（接受 +886、09XX 等台灣常見格式）
+  const cleanedPhone = input.phone.replace(/[\s\-()+ ]/g, '')
+  const phoneRegex = /^[0-9]{8,15}$/
+  if (!phoneRegex.test(cleanedPhone)) {
     throw new OrderValidationError('手機號碼格式不正確')
   }
 

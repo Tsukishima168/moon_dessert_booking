@@ -91,25 +91,22 @@ export default function CheckoutPage() {
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'guest'>('loading');
   const [authMessage, setAuthMessage] = useState('');
 
-  // 從 API 載入用戶資料，metaName 為 OAuth provider 提供的名字（fallback）
-  const loadUserProfile = async (email: string, metaName?: string) => {
+  // 從 API 載入用戶資料
+  const loadUserProfile = async (email: string) => {
     try {
       const response = await fetch('/api/user/profile');
       if (!response.ok) throw new Error('載入會員資料失敗');
 
       const profile = await response.json();
-      if (profile?.full_name) {
-        setValue('customer_name', profile.full_name);
-      } else if (metaName) {
-        setValue('customer_name', metaName);
-      }
+      if (profile?.full_name) setValue('customer_name', profile.full_name);
       if (profile?.phone) setValue('phone', profile.phone);
-      setValue('email', profile?.email || email);
-      return;
+      if (profile?.email) {
+        setValue('email', profile.email);
+        return;
+      }
     } catch {
       // ignore
     }
-    if (metaName) setValue('customer_name', metaName);
     setValue('email', email);
   };
 
@@ -130,8 +127,7 @@ export default function CheckoutPage() {
       setLoggedInUser(nextUser);
       setAuthStatus('authenticated');
       setAuthMessage('會員資料已同步，姓名 / 電話 / Email 會自動帶入。');
-      const metaName = (user.user_metadata?.full_name || user.user_metadata?.name) as string | undefined;
-      await loadUserProfile(nextUser.email, metaName);
+      await loadUserProfile(nextUser.email);
     } catch (error) {
       console.error('確認會員 session 失敗:', error);
       setLoggedInUser(null);
@@ -146,12 +142,11 @@ export default function CheckoutPage() {
     // 2. 監聽 Auth 狀態變更
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        const { id, email, user_metadata } = session.user;
+        const { id, email } = session.user;
         setLoggedInUser({ email: email || '', id });
         setAuthStatus('authenticated');
         setAuthMessage('會員資料已同步，姓名 / 電話 / Email 會自動帶入。');
-        const metaName = (user_metadata?.full_name || user_metadata?.name) as string | undefined;
-        void loadUserProfile(email || '', metaName);
+        void loadUserProfile(email || '');
       } else {
         setLoggedInUser(null);
         setAuthStatus('guest');

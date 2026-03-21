@@ -26,7 +26,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         const restoreLogin = async () => {
-            const user = await ensureServerSession(1, 150);
+            const user = await ensureServerSession(4, 200);
             if (!user) return;
 
             const redirect = searchParams?.get('redirect') || '/account';

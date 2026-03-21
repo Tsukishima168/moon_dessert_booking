@@ -238,7 +238,7 @@ body {
   }
 }
 
-/* 白色 logo 在淺色模式自動變黑 */
+/* 白色 logo 在淺色模式自動變黑（invert 能處理各種深淺的白/灰） */
 html[data-theme='light'] .theme-logo {
-  filter: brightness(0);
+  filter: invert(1) brightness(0.1);
 }

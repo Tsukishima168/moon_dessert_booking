@@ -104,9 +104,10 @@ export default function AdminSidebar() {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/admin/logout', { method: 'POST' });
+      // 只清除 admin_token cookie，不碰 Supabase user session
+      const response = await fetch('/api/admin/auth', { method: 'DELETE' });
       if (response.ok) {
-        window.location.href = '/';
+        window.location.href = '/admin';
       }
     } catch (error) {
       console.error('登出錯誤:', error);
