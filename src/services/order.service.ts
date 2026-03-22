@@ -96,9 +96,8 @@ async function recalculateOrderPricing(items: OrderItem[]) {
     .select('id, name, is_available')
 
   if (menuItemsError) {
-    console.warn('[recalculateOrderPricing] 無法讀取 menu_items，使用前端傳入價格:', menuItemsError.message)
-    const subtotal = items.reduce((sum, item) => sum + parsePrice(item.price) * item.quantity, 0)
-    return { canonicalItems: items, subtotal }
+    console.error('[recalculateOrderPricing] 無法讀取 menu_items，拒絕建立訂單:', menuItemsError.message)
+    throw new Error('無法驗證商品價格，請稍後再試')
   }
 
   const { data: menuVariants, error: menuVariantsError } = await adminClient
