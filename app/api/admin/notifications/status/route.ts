@@ -63,9 +63,7 @@ export async function GET() {
   const discord = getDiscordConfigStatus()
   const resendConfigured =
     !!process.env.RESEND_API_KEY && !!process.env.RESEND_FROM_EMAIL
-  const webhookUrl =
-    process.env.N8N_ORDER_WEBHOOK_URL ||
-    process.env.NEXT_PUBLIC_N8N_ORDER_WEBHOOK_URL
+  const webhookUrl = process.env.N8N_ORDER_WEBHOOK_URL
 
   return NextResponse.json({
     success: true,

@@ -89,8 +89,8 @@ export async function syncOrderEventToN8n(
   eventType: OrderSyncEventType,
   payload: OrderSyncPayload
 ): Promise<boolean> {
-  const webhookUrl = process.env.NEXT_PUBLIC_N8N_ORDER_WEBHOOK_URL || process.env.N8N_ORDER_WEBHOOK_URL;
-  const webhookSecret = process.env.NEXT_PUBLIC_N8N_ORDER_WEBHOOK_SECRET || process.env.N8N_ORDER_WEBHOOK_SECRET || '';
+  const webhookUrl = process.env.N8N_ORDER_WEBHOOK_URL;
+  const webhookSecret = process.env.N8N_ORDER_WEBHOOK_SECRET || '';
 
   // 未設定 URL 則靜默跳過（不算失敗）
   if (!webhookUrl) return false;
