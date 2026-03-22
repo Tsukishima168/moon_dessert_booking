@@ -27,17 +27,17 @@ interface RequestItem {
 function isValidRequestItem(item: unknown): item is RequestItem {
   if (!item || typeof item !== 'object') return false;
 
-  const candidate = item as Partial<RequestItem>;
+  const c = item as Record<string, unknown>;
 
   return (
-    typeof candidate.name === 'string' &&
-    candidate.name.trim().length > 0 &&
-    typeof candidate.quantity === 'number' &&
-    Number.isInteger(candidate.quantity) &&
-    candidate.quantity > 0 &&
-    typeof candidate.price === 'number' &&
-    Number.isFinite(candidate.price) &&
-    candidate.price >= 0
+    typeof c['name'] === 'string' &&
+    c['name'].trim().length > 0 &&
+    typeof c['quantity'] === 'number' &&
+    Number.isInteger(c['quantity']) &&
+    (c['quantity'] as number) > 0 &&
+    typeof c['price'] === 'number' &&
+    Number.isFinite(c['price']) &&
+    (c['price'] as number) >= 0
   );
 }
 

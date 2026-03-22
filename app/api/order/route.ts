@@ -42,9 +42,10 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-      if (item.price === undefined || item.price === null) {
+      const p = Number(item.price)
+      if (item.price === undefined || item.price === null || !Number.isFinite(p) || p < 0) {
         return NextResponse.json(
-          { success: false, message: `商品「${item.name}」缺少價格` },
+          { success: false, message: `商品「${item.name}」價格格式錯誤` },
           { status: 400 }
         )
       }
