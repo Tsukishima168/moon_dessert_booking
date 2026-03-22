@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 
 export async function ensureAdmin(): Promise<boolean> {
     const adminPassword = process.env.ADMIN_PASSWORD;
@@ -10,6 +10,7 @@ export async function ensureAdmin(): Promise<boolean> {
     if (!adminToken) return false;
 
     const expectedToken = createHash('sha256').update(adminPassword).digest('hex');
-    return adminToken === expectedToken;
+    if (adminToken.length !== expectedToken.length) return false;
+    return timingSafeEqual(Buffer.from(adminToken), Buffer.from(expectedToken));
 }
 
