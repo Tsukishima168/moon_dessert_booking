@@ -22,6 +22,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 驗證每個 item 的結構：name(string), quantity(正整數), price(number/string)
+    for (const item of items) {
+      if (typeof item !== 'object' || item === null) {
+        return NextResponse.json(
+          { success: false, message: '商品資料格式錯誤' },
+          { status: 400 }
+        )
+      }
+      if (typeof item.name !== 'string' || item.name.trim() === '') {
+        return NextResponse.json(
+          { success: false, message: '商品名稱缺失或格式錯誤' },
+          { status: 400 }
+        )
+      }
+      if (typeof item.quantity !== 'number' || !Number.isInteger(item.quantity) || item.quantity < 1) {
+        return NextResponse.json(
+          { success: false, message: `商品「${item.name}」數量必須為正整數` },
+          { status: 400 }
+        )
+      }
+      if (item.price === undefined || item.price === null) {
+        return NextResponse.json(
+          { success: false, message: `商品「${item.name}」缺少價格` },
+          { status: 400 }
+        )
+      }
+    }
+
     // 取得登入用戶（允許未登入）
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
