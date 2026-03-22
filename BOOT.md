@@ -4,44 +4,58 @@
 
 ---
 
-## 冷啟動快照 · 2026-03-21 收工
+## 冷啟動快照 · 2026-03-22
 
-### 今日完成（人工測試 bug 批量修復）
+### 本輪完成
 
-Codex 遺留 49 個 dirty 檔案後，本輪完成診斷 + 修復：
+**全面診斷 + P0 安全修復（雙 AI 交叉驗證）**
 
-**Commit `7148da6`** — WIP snapshot（Codex 遺留的 49 個未 commit 檔案）
+1. **工作樹清理**
+   - `git stash` 隔離 17 個 dirty changes（stash msg: `2026-03-22 dirty changes - 17 modified files, pre-cleanup`）
+   - 刪除 3 個垃圾副本檔（`page 2.tsx`、`globals 2.css`、`Navbar 2.tsx`）
+   - 回到 `04242ec` 乾淨基底，`tsc --noEmit` 0 errors、`next build` 通過
 
-**Commit `0ffcc19`** — P0/P1 核心修復
-- `order.service.ts`：移除 anon client `validatePromoCode`，改用 `validatePromoCodeServer`（admin client）→ 修正優惠碼在 API route 失效
-- `order.service.ts`：`recalculateOrderPricing` 加 `menu_variants` 容錯 fallback → 修正前端無法下單、會卡住
-- `auth/login/page.tsx`：Google OAuth / magic link redirect 預設從 `'/'` 改 `'/account'` → 修正登入後看不到 /account
-- `auth/callback/page.tsx`：fallback 改 `'/account'`
-- `checkout/page.tsx`：profile 自動帶入加 `user.user_metadata.full_name` fallback → 修正只帶入 email
-- TS 0 errors（email.handler 型別、order-status stub、searchParams null safety）
+2. **P0 安全修復（2 commits）**
+   - `2ce1920` fix: trust db amount for line pay request
+     - LINE Pay request 改為只信任 DB 金額，前端 amount 不一致 → 400
+     - 已付款訂單拒絕重複發起 → 409
+     - items 改從 DB order.items 取，不信任前端
+   - `c6232ff` fix: restrict n8n config to server env
+     - 移除 `NEXT_PUBLIC_N8N_*` fallback，webhook URL/secret 只從 server env 讀取
 
-**Commit `8469334`** — Admin / 主題修復
-- `admin/page.tsx` handleLogout：改呼叫 `DELETE /api/admin/auth`，不再碰 `supabase.auth.signOut()` → 修正 admin 登出清掉用戶 Supabase session
-- `api/admin/auth/route.ts`：新增 DELETE endpoint 清除 admin_token cookie
-- Navbar logo + globals.css：淺色模式白色 logo 自動 `filter: brightness(0)` 變黑
+3. **驗證結果**
+   - `/api/send-email` 在乾淨基底已有 `INTERNAL_API_SECRET` header 驗證（非 open relay）
+   - `next build` 通過
+   - 工作樹乾淨（no uncommitted changes）
 
-### 待人工驗證（重啟 dev server 後逐一測）
+### 已 push
 
-1. **Google 登入** → 應跳到 `/account`，不是首頁
-2. **結帳頁** → 姓名應從 Google user_metadata 帶入（若 profiles 表無資料）
-3. **優惠碼** → 先在 Supabase 建一筆測試優惠碼 → 結帳套用 → 確認折扣即時更新
-4. **Banners 表** → 進 Supabase Dashboard，確認 `banners` 表是否有資料；若空，手動新增一筆 `is_active=true` → 確認前後台顯示
-5. **Admin 登出** → 點登出後 kk4e18 的 Supabase session 應不受影響，仍可進 /account
-6. **主題切換** → 切淺色 → 重新整理 → 應保留淺色
-7. **淺色模式 logo** → 應自動變黑色
+`main` HEAD: `c6232ff`，共 13 commits 已推上 `origin/main`。
 
-### 待主理人執行
+### Stash 內容（待決定）
 
-1. **PR merge 順序（功能通過後）：**
-   - PR #11：`feat/linepay → main`（含本輪所有修復）
-   - PR #10：`feat/shop-security-and-completeness → main`（SSO）
+`git stash list` 第一筆包含 17 個改動，內含：
+- 移除 LINE Pay 欄位（`linepay_transaction_id`）
+- 停用 email/notification event handlers
+- Repository 方法 stub 成 `TODO: implement`
+- TypeScript errors（searchParams null safety + updated_at）
 
-2. **Vercel 環境變數（LINE Pay 憑證取得後）：**
+**判定：不建議直接 pop，應視為廢棄或逐項 cherry-pick 有用部分。**
+
+### 下一步（P2 安全強化）
+
+| 優先序 | 項目 | 說明 |
+|--------|------|------|
+| P2-1 | `ensureAdmin()` timing-safe 比對 | `app/api/admin/_utils/ensureAdmin.ts` 改用 `crypto.timingSafeEqual` |
+| P2-2 | `check-menu-availability` fail-closed | 錯誤時回 `available: false`，不再 fail-open |
+| P2-3 | `/api/order` items 結構驗證 | 驗證每個 item 的 name/quantity/price 型別 |
+| P2-4 | 價格重算 fail-closed | DB 查詢失敗時拒絕訂單（503），不降級用前端價格 |
+| P2-5 | admin debug 頁清理 | 移除 token 顯示邏輯 |
+| P2-6 | 測試腳本殘留清理 | `check_supabase_orders.js`、`test-availability.ts` |
+
+### 待主理人執行（未變）
+
+1. **Vercel 環境變數（LINE Pay 憑證取得後）：**
    | 變數 | 值 |
    |------|------|
    | `LINEPAY_CHANNEL_ID` | （申請後填入） |
@@ -49,16 +63,14 @@ Codex 遺留 49 個 dirty 檔案後，本輪完成診斷 + 修復：
    | `LINEPAY_API_URL` | `https://sandbox-api-pay.line.me`（先 sandbox）|
    | `NEXT_PUBLIC_SITE_URL` | `https://shop.kiwimu.com` |
 
-3. **Supabase Auth → URL Configuration：**
-   新增 Redirect URL：`https://passport.kiwimu.com/**`
-
-4. **GA4 手動標記 Key Events：**
+2. **GA4 手動標記 Key Events：**
    - `begin_checkout` / `add_to_cart` / `purchase` / `linepay_confirm`
 
 ### 待確認（未解鎖）
 - n8n 部署位置（本機 or 雲端？）→ 決定後才能測試訂單自動化
 - ManyChat LINE 連接
 - passport GPS 真人驗證（需到店內）
+- `feat/shop-security-and-completeness` 分支是否還需要
 
 ---
 
@@ -66,9 +78,9 @@ Codex 遺留 49 個 dirty 檔案後，本輪完成診斷 + 修復：
 
 | 分支 | 狀態 | 說明 |
 |------|------|------|
-| `main` | ✅ Production | 穩定版，LINE Bank 轉帳 |
-| `feat/linepay` | ⏳ PR #11 待 merge | LINE Pay + 本輪 bug 修復（local head: `8469334`）|
-| `feat/shop-security-and-completeness` | ⏳ 待 merge | SSO Phase 1-4 |
+| `main` | ✅ Production | HEAD: `c6232ff`（P0 修復完成） |
+| `feat/linepay` | ✅ 已合併 | 可刪除 |
+| `feat/shop-security-and-completeness` | ⚠️ 待確認 | SSO Phase 1-4，與 main 有重疊 |
 | `feat/resend-email` | ✅ 已 merge | Resend Email |
 | `refactor/soc-phase1` | ✅ 已 merge | 三層架構 |
 
@@ -79,7 +91,7 @@ Codex 遺留 49 個 dirty 檔案後，本輪完成診斷 + 修復：
 ```
 Next.js App Router (Vercel)
 ├── app/
-│   ├── account/         ← 會員工作台（重寫後：profile 編輯 + 訂單列表 + 積分）
+│   ├── account/         ← 會員工作台（Tabs：總覽 + 訂單 + profile 編輯 + 積分）
 │   ├── admin/           ← 後台管理（admin_token cookie auth，獨立於 Supabase session）
 │   │   ├── orders/      ← 訂單管理 + 編輯 + CSV 匯出
 │   │   ├── menu/        ← 菜單管理（拖曳排序）
@@ -112,6 +124,6 @@ Next.js App Router (Vercel)
 | **Vercel** | ✅ | 生產部署 |
 | **Resend** | ✅ | noreply@kiwimu.com 郵件通知 |
 | **Discord Webhook** | ✅ | #dessert-booking 頻道通知 |
-| **N8N** | ⚠️ 待確認 | 部署位置未定 |
-| **LINE Pay** | ⏳ PR #11 | Channel ID/Secret 取得後上線 |
+| **N8N** | ⚠️ 待確認 | 部署位置未定；env 已改為 server-only |
+| **LINE Pay** | ⏳ 架構完成 | Channel ID/Secret 取得後上線；金額驗證已修 |
 | **GA4** | ✅ 埋點完成 | Key Events 待手動標記 |
