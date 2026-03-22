@@ -24,18 +24,42 @@ interface RequestItem {
   price: number;
 }
 
+function isValidRequestItem(item: unknown): item is RequestItem {
+  if (!item || typeof item !== 'object') return false;
+
+  const candidate = item as Partial<RequestItem>;
+
+  return (
+    typeof candidate.name === 'string' &&
+    candidate.name.trim().length > 0 &&
+    typeof candidate.quantity === 'number' &&
+    Number.isInteger(candidate.quantity) &&
+    candidate.quantity > 0 &&
+    typeof candidate.price === 'number' &&
+    Number.isFinite(candidate.price) &&
+    candidate.price >= 0
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { orderId, amount, items } = body as {
       orderId: string;
-      amount: number;
-      items: RequestItem[];
+      amount?: number;
+      items?: RequestItem[];
     };
 
-    if (!orderId || !amount || !Array.isArray(items) || items.length === 0) {
+    if (!orderId) {
       return NextResponse.json(
-        { success: false, message: '缺少必要欄位' },
+        { success: false, message: '缺少必要欄位：orderId' },
+        { status: 400 }
+      );
+    }
+
+    if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) {
+      return NextResponse.json(
+        { success: false, message: '付款金額格式錯誤' },
         { status: 400 }
       );
     }
@@ -44,7 +68,7 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, order_id, final_price, payment_method, status')
+      .select('id, order_id, final_price, total_price, payment_method, status, items')
       .eq('order_id', orderId)
       .single();
 
@@ -55,18 +79,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (['paid', 'ready', 'completed'].includes(order.status)) {
+      return NextResponse.json(
+        { success: false, message: '此訂單已付款，無法重複發起 LINE Pay' },
+        { status: 409 }
+      );
+    }
+
+    const expectedAmount = Math.round(
+      Number(order.final_price ?? order.total_price ?? 0)
+    );
+
+    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+      return NextResponse.json(
+        { success: false, message: '訂單金額無效，請聯繫客服' },
+        { status: 400 }
+      );
+    }
+
+    if (amount !== undefined && Math.round(amount) !== expectedAmount) {
+      return NextResponse.json(
+        { success: false, message: '付款金額與訂單不一致，請重新整理後再試' },
+        { status: 400 }
+      );
+    }
+
+    const normalizedItems = Array.isArray(order.items)
+      ? order.items.filter(isValidRequestItem)
+      : [];
+
+    if (normalizedItems.length === 0) {
+      return NextResponse.json(
+        { success: false, message: '訂單品項資料無效，無法發起付款' },
+        { status: 400 }
+      );
+    }
+
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shop.kiwimu.com';
 
     const payload: LinePayRequestBody = {
-      amount,
+      amount: expectedAmount,
       currency: 'TWD',
       orderId,
       packages: [
         {
           id: orderId,
-          amount,
+          amount: expectedAmount,
           name: 'Moon Moon Dessert 訂單',
-          products: items.map((item, idx) => ({
+          products: normalizedItems.map((item, idx) => ({
             id: `item_${idx}`,
             name: item.name,
             quantity: item.quantity,
