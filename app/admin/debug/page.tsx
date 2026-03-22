@@ -35,12 +35,11 @@ export default function DebugPage() {
   };
 
   const checkAuth = () => {
-    const token = document.cookie
+    const hasToken = document.cookie
       .split('; ')
-      .find(row => row.startsWith('admin_token='))
-      ?.split('=')[1];
-    
-    setAuthTest(token ? `Found: ${token.substring(0, 20)}...` : 'Not found');
+      .some(row => row.startsWith('admin_token='));
+
+    setAuthTest(hasToken ? '✅ Token 存在' : '❌ Token 不存在');
   };
 
   return (
