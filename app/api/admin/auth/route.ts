@@ -1,11 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { createHash, timingSafeEqual } from 'crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase-admin';
 import {
     clearAuthFailures,
     getClientIdentity,
     getLockStatus,
     registerAuthFailure,
 } from '@/app/api/admin/_utils/adminAuthLimiter';
+
+const SESSION_MAX_AGE_S = 60 * 60 * 24 * 7; // 7 天
 
 function secureCompare(input: string, expected: string): boolean {
     const inputHash = createHash('sha256').update(input).digest();
@@ -17,7 +21,7 @@ function secureCompare(input: string, expected: string): boolean {
 export async function POST(request: NextRequest) {
     try {
         const clientId = getClientIdentity(request);
-        const lockStatus = getLockStatus(clientId);
+        const lockStatus = await getLockStatus(clientId);
         if (lockStatus.locked) {
             return NextResponse.json(
                 {
@@ -51,21 +55,44 @@ export async function POST(request: NextRequest) {
         }
 
         if (secureCompare(password, adminPassword)) {
-            clearAuthFailures(clientId);
-            // 設定 admin_token cookie（SHA256 of password）讓 server layout 驗證
-            const token = createHash('sha256').update(adminPassword).digest('hex');
+            await clearAuthFailures(clientId);
+
+            // 產生唯一 session token，存入 DB
+            const token = randomUUID();
+            const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_S * 1000).toISOString();
+
+            const supabase = createAdminClient();
+            const { error: insertError } = await supabase
+                .from('admin_sessions')
+                .insert({ token, expires_at: expiresAt });
+
+            if (insertError) {
+                console.error('[ADMIN_AUTH] 無法建立 session:', insertError.message);
+                return NextResponse.json(
+                    { success: false, message: '登入失敗，請稍後再試' },
+                    { status: 500 }
+                );
+            }
+
+            // 清理過期 sessions（順手，不阻塞）
+            supabase
+                .from('admin_sessions')
+                .delete()
+                .lt('expires_at', new Date().toISOString())
+                .then(() => {/* fire-and-forget */});
+
             const response = NextResponse.json({ success: true });
             response.cookies.set('admin_token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'lax',
                 path: '/',
-                maxAge: 60 * 60 * 24 * 7, // 7 天
+                maxAge: SESSION_MAX_AGE_S,
             });
             return response;
         }
 
-        const failureStatus = registerAuthFailure(clientId);
+        const failureStatus = await registerAuthFailure(clientId);
         if (failureStatus.lockedNow) {
             return NextResponse.json(
                 {
@@ -85,6 +112,7 @@ export async function POST(request: NextRequest) {
             { status: 401 }
         );
     } catch (error) {
+        console.error('[ADMIN_AUTH] error:', error);
         return NextResponse.json(
             { success: false, message: '驗證失敗' },
             { status: 500 }
@@ -92,8 +120,15 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// DELETE /api/admin/auth - 清除 admin_token cookie（登出後台）
-export async function DELETE() {
+// DELETE /api/admin/auth - 登出，撤銷 session token
+export async function DELETE(request: NextRequest) {
+    const token = request.cookies.get('admin_token')?.value;
+
+    if (token) {
+        const supabase = createAdminClient();
+        await supabase.from('admin_sessions').delete().eq('token', token);
+    }
+
     const response = NextResponse.json({ success: true });
     response.cookies.set('admin_token', '', {
         httpOnly: true,

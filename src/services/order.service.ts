@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import { createAdminClient } from '@/lib/supabase-admin'
 import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
@@ -328,7 +329,7 @@ export async function createOrder(
 
   const originalPrice = subtotal
 
-  const orderId = `ORD${Date.now()}`
+  const orderId = `ORD-${randomBytes(8).toString('hex').toUpperCase()}`
 
   const orderData = {
     order_id: orderId,
