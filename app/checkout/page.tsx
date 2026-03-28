@@ -583,13 +583,12 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* LINE Pay 按鈕（主要付款） */}
+          {/* LINE Pay 按鈕（即將開放） */}
           <button
-            onClick={handleLinePayRedirect}
-            disabled={isLinePayLoading}
-            className="flex items-center justify-center gap-2 w-full bg-[#00B900] hover:bg-[#00a000] disabled:opacity-50 text-white py-4 tracking-widest text-sm transition-colors"
+            disabled
+            className="flex items-center justify-center gap-2 w-full bg-[#00B900] disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 tracking-widest text-sm"
           >
-            {isLinePayLoading ? '跳轉中…' : '立即用 LINE Pay 付款 →'}
+            LINE Pay 即將開放
           </button>
 
           {/* 轉帳備用方案 */}
