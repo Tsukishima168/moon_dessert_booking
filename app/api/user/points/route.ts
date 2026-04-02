@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 import { getUserPoints } from '@/src/services/reward.service';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/user/points
  * 取得已登入用戶的點數餘額（與 Passport 共用同一 profiles.points 欄位）
