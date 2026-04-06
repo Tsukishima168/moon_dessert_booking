@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
 import { EventBus } from '@/src/lib/event-bus'
+import { isSeasonallyDisabledMenuItemName } from '@/src/lib/seasonal-menu'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -111,6 +112,10 @@ async function recalculateOrderPricing(items: OrderItem[]) {
   }
 
   const canonicalItems = items.map((item) => {
+    if (isSeasonallyDisabledMenuItemName(item.name)) {
+      throw new OrderValidationError(`商品「${item.name}」目前已下架，請重新整理菜單`)
+    }
+
     // 先做可用性驗證（只要 menu_items 存在就能做）
     const matchedMenuItem = (menuItems as MenuItemRow[]).find(
       (menuItem) => menuItem.name === item.name

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { isSeasonallyDisabledMenuItemName } from '@/src/lib/seasonal-menu';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,7 @@ export async function GET() {
     const data = categories.map((cat) => {
       const catItems = (items || [])
         .filter((item) => item.category_id === cat.id)
+        .filter((item) => !isSeasonallyDisabledMenuItemName(item.name))
         .map((item) => {
           const variants = (item.menu_variants ?? []) as Array<{
             spec: string;

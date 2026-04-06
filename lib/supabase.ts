@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { isSeasonallyDisabledMenuItemName } from '@/src/lib/seasonal-menu';
 
 // 惰性初始化：避免在建置期間因環境變數尚未注入而導致崩潰
 let _supabase: SupabaseClient | null = null;
@@ -200,38 +201,40 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
     }
 
     // 4. 組合資料
-    const menuWithVariants: MenuItemWithVariants[] = menuItems.map((item) => {
-      const itemVariants = variants?.filter(
-        (v) => v.menu_item_id === item.id
-      ) || [];
+    const menuWithVariants: MenuItemWithVariants[] = menuItems
+      .filter((item) => !isSeasonallyDisabledMenuItemName(item.name || item.title || ''))
+      .map((item) => {
+        const itemVariants = variants?.filter(
+          (v) => v.menu_item_id === item.id
+        ) || [];
 
-      // 取得最低價格
-      const minPrice = itemVariants.length > 0
-        ? Math.min(...itemVariants.map((v) => parsePrice(v.price)))
-        : 0;
+        // 取得最低價格
+        const minPrice = itemVariants.length > 0
+          ? Math.min(...itemVariants.map((v) => parsePrice(v.price)))
+          : 0;
 
-      // 檢查是否為 MBTI 推薦
-      const recommendation = recommendations.find(r => r.menu_item_id === item.id);
+        // 檢查是否為 MBTI 推薦
+        const recommendation = recommendations.find(r => r.menu_item_id === item.id);
 
-      return {
-        id: item.id.toString(),
-        name: item.name || item.title || '',
-        description: item.description || '',
-        category: item.category || item.category_id?.toString() || '',
-        image_url: item.image_url || item.image || '',
-        is_available: item.is_available !== false,
-        sort_order: item.sort_order ?? 0,
-        variants: itemVariants.map((v) => ({
-          id: v.id.toString(),
-          menu_item_id: v.menu_item_id.toString(),
-          variant_name: v.variant_name || v.spec || '標準',
-          price: parsePrice(v.price),
-        })),
-        price: minPrice,
-        recommended: !!recommendation,
-        reason: recommendation?.reason,
-      };
-    });
+        return {
+          id: item.id.toString(),
+          name: item.name || item.title || '',
+          description: item.description || '',
+          category: item.category || item.category_id?.toString() || '',
+          image_url: item.image_url || item.image || '',
+          is_available: item.is_available !== false,
+          sort_order: item.sort_order ?? 0,
+          variants: itemVariants.map((v) => ({
+            id: v.id.toString(),
+            menu_item_id: v.menu_item_id.toString(),
+            variant_name: v.variant_name || v.spec || '標準',
+            price: parsePrice(v.price),
+          })),
+          price: minPrice,
+          recommended: !!recommendation,
+          reason: recommendation?.reason,
+        };
+      });
 
     console.log(`成功讀取 ${menuWithVariants.length} 個菜單項目`);
     return menuWithVariants;
