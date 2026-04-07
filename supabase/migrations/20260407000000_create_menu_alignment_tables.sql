@@ -164,7 +164,7 @@ INSERT INTO public.mbti_menu_links
   (mbti_type, menu_item_id, linkage_type, soul_dessert_name, notes)
 SELECT 'ESFJ',
        (SELECT id FROM public.menu_items WHERE name = '莓果巧克力｜戚風蛋糕' LIMIT 1),
-       'theme_match', '莓果戚風蛋糕', '名稱不完全一致，待人工確認是否同品'
+       'exact', '莓果戚風蛋糕', '已確認同品；shop 名補了「巧克力」但是同商品'
 ON CONFLICT (mbti_type) DO NOTHING;
 
 -- --- 1 個 seasonal_or_split（ENFP）---
