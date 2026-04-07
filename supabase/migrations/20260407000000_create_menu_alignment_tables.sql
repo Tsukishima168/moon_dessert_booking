@@ -34,7 +34,7 @@ CREATE POLICY "Allow public read menu_item_aliases"
 
 CREATE POLICY "Allow admin full access to menu_item_aliases"
   ON public.menu_item_aliases FOR ALL
-  USING (auth.jwt() ->> 'role' = 'admin' OR (SELECT auth.uid()) IS NULL);
+  USING (auth.jwt() ->> 'role' = 'admin');
 
 COMMENT ON TABLE  public.menu_item_aliases             IS '各站商品別名 → shop menu_items 的橋接表';
 COMMENT ON COLUMN public.menu_item_aliases.source_system IS 'map | mbti | legacy';
@@ -74,7 +74,7 @@ CREATE POLICY "Allow public read mbti_menu_links"
 
 CREATE POLICY "Allow admin full access to mbti_menu_links"
   ON public.mbti_menu_links FOR ALL
-  USING (auth.jwt() ->> 'role' = 'admin' OR (SELECT auth.uid()) IS NULL);
+  USING (auth.jwt() ->> 'role' = 'admin');
 
 COMMENT ON TABLE  public.mbti_menu_links              IS 'MBTI 靈魂甜點 → shop 商品正式連結表；mbti_recommendations 為舊表保持不動';
 COMMENT ON COLUMN public.mbti_menu_links.linkage_type IS 'exact | theme_match | seasonal | retired | unresolved';
@@ -380,4 +380,9 @@ ON CONFLICT (source_system, alias_name) DO NOTHING;
 INSERT INTO public.menu_item_aliases (menu_item_id, source_system, alias_name, alias_kind, notes)
 SELECT id, 'mbti', '巧克力布朗尼千層', 'soul_dessert', 'ESTP'
 FROM public.menu_items WHERE name = '巧克力布朗尼｜千層蛋糕' LIMIT 1
+ON CONFLICT (source_system, alias_name) DO NOTHING;
+
+INSERT INTO public.menu_item_aliases (menu_item_id, source_system, alias_name, alias_kind, notes)
+SELECT id, 'mbti', '莓果戚風蛋糕', 'soul_dessert', 'ESFJ — 確認同品（shop 名補了「巧克力」）'
+FROM public.menu_items WHERE name = '莓果巧克力｜戚風蛋糕' LIMIT 1
 ON CONFLICT (source_system, alias_name) DO NOTHING;
