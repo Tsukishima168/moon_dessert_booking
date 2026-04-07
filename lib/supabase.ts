@@ -55,6 +55,7 @@ export interface MenuVariant {
   menu_item_id: string;
   variant_name: string;
   price: number;
+  sort_order?: number;
 }
 
 export interface MenuItemWithVariants extends MenuItem {
@@ -67,6 +68,8 @@ export interface MenuItemWithVariants extends MenuItem {
 export interface MenuCategory {
   id: string;
   name: string;
+  title?: string;
+  subtitle?: string | null;
   sort_order: number;
   is_active: boolean;
 }
@@ -106,13 +109,39 @@ export interface Order {
   linepay_transaction_id?: string | null;
 }
 
-export interface MBTIRecommendation {
-  id: string;
+interface MBTIMenuLink {
   mbti_type: string;
-  menu_item_id: string;
-  reason: string;
-  priority: number;
+  menu_item_id: string | null;
+  linkage_type: string;
+  soul_dessert_name: string;
+  display_name_override?: string | null;
+  display_description_override?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
 }
+
+export interface MBTIDessertContract {
+  mbti_type: string;
+  linkage_type: string;
+  menu_item_id: string | null;
+  soul_dessert_name: string;
+  canonical_name: string | null;
+  display_name: string;
+  description: string | null;
+  image_url: string | null;
+  is_available: boolean;
+  prices: Array<{
+    spec: string;
+    price: number;
+  }>;
+}
+
+const parsePrice = (raw: any): number => {
+  if (raw === null || raw === undefined) return 0;
+  const cleaned = String(raw).replace(/[^0-9.]/g, '');
+  const value = cleaned === '' ? NaN : Number(cleaned);
+  return Number.isFinite(value) ? value : 0;
+};
 
 export interface PromoCode {
   id: string;
@@ -150,6 +179,8 @@ export async function getCategories(): Promise<MenuCategory[]> {
     return (data || []).map((cat) => ({
       id: cat.id.toString(),
       name: cat.name || cat.title || '',
+      title: cat.title || cat.name || '',
+      subtitle: cat.subtitle || null,
       sort_order: cat.sort_order || 0,
       is_active: true,
     }));
@@ -159,18 +190,81 @@ export async function getCategories(): Promise<MenuCategory[]> {
   }
 }
 
+async function getMBTIMenuLinks(mbtiType: string): Promise<MBTIMenuLink[]> {
+  const { data, error } = await supabase
+    .from('mbti_menu_links')
+    .select('*')
+    .eq('mbti_type', mbtiType)
+    .eq('is_active', true)
+    .order('priority', { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as MBTIMenuLink[];
+}
+
+export async function getMBTIDessertContract(mbtiType: string): Promise<MBTIDessertContract | null> {
+  const links = await getMBTIMenuLinks(mbtiType);
+  const link = links[0];
+
+  if (!link) return null;
+
+  const fallbackDisplayName = link.display_name_override || link.soul_dessert_name;
+  const fallbackDescription = link.display_description_override || null;
+
+  if (!link.menu_item_id) {
+    return {
+      mbti_type: link.mbti_type,
+      linkage_type: link.linkage_type,
+      menu_item_id: null,
+      soul_dessert_name: link.soul_dessert_name,
+      canonical_name: null,
+      display_name: fallbackDisplayName,
+      description: fallbackDescription,
+      image_url: null,
+      is_available: false,
+      prices: [],
+    };
+  }
+
+  const [{ data: item, error: itemError }, { data: variants, error: variantsError }] = await Promise.all([
+    supabase
+      .from('menu_items')
+      .select('*')
+      .eq('id', link.menu_item_id)
+      .single(),
+    supabase
+      .from('menu_variants')
+      .select('*')
+      .eq('menu_item_id', link.menu_item_id)
+      .order('sort_order', { ascending: true }),
+  ]);
+
+  if (itemError || !item) {
+    throw itemError || new Error(`找不到 menu_item_id=${link.menu_item_id}`);
+  }
+
+  if (variantsError) throw variantsError;
+
+  return {
+    mbti_type: link.mbti_type,
+    linkage_type: link.linkage_type,
+    menu_item_id: link.menu_item_id,
+    soul_dessert_name: link.soul_dessert_name,
+    canonical_name: item.name || item.title || null,
+    display_name: fallbackDisplayName,
+    description: fallbackDescription || item.description || null,
+    image_url: item.image_url || item.image || null,
+    is_available: item.is_available !== false,
+    prices: (variants || []).map((variant) => ({
+      spec: variant.variant_name || variant.spec || '標準',
+      price: parsePrice(variant.price),
+    })),
+  };
+}
+
 // 取得菜單資料（結合 menu_items 和 menu_variants）
 export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVariants[]> {
   try {
-    // 將資料庫中的價格欄位轉成乾淨的數字（去掉 $、逗號等）
-    const parsePrice = (raw: any): number => {
-      if (raw === null || raw === undefined) return 0;
-      // 先轉成字串，移除非數字與小數點，再轉回數字
-      const cleaned = String(raw).replace(/[^0-9.]/g, '');
-      const value = cleaned === '' ? NaN : Number(cleaned);
-      return Number.isFinite(value) ? value : 0;
-    };
-
     // 1. 取得所有菜單項目
     const { data: menuItems, error: itemsError } = await supabase
       .from('menu_items')
@@ -184,20 +278,16 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
     // 2. 取得所有變體（價格）
     const { data: variants, error: variantsError } = await supabase
       .from('menu_variants')
-      .select('*');
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
 
     if (variantsError) throw variantsError;
 
     // 3. 如果有 MBTI，取得推薦
-    let recommendations: MBTIRecommendation[] = [];
+    let recommendations: MBTIMenuLink[] = [];
     if (mbtiType) {
-      const { data: recs } = await supabase
-        .from('mbti_recommendations')
-        .select('*')
-        .eq('mbti_type', mbtiType)
-        .order('priority', { ascending: false });
-
-      recommendations = recs || [];
+      recommendations = await getMBTIMenuLinks(mbtiType);
     }
 
     // 4. 組合資料
@@ -229,10 +319,11 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
             menu_item_id: v.menu_item_id.toString(),
             variant_name: v.variant_name || v.spec || '標準',
             price: parsePrice(v.price),
+            sort_order: v.sort_order ?? 0,
           })),
           price: minPrice,
           recommended: !!recommendation,
-          reason: recommendation?.reason,
+          reason: recommendation?.notes || undefined,
         };
       });
 
@@ -244,15 +335,32 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
   }
 }
 
-// 取得 MBTI 推薦商品
-export async function getMBTIRecommendations(mbtiType: string): Promise<MenuItemWithVariants[]> {
-  try {
-    const allItems = await getMenuItems(mbtiType);
-    return allItems.filter(item => item.recommended);
-  } catch (error) {
-    console.error('讀取 MBTI 推薦錯誤:', error);
-    return [];
-  }
+export async function getGroupedMenuCategories() {
+  const [categories, menuItems] = await Promise.all([
+    getCategories(),
+    getMenuItems(),
+  ]);
+
+  return categories.map((category) => ({
+    id: category.id,
+    title: category.title || category.name,
+    subtitle: category.subtitle ?? null,
+    sort_order: category.sort_order ?? 0,
+    items: menuItems
+      .filter((item) => item.category === category.id)
+      .map((item) => ({
+        name: item.name,
+        description: item.description ?? null,
+        image: item.image_url || null,
+        prices: item.variants
+          .slice()
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map((variant) => ({
+            spec: variant.variant_name,
+            price: variant.price,
+          })),
+      })),
+  }));
 }
 
 // 建立訂單

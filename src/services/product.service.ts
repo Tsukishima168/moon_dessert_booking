@@ -45,7 +45,7 @@ export async function validateReservation(
 
 /**
  * 查詢菜單品項在指定日期的可用性
- * Fail-safe：RPC 失敗時回傳預設可用（不阻擋用戶下單）
+ * Fail-closed：RPC 失敗時回傳不可用，避免超賣或錯誤放行
  * @param date - 配送/取貨日期 ISO 字串
  * @param menuItemId - 指定品項 UUID，null 表示查詢全部
  * @returns RPC 回傳資料，或失敗時的 fail-safe 預設值
@@ -57,7 +57,7 @@ export async function getMenuItemAvailability(
   try {
     return await checkMenuItemAvailability(date, menuItemId)
   } catch {
-    return { available: true, reason: '無法驗證，預設可用' }
+    return { available: false, reason: '系統暫時無法確認可用性，請稍後再試' }
   }
 }
 
