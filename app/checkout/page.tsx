@@ -4,7 +4,7 @@
 // 注意: Client Components 不能直接導出 metadata,
 // 需要在父層 layout 或 Server Component 中設定
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useCartStore } from '@/store/cartStore';
 import { CheckCircle, LogIn, MapPin, RefreshCw, Tag, User } from 'lucide-react';
@@ -60,16 +60,16 @@ export default function CheckoutPage() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
-  const [availableDates, setAvailableDates] = useState<Record<string, { available: boolean; reason?: string }>>({});
-  const [loadingDates, setLoadingDates] = useState(false);
   const [reservationRules, setReservationRules] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [dateValidation, setDateValidation] = useState<{ valid: boolean; reason: string } | null>(null);
+  const [validatedDateKey, setValidatedDateKey] = useState<string | null>(null);
+  const [isDateValidationPending, setIsDateValidationPending] = useState(false);
   const [calendarDates, setCalendarDates] = useState<Array<{ date: string; label: string; dayName: string; disabled: boolean; reason: string }>>([]);
+  const validationRequestRef = useRef(0);
 
   // 地址選擇狀態
   const [selectedCity, setSelectedCity] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
   const districts = useMemo(() => {
     return TAIWAN_CITIES.find(c => c.name === selectedCity)?.districts || [];
   }, [selectedCity]);
@@ -189,11 +189,23 @@ export default function CheckoutPage() {
     loadReservationRules();
   }, []);
 
-  // 監聽取貨方式變化（必須在 useEffect 使用前宣告）
   const watchedDeliveryMethod = watch('delivery_method') as 'pickup' | 'delivery';
+  const deliveryMethod = watchedDeliveryMethod || 'pickup';
+
+  const deliveryCityField = register('delivery_city', {
+    required: deliveryMethod === 'delivery' ? '請選擇縣市' : false,
+  });
+  const deliveryDistrictField = register('delivery_district', {
+    required: deliveryMethod === 'delivery' ? '請選擇區域' : false,
+  });
+
   useEffect(() => {
-    setDeliveryMethod(watchedDeliveryMethod || 'pickup');
-  }, [watchedDeliveryMethod]);
+    if (deliveryMethod !== 'delivery') {
+      setSelectedCity('');
+      setValue('delivery_city', '');
+      setValue('delivery_district', '');
+    }
+  }, [deliveryMethod, setValue]);
 
   // 產生格子日期列表（今天 + minDays 開始，顯示 30 天）
   useEffect(() => {
@@ -207,8 +219,8 @@ export default function CheckoutPage() {
       const day = d.getDay();
       let disabled = false;
       let reason = '';
-      if (watchedDeliveryMethod === 'pickup' && day === 1) { disabled = true; reason = '週一公休'; }
-      if (watchedDeliveryMethod === 'delivery' && (day === 0 || day === 1)) { disabled = true; reason = '不配送'; }
+      if (deliveryMethod === 'pickup' && day === 1) { disabled = true; reason = '週一公休'; }
+      if (deliveryMethod === 'delivery' && (day === 0 || day === 1)) { disabled = true; reason = '不配送'; }
       const [, mm, dd] = dateStr.split('-');
       dates.push({ date: dateStr, label: `${mm}/${dd}`, dayName: dayNames[day], disabled, reason });
     }
@@ -221,7 +233,7 @@ export default function CheckoutPage() {
         setValue('pickup_date', '');
       }
     }
-  }, [reservationRules, watchedDeliveryMethod]);
+  }, [reservationRules, deliveryMethod, selectedDate, setValue]);
 
   const totalPrice = getTotalPrice();
 
@@ -242,43 +254,78 @@ export default function CheckoutPage() {
   };
 
   // 驗證選擇的日期
-  const validateSelectedDate = async (dateStr: string) => {
-    if (!dateStr) return;
+  const validateSelectedDate = async (dateStr: string, method: 'pickup' | 'delivery') => {
+    if (!dateStr) {
+      setDateValidation(null);
+      setValidatedDateKey(null);
+      setIsDateValidationPending(false);
+      return;
+    }
+
+    const validationKey = `${method}:${dateStr}`;
+    const requestId = ++validationRequestRef.current;
     const date = new Date(dateStr);
     const day = date.getDay(); // 0 is Sunday, 1 is Monday
 
+    setIsDateValidationPending(true);
+    setDateValidation(null);
+    setValidatedDateKey(null);
+
     // 1. 星期限制
-    if (watchedDeliveryMethod === 'pickup') {
+    if (method === 'pickup') {
       // 自取: 鎖週一
       if (day === 1) {
+        if (requestId !== validationRequestRef.current) return;
         setDateValidation({ valid: false, reason: '週一公休無法自取' });
+        setValidatedDateKey(validationKey);
+        setIsDateValidationPending(false);
         return;
       }
     } else {
       // 宅配: 鎖週一、週日 (假設週日不配送)
       if (day === 1 || day === 0) {
+        if (requestId !== validationRequestRef.current) return;
         setDateValidation({ valid: false, reason: '宅配週日與週一無法到貨' });
+        setValidatedDateKey(validationKey);
+        setIsDateValidationPending(false);
         return;
       }
     }
 
     // 2. 產能與 API 驗證
     try {
-      const capacityResponse = await fetch(`/api/check-capacity?date=${dateStr}&delivery_method=${watchedDeliveryMethod}`);
+      const capacityResponse = await fetch(`/api/check-capacity?date=${dateStr}&delivery_method=${method}`);
+      if (requestId !== validationRequestRef.current) return;
+
       if (capacityResponse.ok) {
         const capacity = await capacityResponse.json();
+        if (requestId !== validationRequestRef.current) return;
         if (!capacity.available) {
           setDateValidation({
             valid: false,
             reason: capacity.reason || '當日已達產能上限',
           });
+          setValidatedDateKey(validationKey);
+          setIsDateValidationPending(false);
           return;
         }
+      } else {
+        setDateValidation({ valid: false, reason: '目前無法驗證日期容量，請稍後再試' });
+        setValidatedDateKey(validationKey);
+        setIsDateValidationPending(false);
+        return;
       }
+
       // 通過所有驗證
       setDateValidation({ valid: true, reason: '' });
+      setValidatedDateKey(validationKey);
+      setIsDateValidationPending(false);
     } catch (error) {
+      if (requestId !== validationRequestRef.current) return;
       console.error('驗證日期錯誤:', error);
+      setDateValidation({ valid: false, reason: '目前無法驗證日期容量，請稍後再試' });
+      setValidatedDateKey(validationKey);
+      setIsDateValidationPending(false);
     }
   };
 
@@ -287,9 +334,14 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (watchedPickupDate) {
       setSelectedDate(watchedPickupDate);
-      validateSelectedDate(watchedPickupDate);
+      void validateSelectedDate(watchedPickupDate, deliveryMethod);
+      return;
     }
-  }, [watchedPickupDate, watchedDeliveryMethod]);
+    validationRequestRef.current += 1;
+    setDateValidation(null);
+    setValidatedDateKey(null);
+    setIsDateValidationPending(false);
+  }, [watchedPickupDate, deliveryMethod]);
 
   // 運費計算
   const calculateDeliveryFee = (method: 'pickup' | 'delivery', subtotal: number): number => {
@@ -298,9 +350,16 @@ export default function CheckoutPage() {
     return 150;
   };
 
-  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery'>('pickup');
   const deliveryFee = calculateDeliveryFee(deliveryMethod, totalPrice);
   const finalPrice = getFinalPrice() + deliveryFee;
+  const currentValidationKey = watchedPickupDate ? `${deliveryMethod}:${watchedPickupDate}` : null;
+  const isSelectedDateInvalid = Boolean(
+    watchedPickupDate &&
+    currentValidationKey &&
+    validatedDateKey === currentValidationKey &&
+    dateValidation &&
+    !dateValidation.valid
+  );
 
   const getAttribution = () => {
     if (typeof window === 'undefined') return {};
@@ -317,8 +376,10 @@ export default function CheckoutPage() {
 
   // 提交訂單
   const onSubmit = async (data: CheckoutFormData) => {
-    if (dateValidation && !dateValidation.valid) {
-      alert(dateValidation.reason);
+    const currentValidationKey = data.pickup_date ? `${data.delivery_method}:${data.pickup_date}` : null;
+
+    if (isDateValidationPending || !currentValidationKey || validatedDateKey !== currentValidationKey || !dateValidation?.valid) {
+      alert(dateValidation?.reason || '日期驗證尚未完成，請稍候再送出訂單');
       return;
     }
 
@@ -837,10 +898,10 @@ export default function CheckoutPage() {
               {/* Date Selection — 格子選單 */}
               <div className="space-y-3">
                 <label className="text-xs text-moon-muted block">
-                  {watchedDeliveryMethod === 'pickup' ? '取貨日期' : '期望到貨日期'} <span className="text-moon-accent">*</span>
+                  {deliveryMethod === 'pickup' ? '取貨日期' : '期望到貨日期'} <span className="text-moon-accent">*</span>
                 </label>
                 <p className="text-[10px] text-moon-muted">
-                  {watchedDeliveryMethod === 'pickup' ? '週一公休' : '週日、週一不配送'} • 需提前 3 天預訂
+                  {deliveryMethod === 'pickup' ? '週一公休' : '週日、週一不配送'} • 需提前 3 天預訂
                 </p>
 
                 {/* 隱藏 input 用於 react-hook-form 驗證 */}
@@ -855,8 +916,14 @@ export default function CheckoutPage() {
                       title={disabled ? reason : date}
                       onClick={() => {
                         setSelectedDate(date);
-                        setValue('pickup_date', date);
-                        validateSelectedDate(date);
+                        if (watchedPickupDate === date) {
+                          void validateSelectedDate(date, deliveryMethod);
+                          return;
+                        }
+                        setDateValidation(null);
+                        setValidatedDateKey(null);
+                        setIsDateValidationPending(true);
+                        setValue('pickup_date', date, { shouldDirty: true, shouldValidate: true });
                       }}
                       className={`flex flex-col items-center py-2 px-1 border text-center transition-all text-xs
                         ${selectedDate === date
@@ -876,7 +943,7 @@ export default function CheckoutPage() {
                 {errors.pickup_date && <p className="text-xs text-red-400">{errors.pickup_date.message}</p>}
                 {dateValidation && !dateValidation.valid && <p className="text-xs text-red-400">{dateValidation.reason}</p>}
 
-                {watchedDeliveryMethod === 'pickup' && (
+                {deliveryMethod === 'pickup' && (
                   <div>
                     <label className="text-xs text-moon-muted block mb-1">取貨時段 <span className="text-moon-accent">*</span></label>
                     <div className="grid grid-cols-3 gap-2">
@@ -897,7 +964,7 @@ export default function CheckoutPage() {
                         );
                       })}
                     </div>
-                    <input type="hidden" {...register('pickup_time', { required: watchedDeliveryMethod === 'pickup' ? '請選擇時段' : false })} />
+                    <input type="hidden" {...register('pickup_time', { required: deliveryMethod === 'pickup' ? '請選擇時段' : false })} />
                     {errors.pickup_time && <p className="text-xs text-red-400 mt-1">{errors.pickup_time.message}</p>}
                   </div>
                 )}
@@ -906,10 +973,10 @@ export default function CheckoutPage() {
               {/* Address Section */}
               <div className="space-y-4">
                 <h3 className="text-sm font-light text-moon-accent border-b border-moon-border pb-2">
-                  {watchedDeliveryMethod === 'pickup' ? '自取地址' : '宅配地址'}
+                  {deliveryMethod === 'pickup' ? '自取地址' : '宅配地址'}
                 </h3>
 
-                {watchedDeliveryMethod === 'pickup' ? (
+                {deliveryMethod === 'pickup' ? (
                   <div className="bg-moon-black/50 p-4 border border-moon-border flex items-start gap-3">
                     <MapPin className="text-moon-accent mt-1" size={16} />
                     <div>
@@ -922,10 +989,11 @@ export default function CheckoutPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <select
-                          {...register('delivery_city', { required: watchedDeliveryMethod === 'delivery' ? '請選擇縣市' : false })}
+                          {...deliveryCityField}
                           onChange={(e) => {
+                            deliveryCityField.onChange(e);
                             setSelectedCity(e.target.value);
-                            setSelectedDistrict('');
+                            setValue('delivery_district', '', { shouldDirty: true, shouldValidate: true });
                           }}
                           className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
                         >
@@ -936,8 +1004,10 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <select
-                          {...register('delivery_district', { required: watchedDeliveryMethod === 'delivery' ? '請選擇區域' : false })}
-                          onChange={(e) => setSelectedDistrict(e.target.value)}
+                          {...deliveryDistrictField}
+                          onChange={(e) => {
+                            deliveryDistrictField.onChange(e);
+                          }}
                           className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
                         >
                           <option value="">請選擇區域</option>
@@ -948,7 +1018,7 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <input
-                        {...register('delivery_address_detail', { required: watchedDeliveryMethod === 'delivery' ? '請輸入詳細地址' : false })}
+                        {...register('delivery_address_detail', { required: deliveryMethod === 'delivery' ? '請輸入詳細地址' : false })}
                         placeholder="例：中正路 123 號"
                         className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                       />
@@ -966,10 +1036,16 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isDateValidationPending || isSelectedDateInvalid}
                 className="w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-moon-text transition-colors disabled:opacity-50"
               >
-                {isSubmitting ? '處理中，請稍候...' : `送出訂單 · 總計 $${finalPrice}`}
+                {isSubmitting
+                  ? '處理中，請稍候...'
+                  : isDateValidationPending
+                    ? '驗證日期中，請稍候...'
+                    : isSelectedDateInvalid
+                      ? '日期不可用，請重新選擇'
+                      : `送出訂單 · 總計 $${finalPrice}`}
               </button>
 
             </form>

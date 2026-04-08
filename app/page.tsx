@@ -153,10 +153,6 @@ export default function HomePage() {
     );
   }
 
-  // Debug: 顯示載入的資料
-  console.log('Menu Items:', menuItems.length);
-  console.log('Categories:', categories.length);
-
   if (error) {
     return (
       <div className="min-h-screen bg-moon-black flex items-center justify-center p-4">

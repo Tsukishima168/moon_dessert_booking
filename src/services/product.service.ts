@@ -73,7 +73,7 @@ export async function validateCartItems(itemIds: string[]): Promise<string[]> {
 
 /**
  * 查詢指定日期與取貨方式的產能狀況
- * 若 RPC 無回傳，回傳安全的預設值（可預訂）
+ * 若 RPC 失敗或無回傳，fail-closed 避免前台誤放行不可驗證的日期
  * @param date - ISO 日期字串，格式 YYYY-MM-DD
  * @param deliveryMethod - 取貨方式，預設 'pickup'
  * @returns CapacityResult
@@ -82,13 +82,21 @@ export async function getAvailableCapacity(
   date: string,
   deliveryMethod: string = 'pickup'
 ): Promise<CapacityResult> {
-  const result = await checkDailyCapacity(date, deliveryMethod)
-  return result ?? {
+  try {
+    const result = await checkDailyCapacity(date, deliveryMethod)
+    if (result) {
+      return result
+    }
+  } catch {
+    // Fall through to fail-closed response below.
+  }
+
+  return {
     date,
     current_count: 0,
-    capacity_limit: 5,
-    available: true,
-    reason: '可以預訂',
+    capacity_limit: 0,
+    available: false,
+    reason: '目前無法確認當日產能，請稍後再試',
   }
 }
 

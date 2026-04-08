@@ -59,11 +59,13 @@ CREATE INDEX IF NOT EXISTS idx_business_settings_key ON business_settings(settin
 ALTER TABLE business_settings ENABLE ROW LEVEL SECURITY;
 
 -- 所有人可讀取設定
+DROP POLICY IF EXISTS "Settings are viewable by everyone" ON business_settings;
 CREATE POLICY "Settings are viewable by everyone" 
   ON business_settings FOR SELECT 
   USING (true);
 
 -- 只有管理員可更新(透過 service role)
+DROP POLICY IF EXISTS "Settings are updatable by service role only" ON business_settings;
 CREATE POLICY "Settings are updatable by service role only" 
   ON business_settings FOR UPDATE 
   USING (false);

@@ -210,10 +210,9 @@ export default function CartSidebar() {
                     }
                     closeCart();
                   }}
+                  className="block w-full bg-moon-accent text-moon-black py-3 sm:py-4 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors text-center"
                 >
-                  <button className="w-full bg-moon-accent text-moon-black py-3 sm:py-4 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors">
-                    前往結帳
-                  </button>
+                  前往結帳
                 </Link>
               </div>
             </>

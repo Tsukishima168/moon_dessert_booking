@@ -29,13 +29,6 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
       });
     }
 
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'add_to_cart', {
-        value: selectedVariant.price * quantity,
-        item_name: item.name
-      });
-    }
-
     openCart();
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'add_to_cart', {
