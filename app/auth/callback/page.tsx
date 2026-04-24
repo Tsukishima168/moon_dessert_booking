@@ -4,7 +4,8 @@ import type { Session } from '@supabase/supabase-js';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { clearServerSession } from '@/lib/client-auth';
+import { clearServerSession, getServerSessionUser } from '@/lib/client-auth';
+import { getSafeRedirectPath } from '@/src/lib/safe-redirect';
 
 /**
  * session 確立後才繼續（避免 detectSessionInUrl 自動交換的競態條件）
@@ -38,7 +39,14 @@ export default function AuthCallbackPage() {
         const handleCallback = async () => {
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
-            const redirect = params.get('redirect');
+            const redirect = getSafeRedirectPath(params.get('redirect'));
+            const providerError = params.get('error_description') || params.get('error');
+
+            if (providerError) {
+                await clearServerSession();
+                router.replace(`/auth/login?redirect=${encodeURIComponent(redirect)}&error=${encodeURIComponent(providerError)}`);
+                return;
+            }
 
             // 嘗試手動 exchange（若 detectSessionInUrl 已自動消耗則會失敗，屬正常）
             if (code) {
@@ -53,7 +61,7 @@ export default function AuthCallbackPage() {
 
             if (session) {
                 try {
-                    await fetch('/api/auth/set-session', {
+                    const response = await fetch('/api/auth/set-session', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -61,14 +69,28 @@ export default function AuthCallbackPage() {
                             refresh_token: session.refresh_token,
                         }),
                     });
+
+                    if (!response.ok) {
+                        throw new Error(`session sync failed: ${response.status}`);
+                    }
+
+                    const syncedUser = await getServerSessionUser();
+                    if (!syncedUser) {
+                        throw new Error('session sync verification failed');
+                    }
                 } catch (err) {
                     console.error('[callback] Failed to sync session cookie:', err);
+                    await clearServerSession();
+                    router.replace(`/auth/login?redirect=${encodeURIComponent(redirect)}&error=session_sync_failed`);
+                    return;
                 }
             } else {
                 await clearServerSession();
+                router.replace(`/auth/login?redirect=${encodeURIComponent(redirect)}&error=session_missing`);
+                return;
             }
 
-            router.replace(redirect ?? '/account');
+            router.replace(redirect);
         };
 
         handleCallback();

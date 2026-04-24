@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLinePayClient, type LinePayRequestBody } from '@/lib/linepay';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 
 interface RequestItem {
   name: string;
@@ -42,6 +43,13 @@ function isValidRequestItem(item: unknown): item is RequestItem {
 }
 
 export async function POST(request: NextRequest) {
+  if (!process.env.LINEPAY_CHANNEL_ID || !process.env.LINEPAY_CHANNEL_SECRET) {
+    return NextResponse.json(
+      { success: false, message: '線上付款功能即將開放，目前請使用銀行轉帳付款' },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { orderId, amount, items } = body as {
@@ -68,8 +76,9 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, order_id, final_price, total_price, payment_method, status, items')
+      .select('id, order_id, final_price, total_price, payment_method, status, items, linepay_transaction_id')
       .eq('order_id', orderId)
+      .eq('checkout_site', SHOP_CHECKOUT_SITE)
       .single();
 
     if (orderErr || !order) {
@@ -115,7 +124,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shop.kiwimu.com';
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ??
+      request.nextUrl.origin;
 
     const payload: LinePayRequestBody = {
       amount: expectedAmount,
@@ -155,14 +166,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 記錄 transactionId 到訂單
-    await supabase
+    // 必須先成功寫回 transactionId，confirm 才能驗證 LINE Pay 回調是否屬於這張訂單
+    const { data: updatedOrder, error: persistErr } = await supabase
       .from('orders')
       .update({
         payment_method: 'line_pay',
         linepay_transaction_id: String(result.info.transactionId),
       })
-      .eq('order_id', orderId);
+      .eq('order_id', orderId)
+      .eq('checkout_site', SHOP_CHECKOUT_SITE)
+      .eq('status', 'pending')
+      .select('order_id')
+      .maybeSingle();
+
+    if (persistErr || !updatedOrder) {
+      console.error('[LINE Pay] 無法寫回 transactionId:', persistErr);
+      return NextResponse.json(
+        { success: false, message: '無法建立付款流程，請稍後再試' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

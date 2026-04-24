@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase-server';
-import { createAdminClient } from '@/lib/supabase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -22,8 +21,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const adminClient = createAdminClient();
-    const { data: profile, error } = await adminClient
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('id, email, full_name, phone, created_at')
       .eq('id', user.id)
@@ -72,8 +70,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '沒有提供可更新的欄位' }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
-    const { data, error } = await adminClient
+    const { data, error } = await supabase
       .from('profiles')
       .upsert({ id: user.id, email: user.email, ...updates }, { onConflict: 'id' })
       .select('id, email, full_name, phone, created_at')

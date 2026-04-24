@@ -79,7 +79,7 @@ user_id: user_id || currentUser?.id || null, // 自動關聯登入用戶
 **修改 [`.env.local`](.env.local):**
 ```dotenv
 # Resend Email API
-RESEND_API_KEY=re_QtTqqKYd_2KMirhGNXgTYF56JgGt6o5ta
+RESEND_API_KEY=<redacted>
 RESEND_FROM_EMAIL=noreply@shop.kiwimu.com  # 之前為空，現已設置
 ```
 

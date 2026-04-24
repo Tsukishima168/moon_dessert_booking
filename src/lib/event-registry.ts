@@ -53,7 +53,7 @@ export function registerAllEventHandlers(): void {
   // ─── Commerce Core ──────────────────────────────────────────────
   EventBus.on('order.created', handleOrderCreated);   // → 加積分
   EventBus.on('order.created', handleOrderCreatedN8n); // → N8N 訂單同步
-  EventBus.on('order.created', handleOrderCreatedNotifications); // → 客戶信 + 店家 Discord
+  EventBus.on('order.created', handleOrderCreatedNotifications); // → 店家 Discord
   EventBus.on('order.created', handleOrderCreatedEmail);   // → 訂單確認信
   EventBus.on('order.created', handleOrderCreatedUserEvent); // → user_events 行為追蹤
   // EventBus.on('order.created', handleOrderBadge);     // → 觸發勳章解鎖檢查

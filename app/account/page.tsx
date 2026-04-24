@@ -12,7 +12,7 @@ import { ProfileCard } from '@/components/shared/profile-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { clearServerSession, getResolvedUser } from '@/lib/client-auth';
+import { clearServerSession, getServerSessionUser } from '@/lib/client-auth';
 import { supabase } from '@/lib/supabase';
 
 interface Order {
@@ -80,7 +80,7 @@ export default function AccountPage() {
       setSuccessMessage(null);
       setAuthMissing(false);
 
-      const sessionUser = await getResolvedUser();
+      const sessionUser = await getServerSessionUser();
       if (!sessionUser) {
         setAuthMissing(true);
         setError('尚未確認登入狀態。請先登入，或稍後重新檢查。');

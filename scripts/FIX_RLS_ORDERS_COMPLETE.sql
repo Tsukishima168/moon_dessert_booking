@@ -24,26 +24,15 @@ CREATE POLICY "authenticated_can_insert_orders"
   TO authenticated
   WITH CHECK (true);
 
--- Step 4: 建立 SELECT 政策
-CREATE POLICY "authenticated_can_select_orders"
+-- Step 4: 會員只能讀自己的訂單
+CREATE POLICY "authenticated_can_select_own_orders"
   ON orders
   FOR SELECT
   TO authenticated
-  USING (true);
+  USING (auth.uid() = user_id);
 
--- Step 5: 建立 UPDATE 政策
-CREATE POLICY "authenticated_can_update_orders"
-  ON orders
-  FOR UPDATE
-  TO authenticated
-  USING (true);
-
--- Step 6: 允許匿名用戶查詢自己的訂單
-CREATE POLICY "anon_can_select_own_order"
-  ON orders
-  FOR SELECT
-  TO anon
-  USING (true);
+-- Step 5: 不建立 authenticated UPDATE / anon SELECT
+-- 管理後台請走 server-side API / service_role；匿名查單請走受控 server API。
 
 -- 驗證查詢
 SELECT schemaname, tablename, policyname, roles, cmd, qual, with_check

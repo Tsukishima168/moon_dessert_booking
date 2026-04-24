@@ -1,4 +1,4 @@
-import type { MenuItemWithVariants, MenuCategory, DateAvailability } from '@/lib/supabase'
+import type { DateAvailability } from '@/lib/supabase'
 import {
   checkDailyCapacity,
   validateReservationDate,
@@ -9,20 +9,6 @@ import {
 } from '@/src/repositories/product.repository'
 
 export type { CapacityResult, ReservationValidation }
-
-export interface MenuCatalog {
-  categories: MenuCategory[]
-  items: MenuItemWithVariants[]
-}
-
-/**
- * 取得完整菜單目錄（分類 + 品項）
- * @returns MenuCatalog 物件
- */
-export async function getMenuCatalog(): Promise<MenuCatalog> {
-  // TODO: implement
-  throw new Error('Not implemented')
-}
 
 /**
  * 驗證預訂日期是否符合規則，RPC 無回傳時給予寬鬆預設值
@@ -62,16 +48,6 @@ export async function getMenuItemAvailability(
 }
 
 /**
- * 驗證購物車內的品項是否全部有效且上架中
- * @param itemIds - 品項 UUID 陣列
- * @returns 無效品項的 ID 陣列（空陣列代表全部有效）
- */
-export async function validateCartItems(itemIds: string[]): Promise<string[]> {
-  // TODO: implement
-  throw new Error('Not implemented')
-}
-
-/**
  * 查詢指定日期與取貨方式的產能狀況
  * 若 RPC 失敗或無回傳，fail-closed 避免前台誤放行不可驗證的日期
  * @param date - ISO 日期字串，格式 YYYY-MM-DD
@@ -80,7 +56,7 @@ export async function validateCartItems(itemIds: string[]): Promise<string[]> {
  */
 export async function getAvailableCapacity(
   date: string,
-  deliveryMethod: string = 'pickup'
+  deliveryMethod: 'pickup' | 'delivery' = 'pickup'
 ): Promise<CapacityResult> {
   try {
     const result = await checkDailyCapacity(date, deliveryMethod)

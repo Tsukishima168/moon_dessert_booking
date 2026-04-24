@@ -2,6 +2,11 @@ import type { Session, User } from '@supabase/supabase-js'
 
 import { supabase } from '@/lib/supabase'
 
+export interface ServerSessionUser {
+  id: string
+  email: string | null
+}
+
 async function syncServerSession(session: Session): Promise<boolean> {
   try {
     const response = await fetch('/api/auth/set-session', {
@@ -77,6 +82,27 @@ export async function getResolvedSession(): Promise<Session | null> {
   })
 
   return fallbackSession
+}
+
+export async function getServerSessionUser(): Promise<ServerSessionUser | null> {
+  try {
+    const response = await fetch('/api/auth/me', {
+      cache: 'no-store',
+    })
+
+    if (response.status === 401) {
+      return null
+    }
+
+    if (!response.ok) {
+      throw new Error(`auth me failed: ${response.status}`)
+    }
+
+    return response.json() as Promise<ServerSessionUser>
+  } catch (error) {
+    console.error('讀取 server session 失敗:', error)
+    return null
+  }
 }
 
 export async function clearServerSession(): Promise<void> {

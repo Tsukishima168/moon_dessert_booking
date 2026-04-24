@@ -32,10 +32,10 @@ function CancelContent() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
-            href="/"
+            href="/checkout"
             className="flex items-center justify-center border border-moon-border text-moon-text py-3 text-xs tracking-widest hover:border-moon-accent hover:text-moon-accent transition-colors"
           >
-            返回選購
+            返回結帳重新付款
           </Link>
           <a
             href="https://line.me/R/ti/p/@931cxefd"

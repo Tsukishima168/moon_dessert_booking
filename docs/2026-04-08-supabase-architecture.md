@@ -54,6 +54,8 @@
 
 ### 用戶 / SSO 表
 
+> `orders.checkout_site` 為 shared DB 下的硬站點範圍欄位；`source_from` 只保留 attribution，不可再拿來做 tenant/site 判斷。
+
 | 表 | 主控站 | 讀取方 | 狀態 |
 |---|---|---|---|
 | `profiles` | passport | 全站 | ✅ active（含 `v2_unlocked_at`）|

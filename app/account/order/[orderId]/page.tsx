@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getResolvedUser } from '@/lib/client-auth';
+import { getServerSessionUser } from '@/lib/client-auth';
 import { ArrowLeft, DollarSign, Package, RefreshCw, Truck } from 'lucide-react';
 import Link from 'next/link';
 import { EmptyState } from '@/components/shared/empty-state';
@@ -47,6 +47,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLinePayLoading, setIsLinePayLoading] = useState(false);
+  const [linePayError, setLinePayError] = useState<string | null>(null);
 
   useEffect(() => {
     if (orderId) {
@@ -59,7 +61,7 @@ export default function OrderDetailPage() {
       setLoading(true);
       setError(null);
 
-      const sessionUser = await getResolvedUser();
+      const sessionUser = await getServerSessionUser();
       if (!sessionUser) {
         setError('尚未確認登入狀態，請重新登入後再查看訂單。');
         return;
@@ -85,6 +87,47 @@ export default function OrderDetailPage() {
       setError('載入訂單出錯');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLinePayRetry = async () => {
+    if (!order) return;
+
+    try {
+      setIsLinePayLoading(true);
+      setLinePayError(null);
+
+      const response = await fetch('/api/payment/linepay/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.order_id,
+          amount: order.final_price,
+          items: order.items.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success && result.paymentUrl) {
+        window.location.href = result.paymentUrl;
+        return;
+      }
+
+      if (response.status === 409) {
+        window.location.href = `/order/success?orderId=${order.order_id}`;
+        return;
+      }
+
+      setLinePayError(result.message || '目前無法重新發起 LINE Pay');
+    } catch (retryError) {
+      console.error('重新發起 LINE Pay 失敗:', retryError);
+      setLinePayError('目前無法重新發起 LINE Pay，請稍後再試。');
+    } finally {
+      setIsLinePayLoading(false);
     }
   };
 
@@ -258,6 +301,17 @@ export default function OrderDetailPage() {
               <p className="mb-4 text-sm text-yellow-200">
                 請盡快完成付款，以確保您的訂單能夠按時製作。
               </p>
+              <button
+                type="button"
+                onClick={handleLinePayRetry}
+                disabled={isLinePayLoading}
+                className="mb-4 flex w-full items-center justify-center rounded-lg bg-[#00B900] px-4 py-3 text-sm font-medium tracking-widest text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLinePayLoading ? '前往 LINE Pay 中...' : '使用 LINE Pay 付款'}
+              </button>
+              {linePayError ? (
+                <p className="mb-4 text-sm text-red-200">{linePayError}</p>
+              ) : null}
               <div className="space-y-2 text-sm text-yellow-200">
                 <p className="font-semibold">匯款方式:</p>
                 <p>銀行: 連線商業銀行</p>
