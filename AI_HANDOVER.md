@@ -7,7 +7,7 @@
 ### 1. 基礎設施與環境變數 (Vercel)
 - **GA4 埋點**：三個專案皆已完成 `gtag` 事件埋入 (`add_to_cart`, `begin_checkout`, `quiz_completion`, `passport_checkin`)，對應的 Environment Variables (`NEXT_PUBLIC_GA4_ID`, `VITE_GA4_ID` 等) 已確認存在。
 - **Resend 信件配置**：`moon-dessert-booking` 已於 Vercel 正式載入 `RESEND_FROM_EMAIL=noreply@kiwimu.com` 及 `RESEND_FROM_NAME=月島甜點 MOON MOON`。網域認證（DNS）於 Cloudflare 端皆已 verified。
-- **LINE Pay 支援預留**：`LINE_PAY_ENV=sandbox` 已設定於 Vercel，等待後續主理人補齊 `CHANNEL_ID` 與 `SECRET`。
+- **LINE Pay 支援預留**：程式實際讀取 `LINEPAY_CHANNEL_ID` / `LINEPAY_CHANNEL_SECRET`，未設定 `LINEPAY_API_URL` 時會預設走 sandbox。
 
 ### 2. Repo 與部署狀態
 - 五大衍生附屬專案皆已於 GitHub 設定為 **Public**。

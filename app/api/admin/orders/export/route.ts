@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureAdmin } from '../../_utils/ensureAdmin'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope'
 
 interface ExportOrderItem {
   name: string
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
     let query = adminClient
       .from('orders')
       .select('order_id, created_at, customer_name, phone, pickup_time, status, items, final_price, total_price, payment_method, admin_notes')
+      .eq('checkout_site', SHOP_CHECKOUT_SITE)
       .order('created_at', { ascending: false })
 
     if (status && status !== 'all') {

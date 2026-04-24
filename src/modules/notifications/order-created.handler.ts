@@ -1,4 +1,4 @@
-import { notifyNewOrder, sendCustomerEmail } from '@/lib/notifications'
+import { notifyNewOrder } from '@/lib/notifications'
 import type { OrderItem } from '@/lib/supabase'
 
 type OrderCreatedPayload = {
@@ -69,27 +69,6 @@ export async function handleOrderCreatedNotifications(
     }),
   ]
 
-  if (order.email) {
-    tasks.push(
-      sendCustomerEmail({
-        to: order.email,
-        customerName: order.customer_name,
-        orderId: order.order_id,
-        items: normalizedItems,
-        totalPrice: order.final_price ?? order.total_price,
-        pickupTime: order.pickup_time,
-        promoCode: order.promo_code ?? undefined,
-        discountAmount: order.discount_amount ?? undefined,
-        originalPrice: order.original_price ?? undefined,
-        paymentDate: order.payment_date ?? undefined,
-        deliveryMethod: order.delivery_method === 'delivery' ? 'delivery' : 'pickup',
-        deliveryAddress: order.delivery_address ?? undefined,
-        deliveryFee: order.delivery_fee ?? undefined,
-        deliveryNotes: order.delivery_notes ?? undefined,
-      })
-    )
-  }
-
   const results = await Promise.allSettled(tasks)
 
   results.forEach((result, index) => {
@@ -97,6 +76,13 @@ export async function handleOrderCreatedNotifications(
       console.error(
         `[OrderCreatedNotifications] task #${index} failed for ${order.order_id}:`,
         result.reason
+      )
+      return
+    }
+
+    if (result.value === false) {
+      console.warn(
+        `[OrderCreatedNotifications] task #${index} reported unsuccessful delivery for ${order.order_id}`
       )
     }
   })

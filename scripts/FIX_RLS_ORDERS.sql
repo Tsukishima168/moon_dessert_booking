@@ -17,6 +17,7 @@ DROP POLICY IF EXISTS "anon_can_insert_orders" ON orders;
 DROP POLICY IF EXISTS "authenticated_can_insert_orders" ON orders;
 DROP POLICY IF EXISTS "authenticated_can_select_orders" ON orders;
 DROP POLICY IF EXISTS "authenticated_can_update_orders" ON orders;
+DROP POLICY IF EXISTS "authenticated_can_select_own_orders" ON orders;
 DROP POLICY IF EXISTS "anon_can_select_own_order" ON orders;
 
 -- Step 2: 確認 RLS 已啟用（若未啟用，此步驟就是無效的）
@@ -35,29 +36,21 @@ CREATE POLICY "authenticated_can_insert_orders"
   TO authenticated
   WITH CHECK (true);
 
--- Step 4: 確認已認證用戶（管理員）能讀取和更新訂單（確保管理後台正常）
+-- Step 4: 已認證會員只能讀取自己的訂單
+-- 管理後台請走 server-side API / service_role，不要用 authenticated = 全站共用資料庫通行證
 DROP POLICY IF EXISTS "允許管理員查看訂單" ON orders;
 DROP POLICY IF EXISTS "允許管理員更新訂單" ON orders;
+DROP POLICY IF EXISTS "允許會員查看自己的訂單" ON orders;
 
-CREATE POLICY "authenticated_can_select_orders"
+CREATE POLICY "authenticated_can_select_own_orders"
   ON orders
   FOR SELECT
   TO authenticated
-  USING (true);
+  USING (auth.uid() = user_id);
 
-CREATE POLICY "authenticated_can_update_orders"
-  ON orders
-  FOR UPDATE
-  TO authenticated
-  USING (true);
-
--- Step 5: 允許匿名用戶也能查詢自己的訂單（用 order_id 查詢）
--- 這對「訂單確認頁面」很重要
-CREATE POLICY "anon_can_select_own_order"
-  ON orders
-  FOR SELECT
-  TO anon
-  USING (true);  -- 若需要限制查詢範圍，可加條件如 order_id = current_setting('app.current_order_id', true)
+-- Step 5: 不建立 anon SELECT / authenticated UPDATE 政策
+-- 若需要匿名查單，請改走受控 server API（例如一次性 token 或簽名連結）。
+-- 若需要管理後台改單，請使用 service_role 或受控 RPC。
 
 -- ============================================
 -- 驗證查詢（執行後應看到上面建立的政策）

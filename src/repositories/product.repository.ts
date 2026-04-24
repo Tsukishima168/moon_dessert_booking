@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
-import type { MenuItem, MenuItemWithVariants, MenuCategory, DateAvailability } from '@/lib/supabase'
+import type { DateAvailability } from '@/lib/supabase'
 
 export interface CapacityResult {
   date: string
@@ -86,46 +86,6 @@ export async function checkMenuItemAvailability(
     throw error
   }
   return data
-}
-
-/**
- * 查詢所有上架中的菜單品項
- * @returns MenuItem 陣列（含分類、變體）
- */
-export async function findAllActiveMenuItems(): Promise<MenuItemWithVariants[]> {
-  // TODO: implement
-  throw new Error('Not implemented')
-}
-
-/**
- * 依品項 ID 查詢單一菜單品項
- * @param itemId - 品項 UUID
- * @returns MenuItemWithVariants，找不到時回傳 null
- */
-export async function findMenuItemById(
-  itemId: string
-): Promise<MenuItemWithVariants | null> {
-  // TODO: implement
-  throw new Error('Not implemented')
-}
-
-/**
- * 查詢所有菜單分類
- * @returns MenuCategory 陣列（依排序欄位升序）
- */
-export async function findAllCategories(): Promise<MenuCategory[]> {
-  // TODO: implement
-  throw new Error('Not implemented')
-}
-
-/**
- * 批次查詢多個品項（用於訂單驗證）
- * @param itemIds - 品項 UUID 陣列
- * @returns MenuItem 陣列
- */
-export async function findMenuItemsByIds(itemIds: string[]): Promise<MenuItem[]> {
-  // TODO: implement
-  throw new Error('Not implemented')
 }
 
 /**

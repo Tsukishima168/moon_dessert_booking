@@ -1,10 +1,6 @@
 'use client';
 
-// 結帳頁不需要被搜尋引擎索引
-// 注意: Client Components 不能直接導出 metadata,
-// 需要在父層 layout 或 Server Component 中設定
-
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useCartStore } from '@/store/cartStore';
 import { CheckCircle, LogIn, MapPin, RefreshCw, Tag, User } from 'lucide-react';
@@ -12,7 +8,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { TAIWAN_CITIES } from '@/lib/taiwan-data';
 import { supabase } from '@/lib/supabase'; // Import Supabase
-import { getResolvedUser } from '@/lib/client-auth';
+import { getResolvedUser, getServerSessionUser } from '@/lib/client-auth';
 import liff from '@line/liff';
 
 declare global {
@@ -35,6 +31,26 @@ interface CheckoutFormData {
   delivery_notes?: string;
   payment_date: string;
 }
+
+interface PendingOrderSnapshot {
+  orderId: string;
+  customerName: string;
+  amount: number;
+  items: Array<{ name: string; quantity: number; price: number }>;
+  linePayUrl: string;
+  createdAt: string;
+}
+
+const STORE_PICKUP_ADDRESS = '月島甜點店 台南市安南區本原街一段97巷';
+const PICKUP_TIME_SLOTS = ['12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'] as const;
+const PENDING_ORDER_STORAGE_KEY = 'moonmoon_pending_order';
+
+const formatLocalDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default function CheckoutPage() {
   const {
@@ -61,12 +77,12 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [reservationRules, setReservationRules] = useState<any>(null);
-  const [selectedDate, setSelectedDate] = useState('');
   const [dateValidation, setDateValidation] = useState<{ valid: boolean; reason: string } | null>(null);
   const [validatedDateKey, setValidatedDateKey] = useState<string | null>(null);
   const [isDateValidationPending, setIsDateValidationPending] = useState(false);
   const [calendarDates, setCalendarDates] = useState<Array<{ date: string; label: string; dayName: string; disabled: boolean; reason: string }>>([]);
   const validationRequestRef = useRef(0);
+  const hasMountedPromoRef = useRef(false);
 
   // 地址選擇狀態
   const [selectedCity, setSelectedCity] = useState('');
@@ -91,7 +107,34 @@ export default function CheckoutPage() {
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'guest'>('loading');
   const [authMessage, setAuthMessage] = useState('');
 
-  // 從 API 載入用戶資料
+  const restorePendingOrder = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      const raw = window.localStorage.getItem(PENDING_ORDER_STORAGE_KEY);
+      if (!raw) return false;
+
+      const pending = JSON.parse(raw) as PendingOrderSnapshot;
+      if (!pending?.orderId) return false;
+
+      setOrderId(pending.orderId);
+      setConfirmedName(pending.customerName);
+      setConfirmedAmount(Number(pending.amount) || 0);
+      setSavedItems(Array.isArray(pending.items) ? pending.items : []);
+      setLinePayUrl(pending.linePayUrl || '');
+      setOrderSuccess(true);
+      return true;
+    } catch (error) {
+      console.error('恢復待付款訂單失敗:', error);
+      return false;
+    }
+  }, []);
+
+  const persistPendingOrder = useCallback((snapshot: PendingOrderSnapshot) => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(PENDING_ORDER_STORAGE_KEY, JSON.stringify(snapshot));
+  }, []);
+
   const loadUserProfile = async (email: string) => {
     try {
       const response = await fetch('/api/user/profile');
@@ -115,15 +158,25 @@ export default function CheckoutPage() {
       setAuthStatus('loading');
       setAuthMessage('');
 
-      const user = await getResolvedUser();
-      if (!user) {
+      const serverUser = await getServerSessionUser();
+      if (serverUser) {
+        const nextUser = { email: serverUser.email || '', id: serverUser.id };
+        setLoggedInUser(nextUser);
+        setAuthStatus('authenticated');
+        setAuthMessage('會員資料已同步，姓名 / 電話 / Email 會自動帶入。');
+        await loadUserProfile(nextUser.email);
+        return;
+      }
+
+      const browserUser = await getResolvedUser();
+      if (!browserUser) {
         setLoggedInUser(null);
         setAuthStatus('guest');
         setAuthMessage('尚未登入也可以下單；若要自動帶入會員資料，請先登入。');
         return;
       }
 
-      const nextUser = { email: user.email || '', id: user.id };
+      const nextUser = { email: browserUser.email || '', id: browserUser.id };
       setLoggedInUser(nextUser);
       setAuthStatus('authenticated');
       setAuthMessage('會員資料已同步，姓名 / 電話 / Email 會自動帶入。');
@@ -137,6 +190,7 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
+    restorePendingOrder();
     void resolveCheckoutSession();
 
     // 2. 監聽 Auth 狀態變更
@@ -171,7 +225,7 @@ export default function CheckoutPage() {
     }
 
     return () => subscription.unsubscribe();
-  }, [setValue]);
+  }, [restorePendingOrder, setValue]);
 
   // 載入預訂規則
   useEffect(() => {
@@ -191,6 +245,10 @@ export default function CheckoutPage() {
 
   const watchedDeliveryMethod = watch('delivery_method') as 'pickup' | 'delivery';
   const deliveryMethod = watchedDeliveryMethod || 'pickup';
+  const watchedPickupDate = watch('pickup_date');
+  const watchedPickupTime = watch('pickup_time');
+  const watchedPickupDateRef = useRef(watchedPickupDate);
+  watchedPickupDateRef.current = watchedPickupDate;
 
   const deliveryCityField = register('delivery_city', {
     required: deliveryMethod === 'delivery' ? '請選擇縣市' : false,
@@ -215,7 +273,7 @@ export default function CheckoutPage() {
     for (let i = minDays; i <= minDays + 29; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = formatLocalDateKey(d);
       const day = d.getDay();
       let disabled = false;
       let reason = '';
@@ -225,36 +283,18 @@ export default function CheckoutPage() {
       dates.push({ date: dateStr, label: `${mm}/${dd}`, dayName: dayNames[day], disabled, reason });
     }
     setCalendarDates(dates);
-    // 若已選日期在新列表中已被禁用，清除
-    if (selectedDate) {
-      const found = dates.find(d => d.date === selectedDate);
+    const currentDate = watchedPickupDateRef.current;
+    if (currentDate) {
+      const found = dates.find(d => d.date === currentDate);
       if (!found || found.disabled) {
-        setSelectedDate('');
         setValue('pickup_date', '');
       }
     }
-  }, [reservationRules, deliveryMethod, selectedDate, setValue]);
+  }, [reservationRules, deliveryMethod, setValue]);
 
   const totalPrice = getTotalPrice();
 
-  // 計算最早取貨日期 (Today + 3)
-  const getMinPickupDate = () => {
-    const date = new Date();
-    const minDays = reservationRules?.min_advance_days || 3;
-    date.setDate(date.getDate() + minDays);
-    return date.toISOString().split('T')[0];
-  };
-
-  // 計算最晚取貨日期
-  const getMaxPickupDate = () => {
-    const date = new Date();
-    const maxDays = reservationRules?.max_advance_days || 30;
-    date.setDate(date.getDate() + maxDays);
-    return date.toISOString().split('T')[0];
-  };
-
-  // 驗證選擇的日期
-  const validateSelectedDate = async (dateStr: string, method: 'pickup' | 'delivery') => {
+  const validateSelectedDate = useCallback(async (dateStr: string, method: 'pickup' | 'delivery') => {
     if (!dateStr) {
       setDateValidation(null);
       setValidatedDateKey(null);
@@ -265,31 +305,24 @@ export default function CheckoutPage() {
     const validationKey = `${method}:${dateStr}`;
     const requestId = ++validationRequestRef.current;
     const date = new Date(dateStr);
-    const day = date.getDay(); // 0 is Sunday, 1 is Monday
+    const day = date.getDay();
 
     setIsDateValidationPending(true);
     setDateValidation(null);
     setValidatedDateKey(null);
 
+    const settle = (result: { valid: boolean; reason: string } | null) => {
+      if (requestId !== validationRequestRef.current) return;
+      setDateValidation(result);
+      setValidatedDateKey(validationKey);
+      setIsDateValidationPending(false);
+    };
+
     // 1. 星期限制
     if (method === 'pickup') {
-      // 自取: 鎖週一
-      if (day === 1) {
-        if (requestId !== validationRequestRef.current) return;
-        setDateValidation({ valid: false, reason: '週一公休無法自取' });
-        setValidatedDateKey(validationKey);
-        setIsDateValidationPending(false);
-        return;
-      }
+      if (day === 1) { settle({ valid: false, reason: '週一公休無法自取' }); return; }
     } else {
-      // 宅配: 鎖週一、週日 (假設週日不配送)
-      if (day === 1 || day === 0) {
-        if (requestId !== validationRequestRef.current) return;
-        setDateValidation({ valid: false, reason: '宅配週日與週一無法到貨' });
-        setValidatedDateKey(validationKey);
-        setIsDateValidationPending(false);
-        return;
-      }
+      if (day === 1 || day === 0) { settle({ valid: false, reason: '宅配週日與週一無法到貨' }); return; }
     }
 
     // 2. 產能與 API 驗證
@@ -300,40 +333,21 @@ export default function CheckoutPage() {
       if (capacityResponse.ok) {
         const capacity = await capacityResponse.json();
         if (requestId !== validationRequestRef.current) return;
-        if (!capacity.available) {
-          setDateValidation({
-            valid: false,
-            reason: capacity.reason || '當日已達產能上限',
-          });
-          setValidatedDateKey(validationKey);
-          setIsDateValidationPending(false);
-          return;
-        }
+        settle(!capacity.available
+          ? { valid: false, reason: capacity.reason || '當日已達產能上限' }
+          : { valid: true, reason: '' }
+        );
       } else {
-        setDateValidation({ valid: false, reason: '目前無法驗證日期容量，請稍後再試' });
-        setValidatedDateKey(validationKey);
-        setIsDateValidationPending(false);
-        return;
+        settle({ valid: false, reason: '目前無法驗證日期容量，請稍後再試' });
       }
-
-      // 通過所有驗證
-      setDateValidation({ valid: true, reason: '' });
-      setValidatedDateKey(validationKey);
-      setIsDateValidationPending(false);
     } catch (error) {
-      if (requestId !== validationRequestRef.current) return;
       console.error('驗證日期錯誤:', error);
-      setDateValidation({ valid: false, reason: '目前無法驗證日期容量，請稍後再試' });
-      setValidatedDateKey(validationKey);
-      setIsDateValidationPending(false);
+      settle({ valid: false, reason: '目前無法驗證日期容量，請稍後再試' });
     }
-  };
+  }, []);
 
-  // 監聽日期變化
-  const watchedPickupDate = watch('pickup_date');
   useEffect(() => {
     if (watchedPickupDate) {
-      setSelectedDate(watchedPickupDate);
       void validateSelectedDate(watchedPickupDate, deliveryMethod);
       return;
     }
@@ -341,9 +355,8 @@ export default function CheckoutPage() {
     setDateValidation(null);
     setValidatedDateKey(null);
     setIsDateValidationPending(false);
-  }, [watchedPickupDate, deliveryMethod]);
+  }, [watchedPickupDate, deliveryMethod, validateSelectedDate]);
 
-  // 運費計算
   const calculateDeliveryFee = (method: 'pickup' | 'delivery', subtotal: number): number => {
     if (method === 'pickup') return 0;
     if (subtotal >= 2000) return 0;
@@ -378,7 +391,9 @@ export default function CheckoutPage() {
   const onSubmit = async (data: CheckoutFormData) => {
     const currentValidationKey = data.pickup_date ? `${data.delivery_method}:${data.pickup_date}` : null;
 
-    if (isDateValidationPending || !currentValidationKey || validatedDateKey !== currentValidationKey || !dateValidation?.valid) {
+    const isValidationStale = validatedDateKey !== currentValidationKey;
+    const isDateInvalid = !dateValidation?.valid;
+    if (isDateValidationPending || !currentValidationKey || isValidationStale || isDateInvalid) {
       alert(dateValidation?.reason || '日期驗證尚未完成，請稍候再送出訂單');
       return;
     }
@@ -391,7 +406,7 @@ export default function CheckoutPage() {
       if (data.delivery_method === 'delivery') {
         finalAddress = `${data.delivery_city}${data.delivery_district}${data.delivery_address_detail}`;
       } else {
-        finalAddress = '月島甜點店 台南市安南區本原街一段97巷';
+        finalAddress = STORE_PICKUP_ADDRESS;
       }
 
       const attribution = getAttribution() as {
@@ -415,9 +430,7 @@ export default function CheckoutPage() {
           customer_name: data.customer_name,
           phone: data.phone,
           email: data.email,
-          pickup_time: data.pickup_date
-            ? `${data.pickup_date} ${data.pickup_time || '12:00-13:00'}`
-            : new Date().toISOString().split('T')[0] + ' 12:00-13:00',
+          pickup_time: `${data.pickup_date} ${data.pickup_time ?? ''}`.trim(),
           items: items.map((item) => ({
             id: item.id,
             name: item.name,
@@ -450,10 +463,53 @@ export default function CheckoutPage() {
 
       if (result.success) {
         const newOrderId = result.order_id;
+        const nextSavedItems = items.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        }));
+
+        let msg = `【月島甜點訂單確認】\n`;
+        msg += `訂單編號：${newOrderId}\n`;
+        msg += `訂購人：${data.customer_name} (${data.phone})\n`;
+        msg += `總金額：$${finalPrice}\n`;
+        msg += `取貨日期：${data.pickup_date}\n`;
+        if (data.delivery_method === 'delivery') {
+          msg += `配送地址：${finalAddress}\n`;
+        } else {
+          msg += `取貨時間：${data.pickup_time}\n`;
+        }
+
+        msg += `\n訂購內容：\n`;
+        items.forEach(item => {
+          msg += `● ${item.name} | ${item.variant_name || '單一規格'} x ${item.quantity}\n`;
+        });
+
+        if (data.delivery_notes) msg += `\n備註：${data.delivery_notes}`;
+
+        msg += `\n\n付款方式：\n`;
+        msg += `LINE Bank (824) 連線商業銀行\n`;
+        msg += `帳號：111007479473\n`;
+        msg += `備註欄請填寫：${newOrderId}\n`;
+        msg += `\n付款完成後請回傳「後五碼」\n`;
+        msg += `   （轉帳通知中的後五碼數字）`;
+
+        const encodedMsg = encodeURIComponent(msg);
+        const lineUrl = `https://line.me/R/oaMessage/@931cxefd/?text=${encodedMsg}`;
+
         setOrderId(newOrderId);
         setConfirmedName(data.customer_name);
         setConfirmedAmount(finalPrice);
-        setSavedItems(items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })));
+        setSavedItems(nextSavedItems);
+        setLinePayUrl(lineUrl);
+        persistPendingOrder({
+          orderId: newOrderId,
+          customerName: data.customer_name,
+          amount: finalPrice,
+          items: nextSavedItems,
+          linePayUrl: lineUrl,
+          createdAt: new Date().toISOString(),
+        });
         // 儲存姓名電話到 profile（登入用戶）
         if (loggedInUser?.id) {
           fetch('/api/user/profile', {
@@ -483,37 +539,6 @@ export default function CheckoutPage() {
             }))
           });
         }
-
-        // 6. Build LINE message with payment info (Referencing moon_map_original)
-        let msg = `【月島甜點訂單確認】\n`;
-        msg += `訂單編號：${newOrderId}\n`;
-        msg += `訂購人：${data.customer_name} (${data.phone})\n`;
-        msg += `總金額：$${finalPrice}\n`;
-        msg += `取貨日期：${data.pickup_date}\n`;
-        if (data.delivery_method === 'delivery') {
-          msg += `配送地址：${finalAddress}\n`;
-        } else {
-          msg += `取貨時間：${data.pickup_time}\n`;
-        }
-
-        msg += `\n訂購內容：\n`;
-        items.forEach(item => {
-          msg += `● ${item.name} | ${item.variant_name || '單一規格'} x ${item.quantity}\n`;
-        });
-
-        if (data.delivery_notes) msg += `\n備註：${data.delivery_notes}`;
-
-        msg += `\n\n付款方式：\n`;
-        msg += `LINE Bank (824) 連線商業銀行\n`;
-        msg += `帳號：111007479473\n`;
-        msg += `備註欄請填寫：${newOrderId}\n`;
-        msg += `\n付款完成後請回傳「後五碼」\n`;
-        msg += `   （轉帳通知中的後五碼數字）`;
-
-        // 7. 建立 LINE 連結（改為手動按鈕，不自動跳轉）
-        const encodedMsg = encodeURIComponent(msg);
-        const lineUrl = `https://line.me/R/oaMessage/@931cxefd/?text=${encodedMsg}`;
-        setLinePayUrl(lineUrl);
 
       } else {
       alert(`訂單失敗：${result.message}`);
@@ -592,6 +617,12 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Skip the first mount run — normalizePrices already synced the promo state
+    if (!hasMountedPromoRef.current) {
+      hasMountedPromoRef.current = true;
+      return;
+    }
+
     const revalidatePromo = async () => {
       try {
         const response = await fetch('/api/promo-code/validate', {
@@ -644,12 +675,13 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* LINE Pay 按鈕（即將開放） */}
+          {/* LINE Pay 按鈕 */}
           <button
-            disabled
+            onClick={handleLinePayRedirect}
+            disabled={isLinePayLoading}
             className="flex items-center justify-center gap-2 w-full bg-[#00B900] disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 tracking-widest text-sm"
           >
-            LINE Pay 即將開放
+            {isLinePayLoading ? '前往 LINE Pay 中...' : '使用 LINE Pay 付款'}
           </button>
 
           {/* 轉帳備用方案 */}
@@ -915,7 +947,6 @@ export default function CheckoutPage() {
                       disabled={disabled}
                       title={disabled ? reason : date}
                       onClick={() => {
-                        setSelectedDate(date);
                         if (watchedPickupDate === date) {
                           void validateSelectedDate(date, deliveryMethod);
                           return;
@@ -926,7 +957,7 @@ export default function CheckoutPage() {
                         setValue('pickup_date', date, { shouldDirty: true, shouldValidate: true });
                       }}
                       className={`flex flex-col items-center py-2 px-1 border text-center transition-all text-xs
-                        ${selectedDate === date
+                        ${watchedPickupDate === date
                           ? 'border-moon-accent bg-moon-accent/20 text-moon-accent'
                           : disabled
                             ? 'border-moon-border/30 text-moon-muted/30 cursor-not-allowed bg-transparent'
@@ -939,7 +970,7 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {selectedDate && <p className="text-xs text-moon-accent">已選：{selectedDate}</p>}
+                {watchedPickupDate && <p className="text-xs text-moon-accent">已選：{watchedPickupDate}</p>}
                 {errors.pickup_date && <p className="text-xs text-red-400">{errors.pickup_date.message}</p>}
                 {dateValidation && !dateValidation.valid && <p className="text-xs text-red-400">{dateValidation.reason}</p>}
 
@@ -947,22 +978,19 @@ export default function CheckoutPage() {
                   <div>
                     <label className="text-xs text-moon-muted block mb-1">取貨時段 <span className="text-moon-accent">*</span></label>
                     <div className="grid grid-cols-3 gap-2">
-                      {['12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'].map(slot => {
-                        const watched = watch('pickup_time');
-                        return (
-                          <button
-                            key={slot}
-                            type="button"
-                            onClick={() => setValue('pickup_time', slot)}
-                            className={`border py-2 text-xs transition-all ${watched === slot
-                              ? 'border-moon-accent bg-moon-accent/20 text-moon-accent'
-                              : 'border-moon-border text-moon-muted hover:border-moon-accent'
-                              }`}
-                          >
-                            {slot}
-                          </button>
-                        );
-                      })}
+                      {PICKUP_TIME_SLOTS.map(slot => (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => setValue('pickup_time', slot)}
+                          className={`border py-2 text-xs transition-all ${watchedPickupTime === slot
+                            ? 'border-moon-accent bg-moon-accent/20 text-moon-accent'
+                            : 'border-moon-border text-moon-muted hover:border-moon-accent'
+                            }`}
+                        >
+                          {slot}
+                        </button>
+                      ))}
                     </div>
                     <input type="hidden" {...register('pickup_time', { required: deliveryMethod === 'pickup' ? '請選擇時段' : false })} />
                     {errors.pickup_time && <p className="text-xs text-red-400 mt-1">{errors.pickup_time.message}</p>}
@@ -1005,9 +1033,6 @@ export default function CheckoutPage() {
                       <div>
                         <select
                           {...deliveryDistrictField}
-                          onChange={(e) => {
-                            deliveryDistrictField.onChange(e);
-                          }}
                           className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
                         >
                           <option value="">請選擇區域</option>

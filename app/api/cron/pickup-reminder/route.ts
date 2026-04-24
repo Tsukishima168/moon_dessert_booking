@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { sendPickupReminderEmail, sendPickupReminderLineNotify } from '@/lib/notifications';
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 
 // Vercel Cron 配置
 export const runtime = 'nodejs';
@@ -47,11 +48,14 @@ export async function GET(request: Request) {
         const tomorrowDate = getTomorrowDate();
         console.log(`正在查詢 ${tomorrowDate} 的取貨訂單...`);
 
+        const adminClient = createAdminClient();
+
         // 查詢明天取貨的訂單
         // pickup_time 欄位可能是 "2026-01-29" 或 "2026-01-29 14:00" 格式
-        const { data: orders, error } = await supabase
+        const { data: orders, error } = await adminClient
             .from('orders')
             .select('*')
+            .eq('checkout_site', SHOP_CHECKOUT_SITE)
             .like('pickup_time', `${tomorrowDate}%`)
             .in('status', ['pending', 'confirmed', 'paid', 'preparing']);
 

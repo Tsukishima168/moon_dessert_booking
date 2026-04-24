@@ -1,9 +1,10 @@
 import { randomBytes } from 'crypto'
 import { createAdminClient } from '@/lib/supabase-admin'
-import type { Order, OrderItem, PromoCodeValidation } from '@/lib/supabase'
+import type { OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
 import { EventBus } from '@/src/lib/event-bus'
 import { isSeasonallyDisabledMenuItemName } from '@/src/lib/seasonal-menu'
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -57,6 +58,11 @@ interface MenuVariantRow {
   price: number | string | null
 }
 
+interface CanonicalOrderItem extends OrderItem {
+  menu_item_id: string
+  variant_id: string
+}
+
 interface PromoCodeUsageReservation {
   id: string
   previousUsedCount: number
@@ -74,12 +80,40 @@ interface PromoCodeUsageRow {
   min_order_amount: number | null
 }
 
+interface ReservationValidationRow {
+  valid: boolean
+  reason: string | null
+}
+
+interface CapacityValidationRow {
+  available: boolean
+  reason: string | null
+}
+
+interface MenuItemAvailabilityResult {
+  available: boolean
+  reason: string | null
+}
+
 function parsePrice(raw: string | number | null | undefined): number {
   if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 0
   if (raw === null || raw === undefined) return 0
   const cleaned = String(raw).replace(/[^0-9.]/g, '')
   const value = cleaned === '' ? NaN : Number(cleaned)
   return Number.isFinite(value) ? value : 0
+}
+
+function getFirstRpcRow<T>(data: unknown): T | null {
+  return Array.isArray(data) && data.length > 0 ? (data[0] as T) : null
+}
+
+function extractPickupDate(pickupTime: string): string {
+  const match = pickupTime.trim().match(/^(\d{4}-\d{2}-\d{2})(?:\s+.+)?$/)
+  if (!match) {
+    throw new OrderValidationError('取貨日期格式錯誤')
+  }
+
+  return match[1]
 }
 
 function calculateDeliveryFee(
@@ -106,52 +140,71 @@ async function recalculateOrderPricing(items: OrderItem[]) {
     .from('menu_variants')
     .select('id, menu_item_id, variant_name, price')
 
-  const variants: MenuVariantRow[] = menuVariantsError || !menuVariants ? [] : menuVariants as MenuVariantRow[]
   if (menuVariantsError) {
-    console.warn('[recalculateOrderPricing] 無法讀取 menu_variants，將只做可用性驗證:', menuVariantsError.message)
+    console.error('[recalculateOrderPricing] 無法讀取 menu_variants，拒絕建立訂單:', menuVariantsError.message)
+    throw new Error('無法驗證商品價格，請稍後再試')
   }
 
-  const canonicalItems = items.map((item) => {
+  const menuItemRows = (menuItems ?? []) as MenuItemRow[]
+  const variants = (menuVariants ?? []) as MenuVariantRow[]
+
+  const canonicalItems: CanonicalOrderItem[] = items.map((item) => {
+    if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+      throw new OrderValidationError(`商品「${item.name}」數量格式錯誤`)
+    }
+
     if (isSeasonallyDisabledMenuItemName(item.name)) {
       throw new OrderValidationError(`商品「${item.name}」目前已下架，請重新整理菜單`)
     }
 
-    // 先做可用性驗證（只要 menu_items 存在就能做）
-    const matchedMenuItem = (menuItems as MenuItemRow[]).find(
-      (menuItem) => menuItem.name === item.name
-    )
-    if (matchedMenuItem && matchedMenuItem.is_available === false) {
-      throw new OrderValidationError(`商品「${item.name}」目前不可訂購，請重新整理菜單`)
-    }
-
-    // 嘗試找匹配的 variant 以取得 canonical 價格
-    const matchedVariant = variants.find((variant) => {
-      const compositeId = item.id || ''
-      const exactCompositeMatch =
+    const compositeId = item.id || ''
+    const exactVariantMatch = variants.find(
+      (variant) =>
         compositeId.startsWith(`${variant.menu_item_id}-`) &&
         compositeId.endsWith(variant.id)
+    )
+    const fallbackVariantMatch = variants.find((variant) => {
+      if (variant.variant_name !== (item.variant_name ?? '標準')) {
+        return false
+      }
 
-      const fallbackMatch =
-        variant.variant_name === (item.variant_name ?? '標準') &&
-        (menuItems as MenuItemRow[]).some(
-          (menuItem) =>
-            menuItem.id === variant.menu_item_id &&
-            menuItem.name === item.name
-        )
-
-      return exactCompositeMatch || fallbackMatch
+      return menuItemRows.some(
+        (menuItem) =>
+          menuItem.id === variant.menu_item_id &&
+          menuItem.name === item.name
+      )
     })
+    const matchedVariant = exactVariantMatch ?? fallbackVariantMatch
 
-    // 找到 variant 就用 canonical 價格，找不到就用前端傳入的價格（降級）
-    const canonicalPrice = matchedVariant
-      ? parsePrice(matchedVariant.price)
-      : parsePrice(item.price)
+    if (!matchedVariant) {
+      throw new OrderValidationError(`商品「${item.name}」規格已變更，請重新整理菜單後再試`)
+    }
+
+    const matchedMenuItem =
+      menuItemRows.find((menuItem) => menuItem.id === matchedVariant.menu_item_id) ??
+      menuItemRows.find((menuItem) => menuItem.name === item.name)
+
+    if (!matchedMenuItem) {
+      throw new OrderValidationError(`找不到商品「${item.name}」，請重新整理菜單後再試`)
+    }
+
+    if (matchedMenuItem.is_available === false) {
+      throw new OrderValidationError(`商品「${matchedMenuItem.name}」目前不可訂購，請重新整理菜單`)
+    }
+
+    const canonicalPrice = parsePrice(matchedVariant.price)
+    if (!Number.isFinite(canonicalPrice) || canonicalPrice < 0) {
+      throw new Error(`商品「${matchedMenuItem.name}」價格設定異常`)
+    }
 
     return {
       ...item,
-      name: matchedMenuItem?.name ?? item.name,
-      variant_name: matchedVariant?.variant_name ?? item.variant_name ?? '標準',
+      id: `${matchedMenuItem.id}-${matchedVariant.id}`,
+      name: matchedMenuItem.name,
+      variant_name: matchedVariant.variant_name ?? item.variant_name ?? '標準',
       price: canonicalPrice,
+      menu_item_id: matchedMenuItem.id,
+      variant_id: matchedVariant.id,
     }
   })
 
@@ -161,6 +214,87 @@ async function recalculateOrderPricing(items: OrderItem[]) {
   )
 
   return { canonicalItems, subtotal }
+}
+
+async function validateOrderAvailability(
+  pickupTime: string,
+  deliveryMethod: string | undefined,
+  items: CanonicalOrderItem[]
+): Promise<'pickup' | 'delivery'> {
+  const normalizedDeliveryMethod =
+    deliveryMethod === 'delivery'
+      ? 'delivery'
+      : deliveryMethod === undefined || deliveryMethod === 'pickup'
+        ? 'pickup'
+        : null
+
+  if (!normalizedDeliveryMethod) {
+    throw new OrderValidationError('取貨方式不正確')
+  }
+
+  const pickupDate = extractPickupDate(pickupTime)
+  const adminClient = createAdminClient()
+
+  const { data: reservationData, error: reservationError } = await adminClient.rpc(
+    'validate_reservation',
+    {
+      pickup_date: pickupDate,
+      is_rush_order: false,
+    }
+  )
+
+  if (reservationError) {
+    console.error('[validateOrderAvailability] validate_reservation error:', reservationError)
+    throw new Error('無法驗證預訂日期，請稍後再試')
+  }
+
+  const reservation = getFirstRpcRow<ReservationValidationRow>(reservationData)
+  if (!reservation?.valid) {
+    throw new OrderValidationError(reservation?.reason ?? '此日期目前無法預訂')
+  }
+
+  const { data: capacityData, error: capacityError } = await adminClient.rpc(
+    'check_daily_capacity',
+    {
+      check_date: pickupDate,
+      delivery_method_param: normalizedDeliveryMethod,
+    }
+  )
+
+  if (capacityError) {
+    console.error('[validateOrderAvailability] check_daily_capacity error:', capacityError)
+    throw new Error('無法驗證當日產能，請稍後再試')
+  }
+
+  const capacity = getFirstRpcRow<CapacityValidationRow>(capacityData)
+  if (!capacity?.available) {
+    throw new OrderValidationError(capacity?.reason ?? '當日已無可用名額')
+  }
+
+  const currentTime = new Date().toISOString()
+  const uniqueMenuItemIds = [...new Set(items.map((item) => item.menu_item_id))]
+  for (const menuItemId of uniqueMenuItemIds) {
+    const { data: availabilityData, error: availabilityError } = await adminClient.rpc(
+      'check_menu_item_availability',
+      {
+        menu_item_id_param: menuItemId,
+        delivery_date: pickupDate,
+        current_time: currentTime,
+      }
+    )
+
+    if (availabilityError) {
+      console.error('[validateOrderAvailability] check_menu_item_availability error:', availabilityError)
+      throw new Error('無法驗證商品可用性，請稍後再試')
+    }
+
+    const availability = availabilityData as MenuItemAvailabilityResult | null
+    if (!availability?.available) {
+      throw new OrderValidationError(availability?.reason ?? '商品目前不可訂購')
+    }
+  }
+
+  return normalizedDeliveryMethod
 }
 
 /**
@@ -305,6 +439,10 @@ export async function createOrder(
   input: CreateOrderInput,
   authUserId: string | null
 ): Promise<CreateOrderResult> {
+  if (input.user_id && input.user_id !== authUserId) {
+    throw new OrderValidationError('user_id 無效')
+  }
+
   // 手機格式驗證（接受 +886、09XX 等台灣常見格式）
   const cleanedPhone = input.phone.replace(/[\s\-()+ ]/g, '')
   const phoneRegex = /^[0-9]{8,15}$/
@@ -313,8 +451,13 @@ export async function createOrder(
   }
 
   const { canonicalItems, subtotal } = await recalculateOrderPricing(input.items)
+  const normalizedDeliveryMethod = await validateOrderAvailability(
+    input.pickup_time,
+    input.delivery_method,
+    canonicalItems
+  )
 
-  const deliveryFee = calculateDeliveryFee(input.delivery_method, subtotal)
+  const deliveryFee = calculateDeliveryFee(normalizedDeliveryMethod, subtotal)
 
   let promoCode: string | null = null
   let discountAmount = 0
@@ -333,6 +476,7 @@ export async function createOrder(
   }
 
   const originalPrice = subtotal
+  const storedItems = canonicalItems.map(({ menu_item_id, variant_id, ...item }) => item)
 
   const orderId = `ORD-${randomBytes(8).toString('hex').toUpperCase()}`
 
@@ -342,7 +486,7 @@ export async function createOrder(
     phone: input.phone,
     email: input.email ?? null,
     pickup_time: input.pickup_time,
-    items: canonicalItems,
+    items: storedItems,
     total_price: finalPrice,
     original_price: originalPrice,
     final_price: finalPrice,
@@ -350,24 +494,26 @@ export async function createOrder(
     promo_code: promoCode,
     payment_date: input.payment_date ?? null,
     linepay_transaction_id: null,
-    delivery_method: input.delivery_method ?? 'pickup',
+    delivery_method: normalizedDeliveryMethod,
     delivery_address: input.delivery_address ?? null,
     delivery_fee: deliveryFee,
     delivery_notes: input.delivery_notes ?? null,
     mbti_type: input.mbti_type ?? null,
     from_mbti_test: !!input.from_mbti_test,
+    checkout_site: SHOP_CHECKOUT_SITE,
     source_from: input.source_from ?? 'shop',
     utm_source: input.utm_source ?? null,
     utm_medium: input.utm_medium ?? null,
     utm_campaign: input.utm_campaign ?? null,
     utm_content: input.utm_content ?? null,
     utm_term: input.utm_term ?? null,
-    user_id: input.user_id ?? authUserId,
+    user_id: authUserId,
     status: 'pending',
   } as const
 
+  let createdOrder: Awaited<ReturnType<typeof insertOrder>>
   try {
-    await insertOrder(orderData)
+    createdOrder = await insertOrder(orderData)
   } catch (error) {
     if (promoUsageReservation) {
       await rollbackPromoCodeUsage(promoUsageReservation)
@@ -375,22 +521,22 @@ export async function createOrder(
     throw error
   }
 
-  console.log(`成功建立訂單: ${orderId}`)
+  console.log(`成功建立訂單: ${createdOrder.order_id}`)
 
   // Phase 2: emit("order.created") event bus
   // 所有後續副作用（加點、通知、integration）都由 event handlers 處理
   // 此處改為 fire-and-forget emit，不阻塞回應
   EventBus.emit('order.created', {
-    order: orderData,
+    order: createdOrder,
     metadata: {
       createdAt: new Date().toISOString(),
-      source: 'shop',
+      source: createdOrder.source_from ?? 'shop',
     },
   }).catch((error) => {
     console.error('事件發送錯誤（不影響訂單）:', error)
   })
 
-  return { orderId, finalPrice }
+  return { orderId: createdOrder.order_id, finalPrice }
 }
 
 /**
@@ -404,27 +550,4 @@ export async function applyPromoCode(
   subtotal: number
 ): Promise<PromoCodeValidation> {
   return validatePromoCodeServer(code, subtotal)
-}
-
-/**
- * 查詢用戶的歷史訂單列表
- * @param userId - Supabase auth user ID
- * @returns Order 陣列
- */
-export async function getUserOrders(userId: string): Promise<Order[]> {
-  // TODO: implement
-  throw new Error('Not implemented')
-}
-
-/**
- * 取消訂單（檢查狀態是否允許取消後再更新）
- * @param orderId - 訂單 ID
- * @param requesterId - 發起取消的 user ID（權限驗證用）
- */
-export async function cancelOrder(
-  orderId: string,
-  requesterId: string
-): Promise<void> {
-  // TODO: implement
-  throw new Error('Not implemented')
 }

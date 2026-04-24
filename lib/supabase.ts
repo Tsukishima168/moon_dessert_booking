@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { isSeasonallyDisabledMenuItemName } from '@/src/lib/seasonal-menu';
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 
 // 惰性初始化：避免在建置期間因環境變數尚未注入而導致崩潰
 let _supabase: SupabaseClient | null = null;
@@ -94,6 +95,7 @@ export interface Order {
   status: string;
   mbti_type?: string;
   from_mbti_test?: boolean;
+  checkout_site?: string;
   source_from?: string;
   utm_source?: string;
   utm_medium?: string;
@@ -403,6 +405,7 @@ export async function createOrder(orderData: {
       total_price: orderData.final_price || orderData.total_price,
       mbti_type: orderData.mbti_type,
       from_mbti_test: orderData.from_mbti_test || false,
+      checkout_site: SHOP_CHECKOUT_SITE,
       source_from: orderData.source_from || null,
       utm_source: orderData.utm_source || null,
       utm_medium: orderData.utm_medium || null,
@@ -438,6 +441,7 @@ export async function getAllOrders(): Promise<Order[]> {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
+      .eq('checkout_site', SHOP_CHECKOUT_SITE)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -471,7 +475,8 @@ export async function updateOrderStatus(
     const { error } = await supabase
       .from('orders')
       .update({ status })
-      .eq('order_id', orderId);
+      .eq('order_id', orderId)
+      .eq('checkout_site', SHOP_CHECKOUT_SITE);
 
     if (error) throw error;
 

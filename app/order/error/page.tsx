@@ -9,6 +9,9 @@ const REASON_MAP: Record<string, string> = {
   missing_params: '付款資訊不完整，請重新嘗試。',
   order_not_found: '找不到對應訂單，請聯繫月島甜點確認。',
   confirm_failed: 'LINE Pay 確認付款失敗，請重新嘗試或改用其他付款方式。',
+  payment_not_verified: '這筆訂單的付款尚未完成確認，請稍後再試或聯繫月島甜點。',
+  transaction_mismatch: '付款交易與訂單資訊不一致，請聯繫月島甜點確認。',
+  order_update_failed: '付款已完成，但系統尚未成功更新訂單，請聯繫月島甜點協助處理。',
   server_error: '系統發生錯誤，請稍後再試或聯繫月島甜點。',
 };
 
@@ -36,10 +39,10 @@ function ErrorContent() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
-            href="/"
+            href="/checkout"
             className="flex items-center justify-center border border-moon-border text-moon-text py-3 text-xs tracking-widest hover:border-moon-accent hover:text-moon-accent transition-colors"
           >
-            返回重新下單
+            返回結帳頁
           </Link>
           <a
             href="https://line.me/R/ti/p/@931cxefd"

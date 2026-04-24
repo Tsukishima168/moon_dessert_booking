@@ -30,7 +30,7 @@ export async function handleOrderCreatedEmail(
   }
 
   try {
-    await sendCustomerEmail({
+    const emailSent = await sendCustomerEmail({
       to: order.email,
       customerName: order.customer_name,
       orderId: order.order_id,
@@ -46,7 +46,12 @@ export async function handleOrderCreatedEmail(
       deliveryFee: order.delivery_fee ?? undefined,
       deliveryNotes: order.delivery_notes ?? undefined,
     })
-    console.log(`[EmailHandler] 訂單確認信發送成功 → ${order.email} (${order.order_id})`)
+    if (emailSent) {
+      console.log(`[EmailHandler] 訂單確認信發送成功 → ${order.email} (${order.order_id})`)
+      return
+    }
+
+    console.warn(`[EmailHandler] 訂單確認信未送達 → ${order.email} (${order.order_id})`)
   } catch (error) {
     console.error('[EmailHandler] 訂單確認信發送失敗', order.order_id, error)
     // 不 throw：email 是 fire-and-forget，失敗不阻塞訂單流程

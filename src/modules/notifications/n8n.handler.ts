@@ -41,8 +41,13 @@ export async function handleOrderCreatedN8n(
       updated_at: new Date().toISOString(),
     }
 
-    await syncOrderEventToN8n('order.created', syncPayload)
-    console.log(`[N8nHandler] Order ${orderIdentifier} synced to N8N`)
+    const synced = await syncOrderEventToN8n('order.created', syncPayload)
+    if (synced) {
+      console.log(`[N8nHandler] Order ${orderIdentifier} synced to N8N`)
+      return
+    }
+
+    console.warn(`[N8nHandler] Order ${orderIdentifier} did not reach N8N`)
   } catch (error) {
     console.error('[N8nHandler] Failed to sync order to N8N', order.order_id || order.id, error)
     // 不 throw：N8N 同步是 fire-and-forget，dead-letter 由 n8n.ts 處理

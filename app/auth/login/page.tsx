@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { Loader2, Mail, ArrowRight, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { ensureServerSession } from '@/lib/client-auth';
+import { getSafeRedirectPath } from '@/src/lib/safe-redirect';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -29,24 +30,47 @@ export default function LoginPage() {
             const user = await ensureServerSession(4, 200);
             if (!user) return;
 
-            const redirect = searchParams?.get('redirect') || '/account';
+            const redirect = getSafeRedirectPath(searchParams?.get('redirect'));
             router.replace(redirect);
         };
 
         void restoreLogin();
     }, [router, searchParams]);
 
+    useEffect(() => {
+        const prefillingEmail = searchParams?.get('email');
+        if (!prefillingEmail) return;
+
+        setEmail(prefillingEmail);
+    }, [searchParams]);
+
+    useEffect(() => {
+        const authError = searchParams?.get('error');
+        if (!authError) return;
+
+        const messageMap: Record<string, string> = {
+            session_sync_failed: '登入已完成，但會員狀態同步失敗，請再試一次。',
+            session_missing: '登入資訊未建立完成，請再試一次。',
+        };
+
+        setMessage({
+            type: 'error',
+            text: messageMap[authError] || decodeURIComponent(authError),
+        });
+    }, [searchParams]);
+
     const handleGoogleLogin = async () => {
         if (loading) return;
         setLoading(true);
         setMessage(null);
         try {
-            const redirect = searchParams?.get('redirect') || '/account';
-            const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`;
+            const redirect = getSafeRedirectPath(searchParams?.get('redirect'));
+            const callbackUrl = new URL('/auth/callback', window.location.origin);
+            callbackUrl.searchParams.set('redirect', redirect);
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: callbackUrl,
+                    redirectTo: callbackUrl.toString(),
                 },
             });
             if (error) throw error;
@@ -65,12 +89,13 @@ export default function LoginPage() {
         setMessage(null);
 
         try {
-            const redirect = searchParams?.get('redirect') || '/account';
-            const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`;
+            const redirect = getSafeRedirectPath(searchParams?.get('redirect'));
+            const callbackUrl = new URL('/auth/callback', window.location.origin);
+            callbackUrl.searchParams.set('redirect', redirect);
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: callbackUrl,
+                    emailRedirectTo: callbackUrl.toString(),
                 },
             });
 

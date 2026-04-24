@@ -56,9 +56,20 @@ export async function POST(
       requestedChannel,
     })
 
+    const selectedChannels =
+      requestedChannel === 'all'
+        ? Object.values(notificationResult.channels)
+        : [notificationResult.channels[requestedChannel]]
+    const hasFailure = selectedChannels.some((channel) => channel.state === 'failed')
+    const allSkipped = selectedChannels.every((channel) => channel.state === 'skipped')
+
     return NextResponse.json({
-      success: true,
-      message: `已手動重送 ${order.order_id} 的${requestedChannel === 'all' ? '全部通知' : `${requestedChannel} 通知`}`,
+      success: !hasFailure && !allSkipped,
+      message: hasFailure
+        ? `${order.order_id} 的通知重送未完全成功，請查看 notification_result`
+        : allSkipped
+          ? `${order.order_id} 的通知沒有實際送出，請查看 notification_result`
+          : `已手動重送 ${order.order_id} 的${requestedChannel === 'all' ? '全部通知' : `${requestedChannel} 通知`}`,
       data: order,
       notification_result: notificationResult,
     })

@@ -1,8 +1,28 @@
 import { createClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 
 export const dynamic = 'force-dynamic';
+
+const USER_ORDER_SELECT = [
+  'id',
+  'order_id',
+  'customer_name',
+  'phone',
+  'pickup_time',
+  'items',
+  'status',
+  'created_at',
+  'final_price',
+  'original_price',
+  'discount_amount',
+  'promo_code',
+  'delivery_method',
+  'delivery_address',
+  'delivery_fee',
+  'delivery_notes',
+].join(', ');
 
 export async function GET() {
   try {
@@ -21,8 +41,9 @@ export async function GET() {
     const adminClient = createAdminClient();
     const { data: orders, error } = await adminClient
       .from('orders')
-      .select('*')
+      .select(USER_ORDER_SELECT)
       .eq('user_id', user.id)
+      .eq('checkout_site', SHOP_CHECKOUT_SITE)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

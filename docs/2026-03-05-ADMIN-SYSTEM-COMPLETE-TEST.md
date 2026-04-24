@@ -279,9 +279,9 @@ const handleImageUpload = async (file: File) => {
 
 ### 環境變數檢查
 ```bash
-✅ CLOUDINARY_CLOUD_NAME=dvizdsv4m
-✅ CLOUDINARY_API_KEY=525296494273748
-✅ CLOUDINARY_API_SECRET=QZFXTfdcR-2HRPxpNRJGJ8h6q9I
+✅ CLOUDINARY_CLOUD_NAME=<redacted>
+✅ CLOUDINARY_API_KEY=<redacted>
+✅ CLOUDINARY_API_SECRET=<redacted>
 ```
 
 ### 上傳 API 端點

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 import type { Order, OrderItem } from '@/lib/supabase'
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope'
 
 // 後台完整訂單型別（含新欄位）
 export interface AdminOrder {
@@ -22,6 +23,8 @@ export interface AdminOrder {
   delivery_address: string | null
   delivery_fee: number
   delivery_notes: string | null
+  checkout_site: string
+  source_from: string
   admin_notes: string | null
   status: string
   created_at: string
@@ -63,6 +66,7 @@ export interface InsertOrderPayload {
   delivery_notes: string | null
   mbti_type: string | null
   from_mbti_test: boolean
+  checkout_site: string
   source_from: string
   utm_source: string | null
   utm_medium: string | null
@@ -96,12 +100,16 @@ export async function insertOrder(payload: InsertOrderPayload): Promise<AdminOrd
  * @param orderId - 訂單 ID（格式 ORD{timestamp}）
  * @returns AdminOrder 物件，找不到時回傳 null
  */
-export async function findOrderById(orderId: string): Promise<AdminOrder | null> {
+export async function findOrderById(
+  orderId: string,
+  checkoutSite: string = SHOP_CHECKOUT_SITE
+): Promise<AdminOrder | null> {
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('orders')
     .select('*')
     .eq('order_id', orderId)
+    .eq('checkout_site', checkoutSite)
     .maybeSingle()
   if (error) throw error
   return data as AdminOrder | null
@@ -115,13 +123,15 @@ export async function findOrderById(orderId: string): Promise<AdminOrder | null>
  */
 export async function updateOrder(
   orderId: string,
-  payload: UpdateOrderPayload
+  payload: UpdateOrderPayload,
+  checkoutSite: string = SHOP_CHECKOUT_SITE
 ): Promise<AdminOrder> {
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('orders')
     .update(payload)
     .eq('order_id', orderId)
+    .eq('checkout_site', checkoutSite)
     .select('*')
     .maybeSingle()
   if (error) throw error
@@ -134,12 +144,16 @@ export async function updateOrder(
  * @param userId - Supabase auth user ID
  * @returns Order 陣列
  */
-export async function findOrdersByUserId(userId: string): Promise<Order[]> {
+export async function findOrdersByUserId(
+  userId: string,
+  checkoutSite: string = SHOP_CHECKOUT_SITE
+): Promise<Order[]> {
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('orders')
     .select('*')
     .eq('user_id', userId)
+    .eq('checkout_site', checkoutSite)
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data || []) as Order[]
@@ -152,13 +166,15 @@ export async function findOrdersByUserId(userId: string): Promise<Order[]> {
  */
 export async function updateOrderStatus(
   orderId: string,
-  status: string
+  status: string,
+  checkoutSite: string = SHOP_CHECKOUT_SITE
 ): Promise<void> {
   const adminClient = createAdminClient()
   const { error } = await adminClient
     .from('orders')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('order_id', orderId)
+    .eq('checkout_site', checkoutSite)
   if (error) throw error
 }
 
@@ -167,11 +183,15 @@ export async function updateOrderStatus(
  * @param date - ISO 日期字串，格式 YYYY-MM-DD
  * @returns 訂單數量
  */
-export async function countConfirmedOrdersByDate(date: string): Promise<number> {
+export async function countConfirmedOrdersByDate(
+  date: string,
+  checkoutSite: string = SHOP_CHECKOUT_SITE
+): Promise<number> {
   const adminClient = createAdminClient()
   const { count, error } = await adminClient
     .from('orders')
     .select('*', { count: 'exact', head: true })
+    .eq('checkout_site', checkoutSite)
     .like('pickup_time', `${date}%`)
     .in('status', ['pending', 'paid', 'confirmed', 'preparing', 'ready'])
   if (error) throw error
@@ -186,12 +206,14 @@ export async function countConfirmedOrdersByDate(date: string): Promise<number> 
  */
 export async function findOrders(
   status?: string,
-  limit: number = 100
+  limit: number = 100,
+  checkoutSite: string = SHOP_CHECKOUT_SITE
 ): Promise<Order[]> {
   const adminClient = createAdminClient()
   let query = adminClient
     .from('orders')
     .select('*')
+    .eq('checkout_site', checkoutSite)
     .order('created_at', { ascending: false })
     .limit(limit)
 

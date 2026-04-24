@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest) {
         const { data: allOrders, error } = await db
             .from('orders')
             .select('phone, customer_name, created_at, final_price, total_price, status')
+            .eq('checkout_site', SHOP_CHECKOUT_SITE)
             .order('created_at', { ascending: false });
 
         if (error) {

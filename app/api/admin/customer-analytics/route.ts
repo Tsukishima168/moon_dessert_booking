@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '../_utils/ensureAdmin';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
         let query = adminClient
             .from('orders')
             .select('phone, created_at, final_price, total_price, promo_code, status')
+            .eq('checkout_site', SHOP_CHECKOUT_SITE)
             .neq('status', 'cancelled');
 
         if (fromDate) {
@@ -51,6 +53,7 @@ export async function GET(req: NextRequest) {
         const { data: allTimeOrders } = await adminClient
             .from('orders')
             .select('phone, created_at')
+            .eq('checkout_site', SHOP_CHECKOUT_SITE)
             .neq('status', 'cancelled')
             .order('created_at', { ascending: true });
 
@@ -87,6 +90,7 @@ export async function GET(req: NextRequest) {
         const { data: allPaidOrders } = await adminClient
             .from('orders')
             .select('phone, final_price, total_price, created_at')
+            .eq('checkout_site', SHOP_CHECKOUT_SITE)
             .in('status', paidStatuses);
 
         (allPaidOrders || []).forEach(o => {

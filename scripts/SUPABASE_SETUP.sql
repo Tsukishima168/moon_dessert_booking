@@ -70,19 +70,16 @@ CREATE POLICY "允許建立訂單"
   TO anon
   WITH CHECK (true);
 
--- 5. 建立政策：允許已認證用戶查看所有訂單（管理用）
-CREATE POLICY "允許管理員查看訂單"
+-- 5. 建立政策：登入會員只能查看自己的訂單
+-- 管理後台請走 server-side API / service_role，不要把 shared DB 全開給 authenticated。
+CREATE POLICY "允許會員查看自己的訂單"
   ON orders
   FOR SELECT
   TO authenticated
-  USING (true);
+  USING (auth.uid() = user_id);
 
--- 6. 建立政策：允許已認證用戶更新訂單狀態
-CREATE POLICY "允許管理員更新訂單"
-  ON orders
-  FOR UPDATE
-  TO authenticated
-  USING (true);
+-- 6. 不提供前端直接 UPDATE orders 的政策
+-- 若需要管理員更新狀態，請使用 service_role 或受控 RPC。
 
 -- ========================================
 -- 注意事項：

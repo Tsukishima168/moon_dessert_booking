@@ -8,10 +8,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
-    const deliveryMethod = searchParams.get('delivery_method') ?? 'pickup'
+    const rawMethod = searchParams.get('delivery_method')
+    const deliveryMethod: 'pickup' | 'delivery' =
+      rawMethod === 'delivery' ? 'delivery' : 'pickup'
 
     if (!date) {
       return NextResponse.json({ error: '缺少日期參數' }, { status: 400 })
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return NextResponse.json({ error: '日期格式錯誤，請使用 YYYY-MM-DD' }, { status: 400 })
     }
 
     const capacity = await getAvailableCapacity(date, deliveryMethod)
