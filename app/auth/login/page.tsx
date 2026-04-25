@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { Loader2, Mail, ArrowRight, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { ensureServerSession } from '@/lib/client-auth';
+import { buildPassportLoginUrl } from '@/src/lib/auth-storage';
 import { getSafeRedirectPath } from '@/src/lib/safe-redirect';
 
 export default function LoginPage() {
@@ -27,11 +27,15 @@ export default function LoginPage() {
 
     useEffect(() => {
         const restoreLogin = async () => {
-            const user = await ensureServerSession(4, 200);
-            if (!user) return;
-
             const redirect = getSafeRedirectPath(searchParams?.get('redirect'));
-            router.replace(redirect);
+            const user = await ensureServerSession(4, 200);
+            if (user) {
+                router.replace(redirect);
+                return;
+            }
+
+            const returnTo = new URL(redirect, window.location.origin).toString();
+            window.location.replace(buildPassportLoginUrl(returnTo));
         };
 
         void restoreLogin();
@@ -65,15 +69,8 @@ export default function LoginPage() {
         setMessage(null);
         try {
             const redirect = getSafeRedirectPath(searchParams?.get('redirect'));
-            const callbackUrl = new URL('/auth/callback', window.location.origin);
-            callbackUrl.searchParams.set('redirect', redirect);
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: callbackUrl.toString(),
-                },
-            });
-            if (error) throw error;
+            const returnTo = new URL(redirect, window.location.origin).toString();
+            window.location.href = buildPassportLoginUrl(returnTo);
         } catch (error: any) {
             console.error('Google login error:', error);
             setMessage({ type: 'error', text: error.message || 'Google 登入失敗，請稍後再試。' });
@@ -90,22 +87,8 @@ export default function LoginPage() {
 
         try {
             const redirect = getSafeRedirectPath(searchParams?.get('redirect'));
-            const callbackUrl = new URL('/auth/callback', window.location.origin);
-            callbackUrl.searchParams.set('redirect', redirect);
-            const { error } = await supabase.auth.signInWithOtp({
-                email,
-                options: {
-                    emailRedirectTo: callbackUrl.toString(),
-                },
-            });
-
-            if (error) throw error;
-
-            setMessage({
-                type: 'success',
-                text: '登入連結已發送！請檢查您的信箱 (包含垃圾郵件夾)。',
-            });
-            setCooldown(60); // 60秒冷卻
+            const returnTo = new URL(redirect, window.location.origin).toString();
+            window.location.href = buildPassportLoginUrl(returnTo);
         } catch (error: any) {
             console.error('Login error:', error);
             setMessage({
@@ -140,7 +123,7 @@ export default function LoginPage() {
 
                     {!message || message.type === 'error' ? (
                         <div className="space-y-6 relative z-10">
-                            {/* Google OAuth */}
+                            {/* Passport SSO */}
                             <button
                                 type="button"
                                 onClick={handleGoogleLogin}
@@ -157,7 +140,7 @@ export default function LoginPage() {
                                             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                                             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                                         </svg>
-                                        Continue with Google
+                                        Continue with Passport
                                     </>
                                 )}
                             </button>
