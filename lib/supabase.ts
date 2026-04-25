@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { isSeasonallyDisabledMenuItemName } from '@/src/lib/seasonal-menu';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
+import { createSharedAuthStorage } from '@/src/lib/auth-storage';
 
 // 惰性初始化：避免在建置期間因環境變數尚未注入而導致崩潰
 let _supabase: SupabaseClient | null = null;
@@ -27,6 +28,7 @@ function getSupabaseClient(): SupabaseClient {
       persistSession: isBrowser,
       detectSessionInUrl: isBrowser,
       autoRefreshToken: isBrowser,
+      storage: isBrowser ? createSharedAuthStorage() : undefined,
     },
   });
 
