@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { clearServerSession, getServerSessionUser } from '@/lib/client-auth';
+import { clearServerSession, getServerSessionUser, trackShopSiteVisited } from '@/lib/client-auth';
 import { getSafeRedirectPath } from '@/src/lib/safe-redirect';
 
 /**
@@ -78,6 +78,8 @@ export default function AuthCallbackPage() {
                     if (!syncedUser) {
                         throw new Error('session sync verification failed');
                     }
+
+                    trackShopSiteVisited('auth_callback');
                 } catch (err) {
                     console.error('[callback] Failed to sync session cookie:', err);
                     await clearServerSession();

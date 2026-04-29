@@ -25,6 +25,23 @@ async function syncServerSession(session: Session): Promise<boolean> {
   }
 }
 
+export function trackShopSiteVisited(source = 'client_session'): void {
+  Promise.all([
+    supabase.rpc('update_last_seen', { p_site: 'shop' }),
+    supabase.rpc('insert_user_event', {
+      p_event_type: 'site_visited',
+      p_site: 'shop',
+      p_metadata: {
+        site_id: 'dessert_booking',
+        source,
+        path: typeof window !== 'undefined' ? window.location.pathname : null,
+      },
+    }),
+  ]).catch(error => {
+    console.warn('[client-auth] site_visited tracking failed:', error)
+  })
+}
+
 async function wait(ms: number) {
   await new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -40,6 +57,7 @@ export async function ensureServerSession(
 
     if (session?.user) {
       await syncServerSession(session)
+      trackShopSiteVisited('ensure_server_session')
       return session.user
     }
 
@@ -58,6 +76,7 @@ export async function getResolvedSession(): Promise<Session | null> {
 
   if (session?.user) {
     await syncServerSession(session)
+    trackShopSiteVisited('resolved_session')
     return session
   }
 
@@ -77,6 +96,7 @@ export async function getResolvedSession(): Promise<Session | null> {
       window.clearTimeout(timeout)
       subscription.unsubscribe()
       await syncServerSession(nextSession)
+      trackShopSiteVisited('auth_state_change')
       resolve(nextSession)
     })
   })
