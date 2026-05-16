@@ -8,6 +8,7 @@
 
 # next.js
 /.next/
+.next.stale-*
 /out/
 
 # production
@@ -35,6 +36,7 @@ next-env.d.ts
 .gstack/
 
 # supabase cli temp artifacts
+supabase/.temp/
 supabase/.temp/gotrue-version
 supabase/.temp/pooler-url
 supabase/.temp/postgres-version
