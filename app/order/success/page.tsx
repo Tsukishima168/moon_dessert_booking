@@ -11,15 +11,15 @@ export const dynamic = 'force-dynamic';
 const PAID_STATUSES = new Set(['paid', 'ready', 'completed']);
 
 interface OrderSuccessPageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     orderId?: string;
-  };
+  }>;
 }
 
 export default async function OrderSuccessPage({
   searchParams,
 }: OrderSuccessPageProps) {
-  const orderId = searchParams?.orderId;
+  const { orderId } = (await searchParams) ?? {};
 
   if (!orderId) {
     redirect('/order/error?reason=missing_params');

@@ -25,10 +25,11 @@ export async function OPTIONS() {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { mbtiType: string } }
+  { params }: { params: Promise<{ mbtiType: string }> }
 ) {
   try {
-    const mbtiType = params.mbtiType?.trim().toUpperCase();
+    const { mbtiType: rawMbtiType } = await params;
+    const mbtiType = rawMbtiType?.trim().toUpperCase();
     if (!mbtiType) {
       return NextResponse.json(
         { success: false, message: '缺少 MBTI 類型', data: null },

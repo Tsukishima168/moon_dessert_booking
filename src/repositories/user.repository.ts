@@ -18,7 +18,7 @@ export interface UserProfile {
  * @returns UserProfile，找不到時回傳 null
  */
 export async function findUserById(userId: string): Promise<UserProfile | null> {
-  const client = createClient();
+  const client = await createClient();
 
   try {
     const { data, error } = await client
@@ -56,7 +56,7 @@ export async function findUserById(userId: string): Promise<UserProfile | null> 
  * For now, returns null as profiles table doesn't store email directly
  */
 export async function findUserByEmail(email: string): Promise<UserProfile | null> {
-  const client = createClient();
+  const client = await createClient();
 
   try {
     const { data, error } = await client
@@ -94,7 +94,7 @@ export async function findUserByEmail(email: string): Promise<UserProfile | null
  * 更新用戶最後活躍站台（Server-side 呼叫，用 userId 直接 UPDATE）
  */
 export async function updateLastSeen(userId: string, site: string): Promise<void> {
-  const client = createClient();
+  const client = await createClient();
 
   try {
     const now = new Date().toISOString();
@@ -119,7 +119,7 @@ export async function updateUserMbtiType(
   userId: string,
   mbtiType: string
 ): Promise<void> {
-  const client = createClient();
+  const client = await createClient();
 
   try {
     const { error } = await client

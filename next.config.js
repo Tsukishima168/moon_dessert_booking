@@ -11,9 +11,6 @@ const nextConfig = {
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
   },
-  experimental: {
-    instrumentationHook: true,
-  },
   images: {
     remotePatterns: [
       // Cloudinary

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 // GET - 取得啟用中的 Banner
 export async function GET() {
     try {
-        const supabase = createClient();
+        const supabase = await createClient();
         const now = new Date().toISOString();
 
         const { data: banners, error } = await supabase
