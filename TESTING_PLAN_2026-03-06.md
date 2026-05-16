@@ -29,7 +29,7 @@
 
 ### 🔄 問題 2: 下單後 Email 沒有收到通知
 **狀態**: 配置已修復，需驗證
-- [x] 設置 `RESEND_API_KEY=re_QtTqqKYd_...` (已有)
+- [x] 設置 `RESEND_API_KEY=re_your_api_key` (已有)
 - [x] 設置 `RESEND_FROM_EMAIL=noreply@shop.kiwimu.com` (已修復)
 - [x] 驗證 `/lib/notifications.ts` 中 `sendCustomerEmail()` 函數
 - [x] 驗證 `/app/api/order/route.ts` 調用郵件發送函數

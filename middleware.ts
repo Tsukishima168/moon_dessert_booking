@@ -40,6 +40,15 @@ export async function middleware(request: NextRequest) {
   // 刷新 session（必要，不可省略）
   await supabase.auth.getUser();
 
+  if (
+    request.nextUrl.pathname.startsWith('/api/admin') ||
+    request.nextUrl.pathname.startsWith('/admin') ||
+    request.nextUrl.pathname.startsWith('/api/user')
+  ) {
+    supabaseResponse.headers.set('Cache-Control', 'no-store, max-age=0');
+    supabaseResponse.headers.set('Pragma', 'no-cache');
+  }
+
   return supabaseResponse;
 }
 

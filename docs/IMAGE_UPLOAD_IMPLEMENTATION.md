@@ -175,8 +175,8 @@ POST /api/admin/upload
 
 ### 環境變數 (`.env.local`)
 ```
-CLOUDINARY_CLOUD_NAME=dvizdsv4m
-CLOUDINARY_API_KEY=525296494273748
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
 CLOUDINARY_API_SECRET=<secret>
 ```
 
@@ -246,4 +246,3 @@ CLOUDINARY_API_SECRET=<secret>
 - [ ] 實現批量上傳
 - [ ] 添加圖片裁剪功能
 - [ ] 集成圖片最佳化 (WebP 轉換等)
-

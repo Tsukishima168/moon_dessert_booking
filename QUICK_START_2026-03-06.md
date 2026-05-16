@@ -76,7 +76,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 cat .env.local | grep RESEND
 
 # 應該看到:
-RESEND_API_KEY=re_QtTqqKYd_...
+RESEND_API_KEY=re_your_api_key
 RESEND_FROM_EMAIL=noreply@shop.kiwimu.com
 ```
 

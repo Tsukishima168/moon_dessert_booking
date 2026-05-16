@@ -104,10 +104,10 @@ curl -X POST http://localhost:3001/api/order \
 
 ### 環境配置
 ```
-✅ CLOUDINARY_CLOUD_NAME=dvizdsv4m
-✅ CLOUDINARY_API_KEY=525296494273748
+✅ CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+✅ CLOUDINARY_API_KEY=your-cloudinary-api-key
 ✅ CLOUDINARY_API_SECRET=已配置
-✅ ADMIN_PASSWORD=admin123
+✅ ADMIN_PASSWORD=replace-with-a-strong-random-password
 ✅ 開發伺服器: localhost:3001
 ```
 
@@ -143,4 +143,3 @@ A: 已正常上傳並測試，URL 格式: `https://res.cloudinary.com/dvizdsv4m/
 - Cloudinary: https://cloudinary.com/console
 - 本地開發: http://localhost:3001
 - 管理後台: http://localhost:3001/admin
-

@@ -4,6 +4,91 @@
 
 ---
 
+## 冷啟動快照 · 2026-05-11
+
+### 本輪完成
+
+**shop 封測前修復 + 子代理 reviews 收斂**
+
+1. **付款 / 結帳 P0 修復**
+   - `/api/order` 現在回傳後端重算後的 `final_price` / `finalPrice`。
+   - `/checkout` 成功頁、LINE 轉帳訊息、GA4 purchase、LINE Pay request 都改用後端回傳金額，避免前端購物車折扣/運費與 DB 最終金額不一致。
+   - `/checkout` 送出前會呼叫 `/api/check-menu-availability` 預檢每個菜單品項；後端仍保留 fail-closed 驗證。
+   - pending order localStorage 加上 24h TTL，成功頁新增「建立新訂單」可清掉舊待付款快照。
+   - 日期格子改用 `reservation_rules.max_advance_days` 截止，不再固定顯示 `minDays + 29`。
+
+2. **LINE Pay 修復**
+   - `lib/linepay.ts` 改用 raw text parser，將 LINE Pay `transactionId` 保留為 string，避免超過 JS safe integer 後失真。
+   - LINE Pay request payload 改成單一「訂單總額」商品，確保 package amount 與 products sum 永遠一致。
+   - `getPublicSiteUrl()` 由 `src/lib/site-url.ts` 統一處理；production 必須設定 `NEXT_PUBLIC_SITE_URL`，避免從可偽造 forwarded host 推導 confirm/cancel URL。
+   - LINE Pay confirm 成功後走 `runOrderStatusSideEffects()`，補上通知 / n8n / notification log 一致性。
+
+3. **會員 / 訂單紀錄**
+   - 會員中心 `/account` 訂購紀錄已存在，可看到自己的訂單。
+   - 訂單時間顯示不再用 `new Date("YYYY-MM-DD 12:00-13:00")`，避免 timezone / invalid date 問題。
+   - user API routes 已限制 `checkout_site` 範圍，會員只看允許顯示的站點訂單。
+
+4. **後台 / 安全**
+   - 後台側欄 production 已顯示營運工具與站點成效入口。
+   - admin auth rate limiter 改用 IP + UA hash identity；DB limiter 錯誤時 fail-closed 60 秒。
+   - admin session token 入庫前改成 SHA-256 hash，cookie 保留原 token。
+   - Discord webhook 設定改用 URL parser + host/path/protocol 驗證，只允許 Discord webhook URL；audit log 使用 service role client。
+   - middleware 對 `/admin`、`/api/admin`、`/api/user` 補 `Cache-Control: no-store`。
+
+5. **Supabase migrations**
+   - `20260510000000_add_missing_availability_rpcs.sql`
+     - 新增 `public.check_menu_item_availability`
+     - 新增 `public.get_available_dates`
+   - `20260511000001_harden_admin_log_rls.sql`
+     - `audit_logs` / `notification_logs` 啟用 RLS
+     - revoke anon/authenticated access
+     - 僅 service role 透過 server API 讀寫
+
+6. **依賴與文件清理**
+   - `shadcn` 移到 devDependencies；`npm audit --omit=dev --audit-level=high` 為 0 vulnerabilities。
+   - `.env.local.example` 補 LINE Pay、`NEXT_PUBLIC_SITE_URL`、`PUBLIC_SITE_HOST_ALLOWLIST`、admin auth limiter 設定。
+   - 文件中的弱密碼 / 類似真實 API key 範例已替換為 placeholder。
+
+### 驗證結果
+
+- `npx tsc --noEmit` ✅
+- `npm run lint` ✅ 0 errors；仍有 14 個既有 warnings（hook deps / `<img>`）
+- `npm run build` ✅
+- `npm audit --omit=dev --audit-level=high` ✅ 0 vulnerabilities
+- 本機 smoke（`localhost:3020`）：
+  - `/checkout` ✅ HTTP 200
+  - `/account` ✅ HTTP 200
+  - `/api/settings` ✅ 回傳 reservation rules
+  - `/api/check-menu-availability?date=2026-05-15` ✅ 回傳 available
+
+### 待部署 / 待真人驗證
+
+1. **Supabase production 必須套 migration**
+   - `supabase/migrations/20260510000000_add_missing_availability_rpcs.sql`
+   - `supabase/migrations/20260511000001_harden_admin_log_rls.sql`
+
+2. **Vercel production env 必填**
+   | 變數 | 值 |
+   |------|------|
+   | `LINEPAY_CHANNEL_ID` | LINE Pay 後台取得 |
+   | `LINEPAY_CHANNEL_SECRET` | LINE Pay 後台取得 |
+   | `LINEPAY_API_URL` | sandbox: `https://sandbox-api-pay.line.me`；正式: `https://api-pay.line.me` |
+   | `NEXT_PUBLIC_SITE_URL` | `https://shop.kiwimu.com` |
+   | `PUBLIC_SITE_HOST_ALLOWLIST` | `shop.kiwimu.com` |
+
+3. **仍需真人 / 外部服務封測**
+   - LINE Pay sandbox 實付流程：request → LINE Pay → confirm → `/order/success`
+   - Resend 正式寄信
+   - Discord webhook 正式頻道
+   - n8n webhook 部署位置與實際觸發
+   - Passport SSO 登入後於 shop 會員中心看訂單
+
+### 待確認
+
+- 使用者回報：「checkout 右邊出現了 ...」句子未完整。下次需確認右側出現的是錯誤訊息、空白、橫向 overflow、還是 Codex/browser UI 狀態。
+
+---
+
 ## 冷啟動快照 · 2026-03-22
 
 ### 本輪完成

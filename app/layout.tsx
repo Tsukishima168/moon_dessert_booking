@@ -20,6 +20,90 @@ const siteConfig = {
   image: 'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png', // OG 分享圖
 };
 
+const publicMenuHighlights = [
+  '北海道經典巴斯克',
+  '茶香巴斯克',
+  '檸檬柚子千層',
+  '經典十勝原味千層',
+  '奶酒提拉米蘇',
+  '經典提拉米蘇',
+  '北海道十勝戚風',
+  '經典烤布丁',
+];
+
+const publicStorePhone = process.env.NEXT_PUBLIC_STORE_PHONE;
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Bakery',
+      '@id': `${siteConfig.url}#business`,
+      name: 'MOON MOON 月島甜點',
+      image: siteConfig.image,
+      url: siteConfig.url,
+      ...(publicStorePhone ? { telephone: publicStorePhone } : {}),
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: '台南市安南區本原街一段97巷',
+        addressLocality: '安南區',
+        addressRegion: '台南市',
+        postalCode: '709',
+        addressCountry: 'TW',
+      },
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: 23.0478,
+        longitude: 120.1831,
+      },
+      areaServed: ['台南市安南區', '本原街', '果菜市場周邊', '台灣'],
+      openingHoursSpecification: {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        opens: '10:00',
+        closes: '19:00',
+      },
+      priceRange: '$$',
+      servesCuisine: 'Dessert',
+      description: siteConfig.description,
+      hasMenu: `${siteConfig.url}/#menu-section`,
+      acceptsReservations: true,
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${siteConfig.url}#website`,
+      url: siteConfig.url,
+      name: siteConfig.name,
+      inLanguage: 'zh-TW',
+      description: siteConfig.description,
+      publisher: {
+        '@id': `${siteConfig.url}#business`,
+      },
+      potentialAction: {
+        '@type': 'OrderAction',
+        target: siteConfig.url,
+        name: '線上預訂本季甜點',
+      },
+    },
+    {
+      '@type': 'OfferCatalog',
+      '@id': `${siteConfig.url}#menu-highlights`,
+      name: '月島甜點公開菜單摘要',
+      itemListElement: publicMenuHighlights.map((name) => ({
+        '@type': 'Offer',
+        itemOffered: {
+          '@type': 'Product',
+          name,
+          category: '甜點',
+          brand: {
+            '@id': `${siteConfig.url}#business`,
+          },
+        },
+      })),
+    },
+  ],
+};
+
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -32,6 +116,9 @@ export const metadata: Metadata = {
   authors: [{ name: 'Moon Moon Dessert Studio' }],
   creator: 'Moon Moon Dessert Studio',
   publisher: 'Moon Moon Dessert Studio',
+  alternates: {
+    canonical: '/',
+  },
 
   // Open Graph (Facebook, LINE 等社群平台)
   openGraph: {
@@ -108,45 +195,11 @@ export default function RootLayout({
           }}
         />
 
-        {/* JSON-LD Structured Data - LocalBusiness */}
+        {/* JSON-LD Structured Data - public SEO/GEO facts only */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'LocalBusiness',
-              name: 'MOON MOON 月島甜點',
-              image: siteConfig.image,
-              '@id': siteConfig.url,
-              url: siteConfig.url,
-              telephone: process.env.STORE_PHONE || '',
-              address: {
-                '@type': 'PostalAddress',
-                streetAddress: '台南市安南區本原街一段97巷',
-                addressLocality: '安南區',
-                addressRegion: '台南市',
-                postalCode: '709',
-                addressCountry: 'TW',
-              },
-              geo: {
-                '@type': 'GeoCoordinates',
-                latitude: 23.0478, // 請替換為實際座標
-                longitude: 120.1831,
-              },
-              openingHoursSpecification: {
-                '@type': 'OpeningHoursSpecification',
-                dayOfWeek: ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-                opens: '10:00',
-                closes: '19:00',
-              },
-              sameAs: [
-                'https://www.instagram.com/moonmoon_dessert', // 請替換為實際社群連結
-                'https://www.facebook.com/moonmoondessert',
-              ],
-              priceRange: '$$',
-              servesCuisine: 'Dessert',
-              description: siteConfig.description,
-            }),
+            __html: JSON.stringify(structuredData),
           }}
         />
       </head>

@@ -1,17 +1,17 @@
 # Supabase 架構 SSOT
-> 最後更新：2026-04-08  
+> 最後更新：2026-05-11
 > 負責人：shop（moonisland DB 主控）
 
 ---
 
-## 1. 兩個 Supabase 專案
+## 1. Supabase 專案狀態
 
 | 代號 | Project ID | 用途 | 使用方 |
 |---|---|---|---|
-| **moonisland** | `xlqwfaailjyvsycjnzkz` | 主庫：用戶、訂單、商品、SSO、積分 | shop / passport / gacha / map + kiwimu（bridge） |
-| **kiwimu-legacy** | `uvddrlkmdvbuxlyjjpao` | 內容庫：MBTI 測驗題目與結果文案 | kiwimu.com 專用 |
+| **moonisland** | `xlqwfaailjyvsycjnzkz` | 主庫：用戶、訂單、商品、SSO、積分、MBTI 用戶資料 | shop / passport / gacha / map / kiwimu |
+| **kiwimu-legacy** | `uvddrlkmdvbuxlyjjpao` | 舊內容庫：MBTI 測驗題目與結果文案 | retired reference |
 
-> **原則：不可混用。** kiwimu-legacy 只存靜態內容，不存用戶資料。
+> **原則：現行 runtime 只接 moonisland。** kiwimu-legacy 不再作為登入、用戶資料、訂單、積分或菜單來源。
 
 ---
 
@@ -23,15 +23,15 @@
 | **passport** | `VITE_SUPABASE_*`（fallback `VITE_MOON_ISLAND_SUPABASE_*`） | moonisland | anon + cookie auth | 用戶登入/護照/積分 |
 | **gacha** | `VITE_SUPABASE_*` | moonisland | anon | gacha 抽獎/事件追蹤 |
 | **map** | `VITE_SUPABASE_*`（假設同 moonisland） | moonisland | anon | 菜單展示/地圖訂單 |
-| **kiwimu.com** | 見下表（三條連線） | moonisland + kiwimu-legacy | 三個 client | MBTI 測驗 + 用戶 SSO |
+| **kiwimu.com** | 見下表 | moonisland | auth client + mbti schema client | MBTI 測驗 + 用戶 SSO |
 
-### kiwimu.com 三條連線（特殊）
+### kiwimu.com 連線
 
 | client 檔案 | env var | 指向 | 用途 |
 |---|---|---|---|
-| `supabase/client.ts` | `VITE_SUPABASE_URL/ANON_KEY` | **kiwimu-legacy** | 讀 MBTI 測驗內容（questions / results / images） |
-| `supabase/user-client.ts` | `VITE_SUPABASE_USER_URL/ANON_KEY` | **moonisland** (schema: `mbti`) | 雙寫用戶資料（Firebase primary） |
-| `utils/supabaseAuthBridge.ts` | `VITE_MOON_ISLAND_SUPABASE_URL/ANON_KEY` | **moonisland** | SSO bridge：update_last_seen / insert_user_event |
+| `utils/supabaseAuthBridge.ts` | `VITE_MOON_ISLAND_SUPABASE_*` 或 `VITE_SUPABASE_USER_*` | **moonisland** | SSO bridge：shared cookie session、update_last_seen、insert_user_event |
+| `supabase/user-client.ts` | `VITE_SUPABASE_USER_*` 或 `VITE_MOON_ISLAND_SUPABASE_*` | **moonisland** (schema: `mbti`) | MBTI 用戶資料、測驗紀錄、分享連結 |
+| `utils/dataLoader.ts` | local constants + `/api/mbti-dessert` | **moonisland via shop/map contract** | MBTI 題目/結果本地載入，甜點推薦走 canonical menu contract |
 
 ---
 
@@ -62,7 +62,8 @@
 | `user_events` | shop/SSO | shop / kiwimu bridge | ✅ active |
 | `point_transactions` | shop | passport / shop | ✅ active |
 | `passports` | passport | passport | ✅ active |
-| `admin_sessions` | shop | shop admin | ✅ active |
+| `admin_sessions` | shop | shop admin | ✅ active（app stores SHA-256 token hash only） |
+| `admin_auth_attempts` | shop | shop admin | ✅ active（Supabase-backed admin login limiter） |
 
 ### 遊戲 / 積分表
 
@@ -87,7 +88,8 @@
 | `v_funnel_conversion` | ✅ view |
 | `daily_order_stats` / `shop_daily_sales` | ✅ active |
 | `shop_order_summary` / `shop_product_performance` | ✅ active |
-| `audit_logs` | ✅ active |
+| `audit_logs` | ✅ active（server-only RLS） |
+| `notification_logs` | ✅ active（server-only RLS） |
 
 ### 待退役表
 
@@ -106,18 +108,30 @@
 | `menu_item_availability` | `auth.jwt() ->> 'role' = 'admin'` | ✅ 已修（2026-04-07）|
 | `menu_item_aliases` | `auth.jwt() ->> 'role' = 'admin'` | ✅ 建立時即正確 |
 | `mbti_menu_links` | `auth.jwt() ->> 'role' = 'admin'` | ✅ 建立時即正確 |
+| `audit_logs` | service role server-only | ✅ 2026-05-11 migration hardens RLS + revokes anon/authenticated |
+| `notification_logs` | service role server-only | ✅ 2026-05-11 migration hardens RLS + revokes anon/authenticated |
+| `admin_sessions` | service role server-only | ✅ active；application stores token hash, not raw cookie token |
+| `admin_auth_attempts` | service role server-only | ✅ active；rate limiter fails closed on DB error |
 
-### 已知冗余（不影響功能，待清理）
+### 2026-05-11 封測前 migrations
 
-- `menu_items` 有兩條 public SELECT policy：`Public can view items` + `public_can_view_items`
+| Migration | 目的 | 部署要求 |
+|---|---|---|
+| `20260510000000_add_missing_availability_rpcs.sql` | 補 `check_menu_item_availability` / `get_available_dates` RPC，讓 shop frontend/backend 共用同一套可訂購判斷 | 封測前套用到 moonisland production |
+| `20260511000001_harden_admin_log_rls.sql` | 將 `audit_logs` / `notification_logs` 改為 service-role-only，避免 anon/authenticated client 讀寫營運紀錄 | 封測前套用到 moonisland production |
+
+### 已知冗余（已清理）
+
+- `menu_items` 曾有兩條 public SELECT policy：`Public can view items` + `public_can_view_items`
   - 原因：歷史遺留，功能等價
-  - 修法：`DROP POLICY "public_can_view_items" ON public.menu_items;`（確認後執行）
+  - 2026-05-04 已在 moonisland production 執行：`DROP POLICY IF EXISTS "public_can_view_items" ON public.menu_items;`
+  - 保留：`Public can view items`、`Allow admin full access to menu items`
 
 ---
 
-## 5. kiwimu-legacy 表（MBTI 內容）
+## 5. kiwimu-legacy 表（retired reference）
 
-這些表只有 kiwimu.com 讀取，moonisland **沒有**這些表：
+這些表屬於舊內容庫。現行 kiwimu.com runtime 不再直接讀取這些表；MBTI 題目/結果由本地 constants 載入，甜點推薦由 `mbti_menu_links` + `menu_items` + `menu_variants` resolve。
 
 - `mbti_questions`
 - `mbti_results`
@@ -126,15 +140,15 @@
 - `mbti_dessert_mappings`
 - `dimension_explanations`
 
-> ⚠️ kiwimu-legacy 未做 SSO，P2 任務是將 kiwimu.com auth 從 Firebase 遷移到 moonisland。
+> 現行身份主線：Supabase Auth on moonisland。不要再新增對 kiwimu-legacy 的 runtime dependency。
 
 ---
 
-## 6. 待辦
+## 6. 待辦狀態
 
-| 優先 | 項目 |
-|---|---|
-| 🟡 P2 | kiwimu.com Firebase → Supabase Auth 完整遷移（5-7h，大任務）|
-| 🟡 P2 | gacha Vercel Preview 環境補設 `VITE_SUPABASE_URL`（非阻塞）|
-| 🟢 P3 | 清除 `menu_items` 重複 SELECT policy `public_can_view_items` |
-| 🟢 P3 | 2026-05-01 評估 DROP `mbti_recommendations` + `menu_items.mbti_type` column |
+| 狀態 | 優先 | 項目 | 處理結果 |
+|---|---|---|---|
+| ✅ 完成 | 🟡 P2 | kiwimu.com Firebase → Supabase Auth 完整遷移（5-7h，大任務） | 2026-05-04 已確認 runtime auth 使用 `supabaseAuthBridge` → moonisland，`user-data.service.ts` 為 Supabase-only，並移除 auth client 對泛用 `VITE_SUPABASE_*` legacy fallback。剩餘 Firebase / Firestore 多為舊文件或 Discord bot reference，不是前台登入主線。 |
+| ✅ 完成 | 🟡 P2 | gacha Vercel Preview 環境補設 `VITE_SUPABASE_URL`（非阻塞） | 2026-05-04 已用 Vercel CLI 確認 `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` 存在於 Development、Production，且 Preview 分支已有設定。 |
+| ✅ 完成 | 🟢 P3 | 清除 `menu_items` 重複 SELECT policy `public_can_view_items` | 2026-05-04 已在 moonisland production 移除。 |
+| ✅ 完成 | 🟢 P3 | 2026-05-01 評估 DROP `mbti_recommendations` + `menu_items.mbti_type` column | 2026-05-04 已查 production：`mbti_recommendations` count = 0，`mbti_menu_links` active = 16；`menu_items.mbti_type` 仍有 legacy 值。結論：`mbti_recommendations` drop-ready；`menu_items.mbti_type` 需備份或另開 destructive migration 後再刪。 |

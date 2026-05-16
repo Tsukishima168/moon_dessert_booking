@@ -7,14 +7,21 @@ export default function robots(): MetadataRoute.Robots {
         rules: [
             {
                 userAgent: '*',
-                allow: '/',
+                allow: [
+                    '/',
+                    '/llms.txt',
+                ],
                 disallow: [
-                    '/api/',           // API 路由不索引
-                    '/admin/',         // 後台不索引
-                    '/checkout/',      // 結帳頁不索引(避免重複內容)
+                    '/api/',
+                    '/admin/',
+                    '/auth/',
+                    '/account/',
+                    '/checkout/',
+                    '/order/',
                 ],
             },
         ],
         sitemap: `${baseUrl}/sitemap.xml`,
+        host: baseUrl,
     };
 }
