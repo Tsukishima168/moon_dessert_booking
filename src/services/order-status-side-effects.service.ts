@@ -5,6 +5,7 @@ import {
 } from '@/lib/notifications'
 import { syncOrderEventToN8n } from '@/lib/integrations/n8n'
 import type { OrderItem } from '@/lib/supabase'
+import { insertNotificationLog } from '@/src/repositories/notification-log.repository'
 
 export type NotificationRetryTarget = 'all' | 'email' | 'discord' | 'n8n'
 
@@ -153,7 +154,7 @@ export async function runOrderStatusSideEffects(
     notificationResult?.email ??
     buildSkipped(baseSkipped)
 
-  return {
+  const result = {
     triggerMode: input.triggerMode,
     requestedChannel: input.requestedChannel,
     statusChanged: input.previousStatus !== input.currentStatus,
@@ -161,4 +162,25 @@ export async function runOrderStatusSideEffects(
     currentStatus: input.currentStatus,
     channels: { discord, email, n8n },
   }
+
+  try {
+    await insertNotificationLog({
+      order_id: input.orderId,
+      event_type: 'order.status_updated',
+      trigger_mode: input.triggerMode === 'manual_retry' ? 'manual_retry' : 'status_change',
+      requested_channel: input.requestedChannel,
+      previous_status: input.previousStatus,
+      current_status: input.currentStatus,
+      email_state: email.state,
+      email_message: email.message,
+      discord_state: discord.state,
+      discord_message: discord.message,
+      n8n_state: n8n.state,
+      n8n_message: n8n.message,
+    })
+  } catch (error) {
+    console.warn('[order-status-side-effects] notification log insert failed:', error)
+  }
+
+  return result
 }

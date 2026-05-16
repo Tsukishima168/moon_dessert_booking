@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase-admin';
 // PATCH - 更新菜單項目（如切換上/下架）
 export async function PATCH(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         // 檢查認證
@@ -14,7 +14,7 @@ export async function PATCH(
         }
 
         const body = await req.json();
-        const id = params.id;
+        const { id } = await params;
 
         const adminClient = createAdminClient();
         
@@ -52,7 +52,7 @@ export async function PATCH(
 // DELETE - 刪除菜單項目
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         // 檢查認證
@@ -60,7 +60,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const id = params.id;
+        const { id } = await params;
 
         const adminClient = createAdminClient();
         const { error } = await adminClient

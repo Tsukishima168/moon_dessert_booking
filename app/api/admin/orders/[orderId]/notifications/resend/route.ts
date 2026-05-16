@@ -13,13 +13,14 @@ function isValidTarget(value: unknown): value is NotificationRetryTarget {
 // POST /api/admin/orders/[orderId]/notifications/resend - 手動重送訂單通知
 export async function POST(
   request: NextRequest,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   if (!(await ensureAdmin())) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   }
 
   try {
+    const { orderId } = await params
     const body = await request.json().catch(() => ({}))
     const requestedChannel = body?.target ?? 'all'
 
@@ -30,7 +31,7 @@ export async function POST(
       )
     }
 
-    const order = await findOrderById(params.orderId)
+    const order = await findOrderById(orderId)
 
     if (!order) {
       return NextResponse.json({ success: false, message: '訂單不存在' }, { status: 404 })

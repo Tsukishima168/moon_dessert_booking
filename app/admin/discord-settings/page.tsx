@@ -116,7 +116,7 @@ export default function DiscordSettingsPage() {
                         <li>在想要接收通知的頻道按右鍵 → <strong>編輯頻道</strong></li>
                         <li>左側選 <strong>整合</strong> → <strong>Webhook</strong></li>
                         <li>點 <strong>新增 Webhook</strong></li>
-                        <li>名稱填 "月島訂單 Bot" (可自訂)</li>
+                        <li>名稱填「月島訂單 Bot」(可自訂)</li>
                         <li>點 <strong>複製 Webhook URL</strong></li>
                         <li>貼到下方並儲存</li>
                     </ol>

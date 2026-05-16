@@ -6,14 +6,14 @@ const ALLOWED_TYPES = ['order_confirmation', 'shipping', 'promotional', 'welcome
 
 export async function PUT(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const id = params?.id;
+        const { id } = await params;
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
         const body = await req.json();
@@ -53,14 +53,14 @@ export async function PUT(
 
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         if (!(await ensureAdmin())) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const id = params?.id;
+        const { id } = await params;
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
         const db = createAdminClient();

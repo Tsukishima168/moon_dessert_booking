@@ -18,6 +18,30 @@ export function getDiscordConfigStatus(): DiscordConfigStatus {
   }
 }
 
+function parseDiscordWebhookUrl(webhookUrl: string): URL {
+  let parsed: URL
+  try {
+    parsed = new URL(webhookUrl)
+  } catch {
+    throw new Error('無效的 Webhook URL 格式')
+  }
+
+  const allowedHosts = new Set(['discord.com', 'canary.discord.com', 'ptb.discord.com'])
+  if (
+    parsed.protocol !== 'https:' ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    !allowedHosts.has(parsed.hostname) ||
+    !/^\/api\/webhooks\/\d+\/[^/]+$/.test(parsed.pathname)
+  ) {
+    throw new Error('無效的 Webhook URL 格式')
+  }
+
+  return parsed
+}
+
 /**
  * 驗證並儲存 Discord Webhook URL
  * 1. 格式驗證 → 2. 連線測試 → 3. 寫入環境變數 → 4. 記錄 audit log
@@ -25,13 +49,10 @@ export function getDiscordConfigStatus(): DiscordConfigStatus {
  * @throws Error 若 URL 格式無效或連線失敗
  */
 export async function saveDiscordWebhook(webhookUrl: string): Promise<void> {
-  // 格式驗證
-  if (!webhookUrl.includes('discord.com/api/webhooks')) {
-    throw new Error('無效的 Webhook URL 格式')
-  }
+  const parsedWebhookUrl = parseDiscordWebhookUrl(webhookUrl.trim())
 
   // 連線測試
-  const testResponse = await fetch(webhookUrl, {
+  const testResponse = await fetch(parsedWebhookUrl.toString(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: '🧪 月島甜點 - Webhook 驗證' }),
@@ -44,7 +65,7 @@ export async function saveDiscordWebhook(webhookUrl: string): Promise<void> {
   }
 
   // 寫入 runtime 環境變數（重啟後失效，生產需透過 Vercel 設定）
-  process.env.DISCORD_WEBHOOK_URL = webhookUrl
+  process.env.DISCORD_WEBHOOK_URL = parsedWebhookUrl.toString()
 
   // 記錄 audit log（使用 admin client，非瀏覽器 client）
   const adminClient = createAdminClient()
@@ -55,7 +76,7 @@ export async function saveDiscordWebhook(webhookUrl: string): Promise<void> {
       action: 'discord_webhook_updated',
       details: {
         timestamp: new Date().toISOString(),
-        webhookUrlMasked: webhookUrl.substring(0, 40) + '...',
+        webhookUrlMasked: `${parsedWebhookUrl.origin}/api/webhooks/[hidden]`,
       },
     })
     .then(({ error }) => {

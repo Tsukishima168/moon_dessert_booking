@@ -18,6 +18,7 @@ import {
   Tag,
   Image as ImageIcon,
   Megaphone,
+  Activity,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -62,7 +63,12 @@ const coreNavItems: NavItem[] = [
   },
 ];
 
-const devNavItems: NavItem[] = [
+const operationsNavItems: NavItem[] = [
+  {
+    label: '站點成效',
+    href: '/admin/site-analytics',
+    icon: <Activity size={20} />,
+  },
   {
     label: '客戶分析',
     href: '/admin/customer-analytics',
@@ -99,8 +105,7 @@ export default function AdminSidebar() {
   const pathname = usePathname() || '';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const isDevMode = process.env.NODE_ENV !== 'production';
-  const navItems = [...coreNavItems, ...(isDevMode ? devNavItems : [])];
+  const navItems = [...coreNavItems, ...operationsNavItems];
 
   const handleLogout = async () => {
     try {

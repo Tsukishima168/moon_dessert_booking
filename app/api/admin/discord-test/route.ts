@@ -1,7 +1,7 @@
 import { sendDiscordNotify } from '@/lib/notifications';
 import { ensureAdmin } from '../_utils/ensureAdmin';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 // POST - 發送測試通知到 Discord
 export async function POST(req: NextRequest) {
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
 
         // 記錄審計日誌
         try {
+            const supabase = createAdminClient();
             await supabase.from('audit_logs').insert({
                 user_id: 'admin_manual',
                 action: 'discord_test_sent',

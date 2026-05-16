@@ -5,6 +5,7 @@
  * 導致並行請求可以繞過限制。改用 Supabase 做跨 instance 的共享狀態。
  */
 import { NextRequest } from 'next/server';
+import { createHash } from 'crypto';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 const MAX_ATTEMPTS = Number(process.env.ADMIN_AUTH_MAX_ATTEMPTS || 5);
@@ -12,16 +13,15 @@ const WINDOW_MS    = Number(process.env.ADMIN_AUTH_WINDOW_MS    || 15 * 60 * 100
 const LOCKOUT_MS   = Number(process.env.ADMIN_AUTH_LOCKOUT_MS   || 30 * 60 * 1000);
 
 export function getClientIdentity(request: NextRequest): string {
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    if (forwardedFor) return forwardedFor.split(',')[0]?.trim() || 'unknown';
+    const cfIp = request.headers.get('cf-connecting-ip')?.trim();
+    const realIp = request.headers.get('x-real-ip')?.trim();
+    const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const ip = cfIp || realIp || forwardedFor || 'unknown';
+    const userAgent = request.headers.get('user-agent')?.slice(0, 200) || 'unknown';
 
-    const realIp = request.headers.get('x-real-ip');
-    if (realIp) return realIp.trim();
-
-    const cfIp = request.headers.get('cf-connecting-ip');
-    if (cfIp) return cfIp.trim();
-
-    return 'unknown';
+    return createHash('sha256')
+        .update(`${ip}|${userAgent}`)
+        .digest('hex');
 }
 
 export async function getLockStatus(
@@ -58,9 +58,8 @@ export async function getLockStatus(
         const retryAfterSeconds = Math.max(0, Math.ceil((lockoutEnds - Date.now()) / 1000));
         return { locked: retryAfterSeconds > 0, retryAfterSeconds };
     } catch {
-        // DB 查詢失敗時 fail-open（不鎖住合法用戶），但 log 警告
-        console.warn('[adminAuthLimiter] getLockStatus DB error — failing open');
-        return { locked: false, retryAfterSeconds: 0 };
+        console.warn('[adminAuthLimiter] getLockStatus DB error — failing closed');
+        return { locked: true, retryAfterSeconds: 60 };
     }
 }
 
@@ -96,7 +95,7 @@ export async function registerAuthFailure(
         return { lockedNow: false, retryAfterSeconds: 0 };
     } catch {
         console.warn('[adminAuthLimiter] registerAuthFailure DB error');
-        return { lockedNow: false, retryAfterSeconds: 0 };
+        return { lockedNow: true, retryAfterSeconds: 60 };
     }
 }
 

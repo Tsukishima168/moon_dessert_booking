@@ -17,6 +17,10 @@ function secureCompare(input: string, expected: string): boolean {
     return timingSafeEqual(inputHash, expectedHash);
 }
 
+function hashSessionToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+}
+
 // POST /api/admin/auth - 驗證後台密碼
 export async function POST(request: NextRequest) {
     try {
@@ -59,12 +63,13 @@ export async function POST(request: NextRequest) {
 
             // 產生唯一 session token，存入 DB
             const token = randomUUID();
+            const tokenHash = hashSessionToken(token);
             const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_S * 1000).toISOString();
 
             const supabase = createAdminClient();
             const { error: insertError } = await supabase
                 .from('admin_sessions')
-                .insert({ token, expires_at: expiresAt });
+                .insert({ token: tokenHash, expires_at: expiresAt });
 
             if (insertError) {
                 console.error('[ADMIN_AUTH] 無法建立 session:', insertError.message);
@@ -126,7 +131,7 @@ export async function DELETE(request: NextRequest) {
 
     if (token) {
         const supabase = createAdminClient();
-        await supabase.from('admin_sessions').delete().eq('token', token);
+        await supabase.from('admin_sessions').delete().eq('token', hashSessionToken(token));
     }
 
     const response = NextResponse.json({ success: true });
