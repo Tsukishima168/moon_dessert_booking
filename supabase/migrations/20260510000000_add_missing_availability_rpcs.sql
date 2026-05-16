@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION public.check_menu_item_availability(
   menu_item_id_param UUID,
   delivery_date DATE,
-  current_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  p_current_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 )
 RETURNS JSONB
 LANGUAGE plpgsql
