@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
-import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
+import { USER_VISIBLE_CHECKOUT_SITES } from '@/src/lib/order-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,14 +22,17 @@ const USER_ORDER_SELECT = [
   'delivery_address',
   'delivery_fee',
   'delivery_notes',
+  'checkout_site',
+  'source_from',
 ].join(', ');
 
 export async function GET(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
-    const supabase = createClient();
+    const { orderId } = await params;
+    const supabase = await createClient();
 
     // 取得當前用戶
     const {
@@ -44,9 +47,9 @@ export async function GET(
     const { data: order, error } = await supabase
       .from('orders')
       .select(USER_ORDER_SELECT)
-      .eq('id', params.orderId)
+      .eq('id', orderId)
       .eq('user_id', user.id)
-      .eq('checkout_site', SHOP_CHECKOUT_SITE)
+      .in('checkout_site', USER_VISIBLE_CHECKOUT_SITES)
       .single();
 
     if (error || !order) {

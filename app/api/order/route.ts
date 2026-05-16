@@ -52,14 +52,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 取得登入用戶（允許未登入）
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { orderId } = await createOrder(body, user?.id ?? null)
+    const { orderId, finalPrice } = await createOrder(body, user?.id ?? null)
 
     return NextResponse.json({
       success: true,
       order_id: orderId,
+      final_price: finalPrice,
+      finalPrice,
       message: '訂單建立成功！我們已收到您的預訂。',
     })
   } catch (error) {

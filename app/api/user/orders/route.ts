@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase-server';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
-import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
+import { USER_VISIBLE_CHECKOUT_SITES } from '@/src/lib/order-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,11 +22,13 @@ const USER_ORDER_SELECT = [
   'delivery_address',
   'delivery_fee',
   'delivery_notes',
+  'checkout_site',
+  'source_from',
 ].join(', ');
 
 export async function GET() {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 取得當前用戶
     const {
@@ -43,7 +45,7 @@ export async function GET() {
       .from('orders')
       .select(USER_ORDER_SELECT)
       .eq('user_id', user.id)
-      .eq('checkout_site', SHOP_CHECKOUT_SITE)
+      .in('checkout_site', USER_VISIBLE_CHECKOUT_SITES)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

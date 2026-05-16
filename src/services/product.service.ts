@@ -92,6 +92,52 @@ export async function getAvailableDateRange(
   try {
     return await findAvailableDates(startDate, endDate, deliveryMethod)
   } catch {
+    return buildAvailableDateRangeFallback(startDate, endDate, deliveryMethod)
+  }
+}
+
+async function buildAvailableDateRangeFallback(
+  startDate: string,
+  endDate: string,
+  deliveryMethod: 'pickup' | 'delivery'
+): Promise<DateAvailability[]> {
+  const dates = enumerateIsoDates(startDate, endDate, 93)
+
+  return Promise.all(dates.map(async (date) => {
+    const [reservation, capacity] = await Promise.all([
+      validateReservation(date, false),
+      getAvailableCapacity(date, deliveryMethod),
+    ])
+
+    const available = reservation.valid && capacity.available
+    const reason = !reservation.valid
+      ? reservation.reason
+      : capacity.available
+        ? capacity.reason
+        : capacity.reason || '當日已達產能上限'
+
+    return {
+      date,
+      available,
+      reason,
+      type: !reservation.valid ? 'reservation' : available ? undefined : 'capacity',
+      current_count: capacity.current_count,
+      limit_count: capacity.capacity_limit,
+    }
+  }))
+}
+
+function enumerateIsoDates(startDate: string, endDate: string, maxDays: number) {
+  const start = new Date(`${startDate}T00:00:00Z`)
+  const end = new Date(`${endDate}T00:00:00Z`)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
     return []
   }
+
+  const dates: string[] = []
+  for (const current = new Date(start); current <= end && dates.length < maxDays; current.setUTCDate(current.getUTCDate() + 1)) {
+    dates.push(current.toISOString().slice(0, 10))
+  }
+
+  return dates
 }

@@ -1,5 +1,10 @@
 import { createClient } from '@/lib/supabase-server'
 import type { DateAvailability } from '@/lib/supabase'
+import {
+  evaluateMenuItemAvailability,
+  isMissingSupabaseRpcError,
+  type MenuItemAvailabilitySettings,
+} from '@/src/lib/menu-availability'
 
 export interface CapacityResult {
   date: string
@@ -19,7 +24,7 @@ export async function checkDailyCapacity(
   date: string,
   deliveryMethod: string
 ): Promise<CapacityResult | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase.rpc('check_daily_capacity', {
     check_date: date,
     delivery_method_param: deliveryMethod,
@@ -48,7 +53,7 @@ export async function validateReservationDate(
   date: string,
   isRushOrder: boolean
 ): Promise<ReservationValidation | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase.rpc('validate_reservation', {
     pickup_date: date,
     is_rush_order: isRushOrder,
@@ -75,17 +80,44 @@ export async function checkMenuItemAvailability(
   date: string,
   menuItemId: string | null
 ): Promise<unknown> {
-  const supabase = createClient()
+  if (!menuItemId) {
+    return { available: true, reason: '無特殊限制' }
+  }
+
+  const supabase = await createClient()
   const { data, error } = await supabase.rpc('check_menu_item_availability', {
     menu_item_id_param: menuItemId,
     delivery_date: date,
     current_time: new Date().toISOString(),
   })
   if (error) {
+    if (isMissingSupabaseRpcError(error, 'check_menu_item_availability')) {
+      return getMenuItemAvailabilityFromTable(date, menuItemId)
+    }
+
     console.error('checkMenuItemAvailability error:', error)
     throw error
   }
   return data
+}
+
+async function getMenuItemAvailabilityFromTable(
+  date: string,
+  menuItemId: string
+) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('menu_item_availability')
+    .select('is_available, available_from, available_until, unavailable_dates, available_weekdays, min_advance_hours')
+    .eq('menu_item_id', menuItemId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('getMenuItemAvailabilityFromTable error:', error)
+    throw error
+  }
+
+  return evaluateMenuItemAvailability(data as MenuItemAvailabilitySettings | null, date)
 }
 
 /**
@@ -100,14 +132,16 @@ export async function findAvailableDates(
   endDate: string,
   deliveryMethod: 'pickup' | 'delivery'
 ): Promise<DateAvailability[]> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase.rpc('get_available_dates', {
     start_date: startDate,
     end_date: endDate,
     delivery_method_param: deliveryMethod,
   })
   if (error) {
-    console.error('findAvailableDates error:', error)
+    if (!isMissingSupabaseRpcError(error, 'get_available_dates')) {
+      console.error('findAvailableDates error:', error)
+    }
     throw error
   }
   return (data || []).map((item: Record<string, unknown>) => ({

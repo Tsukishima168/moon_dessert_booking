@@ -44,12 +44,18 @@ interface PendingOrderSnapshot {
 const STORE_PICKUP_ADDRESS = '月島甜點店 台南市安南區本原街一段97巷';
 const PICKUP_TIME_SLOTS = ['12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'] as const;
 const PENDING_ORDER_STORAGE_KEY = 'moonmoon_pending_order';
+const PENDING_ORDER_TTL_MS = 24 * 60 * 60 * 1000;
 
 const formatLocalDateKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const getMenuItemIdFromCartItemId = (cartItemId: string) => {
+  const match = cartItemId.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-/i);
+  return match?.[1] ?? cartItemId;
 };
 
 export default function CheckoutPage() {
@@ -115,7 +121,12 @@ export default function CheckoutPage() {
       if (!raw) return false;
 
       const pending = JSON.parse(raw) as PendingOrderSnapshot;
-      if (!pending?.orderId) return false;
+      const createdAt = new Date(pending?.createdAt || '').getTime();
+      const isExpired = !Number.isFinite(createdAt) || Date.now() - createdAt > PENDING_ORDER_TTL_MS;
+      if (!pending?.orderId || isExpired) {
+        window.localStorage.removeItem(PENDING_ORDER_STORAGE_KEY);
+        return false;
+      }
 
       setOrderId(pending.orderId);
       setConfirmedName(pending.customerName);
@@ -133,6 +144,18 @@ export default function CheckoutPage() {
   const persistPendingOrder = useCallback((snapshot: PendingOrderSnapshot) => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(PENDING_ORDER_STORAGE_KEY, JSON.stringify(snapshot));
+  }, []);
+
+  const clearPendingOrder = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(PENDING_ORDER_STORAGE_KEY);
+    }
+    setOrderSuccess(false);
+    setOrderId('');
+    setConfirmedName('');
+    setConfirmedAmount(0);
+    setSavedItems([]);
+    setLinePayUrl('');
   }, []);
 
   const loadUserProfile = async (email: string) => {
@@ -265,12 +288,14 @@ export default function CheckoutPage() {
     }
   }, [deliveryMethod, setValue]);
 
-  // 產生格子日期列表（今天 + minDays 開始，顯示 30 天）
+  // 產生格子日期列表（今天 + minDays 開始，到 maxDays 截止）
   useEffect(() => {
-    const minDays = reservationRules?.min_advance_days || 3;
+    const minDays = Math.max(0, Number(reservationRules?.min_advance_days ?? 3));
+    const fallbackMaxDays = minDays + 29;
+    const maxDays = Math.max(minDays, Number(reservationRules?.max_advance_days ?? fallbackMaxDays));
     const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
     const dates: typeof calendarDates = [];
-    for (let i = minDays; i <= minDays + 29; i++) {
+    for (let i = minDays; i <= maxDays; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
       const dateStr = formatLocalDateKey(d);
@@ -401,6 +426,30 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
+      const uniqueMenuItems = Array.from(
+        new Map(items.map((item) => [getMenuItemIdFromCartItemId(item.id), item.name])).entries()
+      );
+      const availabilityChecks = await Promise.all(
+        uniqueMenuItems.map(async ([menuItemId, itemName]) => {
+          const response = await fetch(
+            `/api/check-menu-availability?date=${encodeURIComponent(data.pickup_date)}&menu_item_id=${encodeURIComponent(menuItemId)}`
+          );
+          const result = await response.json().catch(() => null);
+          if (!response.ok || result?.available === false) {
+            return {
+              itemName,
+              reason: result?.reason || '目前無法確認商品可訂購狀態',
+            };
+          }
+          return null;
+        })
+      );
+      const unavailableItem = availabilityChecks.find(Boolean);
+      if (unavailableItem) {
+        alert(`商品「${unavailableItem.itemName}」目前無法預訂：${unavailableItem.reason}`);
+        return;
+      }
+
       // 組合地址
       let finalAddress = null;
       if (data.delivery_method === 'delivery') {
@@ -463,6 +512,8 @@ export default function CheckoutPage() {
 
       if (result.success) {
         const newOrderId = result.order_id;
+        const serverFinalPrice = Number(result.final_price ?? result.finalPrice ?? finalPrice);
+        const confirmedFinalPrice = Number.isFinite(serverFinalPrice) ? serverFinalPrice : finalPrice;
         const nextSavedItems = items.map(item => ({
           name: item.name,
           quantity: item.quantity,
@@ -472,7 +523,7 @@ export default function CheckoutPage() {
         let msg = `【月島甜點訂單確認】\n`;
         msg += `訂單編號：${newOrderId}\n`;
         msg += `訂購人：${data.customer_name} (${data.phone})\n`;
-        msg += `總金額：$${finalPrice}\n`;
+        msg += `總金額：$${confirmedFinalPrice}\n`;
         msg += `取貨日期：${data.pickup_date}\n`;
         if (data.delivery_method === 'delivery') {
           msg += `配送地址：${finalAddress}\n`;
@@ -499,13 +550,13 @@ export default function CheckoutPage() {
 
         setOrderId(newOrderId);
         setConfirmedName(data.customer_name);
-        setConfirmedAmount(finalPrice);
+        setConfirmedAmount(confirmedFinalPrice);
         setSavedItems(nextSavedItems);
         setLinePayUrl(lineUrl);
         persistPendingOrder({
           orderId: newOrderId,
           customerName: data.customer_name,
-          amount: finalPrice,
+          amount: confirmedFinalPrice,
           items: nextSavedItems,
           linePayUrl: lineUrl,
           createdAt: new Date().toISOString(),
@@ -528,7 +579,7 @@ export default function CheckoutPage() {
         if (typeof window !== 'undefined' && window.gtag) {
           window.gtag('event', 'purchase', {
             transaction_id: newOrderId,
-            value: finalPrice,
+            value: confirmedFinalPrice,
             currency: 'TWD',
             items: items.map(item => ({
               item_name: item.name,
@@ -719,6 +770,14 @@ export default function CheckoutPage() {
           >
             前往會員中心
           </Link>
+
+          <button
+            type="button"
+            onClick={clearPendingOrder}
+            className="block w-full text-center text-xs text-moon-muted underline underline-offset-4 transition-colors hover:text-moon-accent"
+          >
+            建立新訂單
+          </button>
         </div>
       </div>
     );
@@ -933,7 +992,7 @@ export default function CheckoutPage() {
                   {deliveryMethod === 'pickup' ? '取貨日期' : '期望到貨日期'} <span className="text-moon-accent">*</span>
                 </label>
                 <p className="text-[10px] text-moon-muted">
-                  {deliveryMethod === 'pickup' ? '週一公休' : '週日、週一不配送'} • 需提前 3 天預訂
+                  {deliveryMethod === 'pickup' ? '週一公休' : '週日、週一不配送'} • 需提前 {Math.max(0, Number(reservationRules?.min_advance_days ?? 3))} 天預訂
                 </p>
 
                 {/* 隱藏 input 用於 react-hook-form 驗證 */}

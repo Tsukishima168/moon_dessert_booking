@@ -5,6 +5,12 @@ import { insertOrder } from '@/src/repositories/order.repository'
 import { EventBus } from '@/src/lib/event-bus'
 import { isSeasonallyDisabledMenuItemName } from '@/src/lib/seasonal-menu'
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope'
+import {
+  evaluateMenuItemAvailability,
+  isMissingSupabaseRpcError,
+  normalizeMenuItemAvailabilityResult,
+  type MenuItemAvailabilitySettings,
+} from '@/src/lib/menu-availability'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -274,27 +280,60 @@ async function validateOrderAvailability(
   const currentTime = new Date().toISOString()
   const uniqueMenuItemIds = [...new Set(items.map((item) => item.menu_item_id))]
   for (const menuItemId of uniqueMenuItemIds) {
-    const { data: availabilityData, error: availabilityError } = await adminClient.rpc(
-      'check_menu_item_availability',
-      {
-        menu_item_id_param: menuItemId,
-        delivery_date: pickupDate,
-        current_time: currentTime,
-      }
+    const availability = await checkMenuItemAvailabilityForOrder(
+      adminClient,
+      menuItemId,
+      pickupDate,
+      currentTime
     )
-
-    if (availabilityError) {
-      console.error('[validateOrderAvailability] check_menu_item_availability error:', availabilityError)
-      throw new Error('無法驗證商品可用性，請稍後再試')
-    }
-
-    const availability = availabilityData as MenuItemAvailabilityResult | null
     if (!availability?.available) {
       throw new OrderValidationError(availability?.reason ?? '商品目前不可訂購')
     }
   }
 
   return normalizedDeliveryMethod
+}
+
+async function checkMenuItemAvailabilityForOrder(
+  adminClient: ReturnType<typeof createAdminClient>,
+  menuItemId: string,
+  pickupDate: string,
+  currentTime: string
+): Promise<MenuItemAvailabilityResult | null> {
+  const { data, error } = await adminClient.rpc(
+    'check_menu_item_availability',
+    {
+      menu_item_id_param: menuItemId,
+      delivery_date: pickupDate,
+      current_time: currentTime,
+    }
+  )
+
+  if (!error) {
+    return normalizeMenuItemAvailabilityResult(data)
+  }
+
+  if (!isMissingSupabaseRpcError(error, 'check_menu_item_availability')) {
+    console.error('[validateOrderAvailability] check_menu_item_availability error:', error)
+    throw new Error('無法驗證商品可用性，請稍後再試')
+  }
+
+  const { data: settings, error: settingsError } = await adminClient
+    .from('menu_item_availability')
+    .select('is_available, available_from, available_until, unavailable_dates, available_weekdays, min_advance_hours')
+    .eq('menu_item_id', menuItemId)
+    .maybeSingle()
+
+  if (settingsError) {
+    console.error('[validateOrderAvailability] menu_item_availability fallback error:', settingsError)
+    throw new Error('無法驗證商品可用性，請稍後再試')
+  }
+
+  return evaluateMenuItemAvailability(
+    settings as MenuItemAvailabilitySettings | null,
+    pickupDate,
+    new Date(currentTime)
+  )
 }
 
 /**

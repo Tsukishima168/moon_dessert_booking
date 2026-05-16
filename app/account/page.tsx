@@ -498,6 +498,15 @@ function QuickLinkCard({
   );
 }
 
+function formatPickupTimeLabel(value: string): string {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](.+))?$/);
+  if (!match) return value;
+
+  const [, year, month, day, time = ''] = match;
+  const formattedDate = `${year}/${month}/${day}`;
+  return time ? `${formattedDate} ${time}` : formattedDate;
+}
+
 function OrderLinkCard({ order }: { order: Order }) {
   return (
     <Link key={order.id} href={`/account/order/${order.id}`} className="block transition">
@@ -507,10 +516,7 @@ function OrderLinkCard({ order }: { order: Order }) {
         totalPrice={order.final_price}
         customerLabel={`${order.customer_name} • ${order.phone}`}
         createdAtLabel={new Date(order.created_at).toLocaleDateString('zh-TW')}
-        pickupTimeLabel={`${new Date(order.pickup_time).toLocaleDateString('zh-TW')} ${new Date(order.pickup_time).toLocaleTimeString('zh-TW', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}`}
+        pickupTimeLabel={formatPickupTimeLabel(order.pickup_time)}
         deliveryMethodLabel={order.delivery_method === 'pickup' ? '門市自取' : '宅配'}
         title="訂單摘要"
         className="hover:border-moon-accent"

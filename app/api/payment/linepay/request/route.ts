@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getLinePayClient, type LinePayRequestBody } from '@/lib/linepay';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
+import { getPublicSiteUrl } from '@/src/lib/site-url';
 
 interface RequestItem {
   name: string;
@@ -52,10 +53,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { orderId, amount, items } = body as {
+    const { orderId, amount } = body as {
       orderId: string;
       amount?: number;
-      items?: RequestItem[];
     };
 
     if (!orderId) {
@@ -124,9 +124,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ??
-      request.nextUrl.origin;
+    const siteUrl = getPublicSiteUrl(request);
 
     const payload: LinePayRequestBody = {
       amount: expectedAmount,
@@ -137,12 +135,14 @@ export async function POST(request: NextRequest) {
           id: orderId,
           amount: expectedAmount,
           name: 'Moon Moon Dessert 訂單',
-          products: normalizedItems.map((item, idx) => ({
-            id: `item_${idx}`,
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-          })),
+          products: [
+            {
+              id: 'order_total',
+              name: `月島甜點訂單 ${orderId}`,
+              quantity: 1,
+              price: expectedAmount,
+            },
+          ],
         },
       ],
       redirectUrls: {
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       .from('orders')
       .update({
         payment_method: 'line_pay',
-        linepay_transaction_id: String(result.info.transactionId),
+        linepay_transaction_id: result.info.transactionId,
       })
       .eq('order_id', orderId)
       .eq('checkout_site', SHOP_CHECKOUT_SITE)

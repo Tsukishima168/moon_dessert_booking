@@ -48,7 +48,7 @@ export interface LinePayRequestResponse {
   returnCode: string;         // '0000' = 成功
   returnMessage: string;
   info?: {
-    transactionId: number;
+    transactionId: string;
     paymentUrl: {
       web: string;            // 桌面版付款頁面 URL
       app: string;            // 深層連結
@@ -66,7 +66,7 @@ export interface LinePayConfirmResponse {
   returnCode: string;
   returnMessage: string;
   info?: {
-    transactionId: number;
+    transactionId: string;
     orderId: string;
     transactionDate: string;
     payInfo: Array<{
@@ -77,6 +77,13 @@ export interface LinePayConfirmResponse {
 }
 
 // ─── Client ───────────────────────────────────────────────────────────────────
+
+function parseLinePayJson<T>(raw: string): T {
+  // LINE Pay transactionId can exceed JS safe integer range. Preserve it as a string
+  // even if the API serializes it as a JSON number.
+  const normalized = raw.replace(/("transactionId"\s*:\s*)(\d+)/g, '$1"$2"');
+  return JSON.parse(normalized) as T;
+}
 
 export class LinePayClient {
   private channelId: string;
@@ -128,7 +135,7 @@ export class LinePayClient {
       body,
     });
 
-    const data = await res.json() as LinePayRequestResponse;
+    const data = parseLinePayJson<LinePayRequestResponse>(await res.text());
     return data;
   }
 
@@ -150,7 +157,7 @@ export class LinePayClient {
       body,
     });
 
-    const data = await res.json() as LinePayConfirmResponse;
+    const data = parseLinePayJson<LinePayConfirmResponse>(await res.text());
     return data;
   }
 }
