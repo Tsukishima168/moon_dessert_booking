@@ -88,7 +88,7 @@ export async function checkMenuItemAvailability(
   const { data, error } = await supabase.rpc('check_menu_item_availability', {
     menu_item_id_param: menuItemId,
     delivery_date: date,
-    current_time: new Date().toISOString(),
+    p_current_time: new Date().toISOString(),
   })
   if (error) {
     if (isMissingSupabaseRpcError(error, 'check_menu_item_availability')) {

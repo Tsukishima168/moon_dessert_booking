@@ -305,7 +305,7 @@ async function checkMenuItemAvailabilityForOrder(
     {
       menu_item_id_param: menuItemId,
       delivery_date: pickupDate,
-      current_time: currentTime,
+      p_current_time: currentTime,
     }
   )
 
