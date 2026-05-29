@@ -11,10 +11,25 @@ import { Loader2, AlertCircle, Sparkles, Search, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
+type ShopWindow = Window & {
+  __SHOP_INITIAL_SEARCH__?: string;
+};
+
+const getInitialUrlSearch = (searchParams: ReturnType<typeof useSearchParams>) => {
+  if (typeof window === 'undefined') {
+    const renderedSearch = searchParams?.toString() ?? '';
+    return renderedSearch ? `?${renderedSearch}` : '';
+  }
+
+  return (window as ShopWindow).__SHOP_INITIAL_SEARCH__ || window.location.search;
+};
+
 export default function HomePage() {
   const searchParams = useSearchParams();
-  const mbtiType = searchParams?.get('mbti');
-  const searchParamsKey = searchParams?.toString() ?? '';
+  const initialSearch = getInitialUrlSearch(searchParams);
+  const initialParams = new URLSearchParams(initialSearch);
+  const mbtiType = searchParams?.get('mbti') || initialParams.get('mbti');
+  const searchParamsKey = initialSearch || searchParams?.toString() || '';
 
   const [menuItems, setMenuItems] = useState<MenuItemWithVariants[]>([]);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -77,16 +92,17 @@ export default function HomePage() {
   const recommendedItems = filteredMenuItems.filter(item => item.recommended);
 
   // 來源感知（from: moon-map / passport / lab）
-  const fromSource = searchParams?.get('from');
+  const fromSource = initialParams.get('from') || searchParams?.get('from');
 
   // 保存來源與 UTM（供結帳使用）
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const utm_source = searchParams?.get('utm_source') || null;
-    const utm_medium = searchParams?.get('utm_medium') || null;
-    const utm_campaign = searchParams?.get('utm_campaign') || null;
-    const utm_content = searchParams?.get('utm_content') || null;
-    const utm_term = searchParams?.get('utm_term') || null;
+    const attributionParams = new URLSearchParams(initialSearch);
+    const utm_source = attributionParams.get('utm_source') || null;
+    const utm_medium = attributionParams.get('utm_medium') || null;
+    const utm_campaign = attributionParams.get('utm_campaign') || null;
+    const utm_content = attributionParams.get('utm_content') || null;
+    const utm_term = attributionParams.get('utm_term') || null;
 
     const hasAttribution = Boolean(
       fromSource || mbtiType || utm_source || utm_medium || utm_campaign || utm_content || utm_term
@@ -108,7 +124,7 @@ export default function HomePage() {
         })
       );
     }
-  }, [searchParamsKey, fromSource, mbtiType]);
+  }, [searchParamsKey, fromSource, mbtiType, initialSearch]);
 
   const getSourceMeta = () => {
     if (fromSource === 'moon-map' || fromSource === 'map') {

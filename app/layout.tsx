@@ -194,6 +194,48 @@ export default function RootLayout({
             `,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  window.__SHOP_INITIAL_SEARCH__ = window.location.search;
+                  var url = new URL(window.location.href);
+                  var trackingParams = [
+                    'utm_source',
+                    'utm_medium',
+                    'utm_campaign',
+                    'utm_content',
+                    'utm_term',
+                    'from',
+                    'source',
+                    'source_site',
+                    'origin_path',
+                    'entry_surface',
+                    'destination_type'
+                  ];
+                  var changed = false;
+                  trackingParams.forEach(function(param) {
+                    if (url.searchParams.has(param)) {
+                      url.searchParams.delete(param);
+                      changed = true;
+                    }
+                  });
+                  if (changed) {
+                    var nextSearch = url.searchParams.toString();
+                    window.history.replaceState({}, '', url.pathname + (nextSearch ? '?' + nextSearch : '') + url.hash);
+                  }
+                  if (Array.from(url.searchParams.keys()).length > 0) {
+                    var robots = document.querySelector('meta[name="robots"]') || document.createElement('meta');
+                    robots.setAttribute('name', 'robots');
+                    robots.setAttribute('content', 'noindex,nofollow');
+                    document.head.appendChild(robots);
+                  }
+                } catch (error) {}
+              })();
+            `,
+          }}
+        />
 
         {/* JSON-LD Structured Data - public SEO/GEO facts only */}
         <script

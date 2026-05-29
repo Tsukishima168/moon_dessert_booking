@@ -3,6 +3,7 @@ import { CheckCircle } from 'lucide-react';
 import { redirect } from 'next/navigation';
 
 import { ClearPendingOrder } from '@/components/checkout/clear-pending-order';
+import { PurchaseTracker } from '@/components/checkout/purchase-tracker';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 
@@ -28,7 +29,7 @@ export default async function OrderSuccessPage({
   const adminClient = createAdminClient();
   const { data: order, error } = await adminClient
     .from('orders')
-    .select('order_id, status, payment_method, payment_date')
+    .select('order_id, status, payment_method, payment_date, final_price, items')
     .eq('order_id', orderId)
     .eq('checkout_site', SHOP_CHECKOUT_SITE)
     .maybeSingle();
@@ -54,6 +55,11 @@ export default async function OrderSuccessPage({
   return (
     <div className="min-h-screen bg-moon-black flex items-center justify-center p-4">
       <ClearPendingOrder />
+      <PurchaseTracker
+        transactionId={order.order_id}
+        value={order.final_price ?? 0}
+        items={order.items ?? []}
+      />
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <CheckCircle className="w-12 h-12 text-moon-accent mx-auto" />
