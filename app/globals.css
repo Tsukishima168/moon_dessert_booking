@@ -306,3 +306,54 @@ body {
 html[data-theme='light'] .theme-logo {
   filter: invert(1) brightness(0.1);
 }
+
+/* ── 品牌視覺識別系統（type 角色 / 節奏）──
+   放 @layer components：編碼品牌「語氣」（weight/tracking/leading/color），
+   尺寸交給 Tailwind text-* 控制；Tailwind utilities 仍可覆蓋顏色。雙主題走 moon-* token。*/
+@layer components {
+  /* uppercase Latin 小標 */
+  .brand-eyebrow {
+    font-size: 0.66rem;
+    line-height: 1;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    font-weight: 300;
+    color: rgb(var(--moon-muted));
+  }
+
+  /* 品牌大標（Latin display；尺寸由 Tailwind 控制） */
+  .brand-display {
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    color: rgb(var(--moon-accent));
+  }
+
+  /* 區段標題 */
+  .brand-title {
+    font-weight: 300;
+    letter-spacing: 0.18em;
+    color: rgb(var(--moon-accent));
+  }
+
+  /* 副標 */
+  .brand-subtitle {
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    line-height: 1.6;
+    color: rgb(var(--moon-muted));
+  }
+
+  /* 敘事文（CJK 放鬆行距；尺寸由 Tailwind 控制） */
+  .brand-body {
+    font-weight: 300;
+    line-height: 1.9;
+    letter-spacing: 0.02em;
+    color: rgb(var(--moon-text));
+  }
+
+  /* 統一 section 垂直節奏（流體） */
+  .brand-section {
+    padding-top: clamp(3rem, 8vw, 6rem);
+    padding-bottom: clamp(3rem, 8vw, 6rem);
+  }
+}
