@@ -6,8 +6,10 @@ import { useSearchParams } from 'next/navigation';
 import ProductListItem from '@/components/ProductListItem';
 import ProductRow from '@/components/ProductRow';
 import Banner from '@/components/Banner';
+import { MenuSkeleton } from '@/components/ui/MenuSkeleton';
+import Reveal from '@/components/ui/Reveal';
 import { MenuItemWithVariants, MenuCategory } from '@/lib/supabase';
-import { Loader2, AlertCircle, Sparkles, Search, X } from 'lucide-react';
+import { AlertCircle, Sparkles, Search, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -159,11 +161,17 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-moon-black flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="animate-spin text-moon-accent mx-auto mb-4" size={48} />
-          <p className="text-sm text-moon-muted tracking-widest">載入中...</p>
-          <p className="text-xs text-moon-muted mt-4">正在載入甜點目錄，請稍候</p>
+      <div className="min-h-screen bg-moon-black">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+          {/* Hero 骨架 */}
+          <div className="flex flex-col items-center gap-4 mb-12 sm:mb-16">
+            <div className="skeleton h-16 w-44 sm:h-20 sm:w-56" />
+            <div className="skeleton h-4 w-56 sm:w-72" />
+            <div className="skeleton h-3 w-40" />
+            <div className="skeleton h-11 w-60 mt-4" />
+          </div>
+          {/* 菜單骨架 */}
+          <MenuSkeleton rows={6} />
         </div>
       </div>
     );
@@ -249,26 +257,8 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* 三入口：逛展 / 測驗 / 直接預訂 */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
-              <Link
-                href="https://map.kiwimu.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-w-0 sm:flex-none sm:min-w-[180px] border border-moon-border text-moon-text px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/60 transition-colors text-center"
-              >
-                逛展覽地圖
-              </Link>
-
-              <Link
-                href="https://passport.kiwimu.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-w-0 sm:flex-none sm:min-w-[200px] border border-moon-border/80 text-moon-text px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-border/40 transition-colors text-center"
-              >
-                甜點護照 · 快速測驗
-              </Link>
-
+            {/* CTA：主行動（直接預訂）突出，跨站連結降為次級 */}
+            <div className="flex flex-col items-center gap-4 w-full">
               <button
                 type="button"
                 onClick={() => {
@@ -277,10 +267,29 @@ export default function HomePage() {
                     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }
                 }}
-                className="min-w-0 sm:flex-none sm:min-w-[180px] bg-moon-accent text-moon-black px-3 sm:px-4 py-3 text-[10px] sm:text-xs tracking-[0.25em] hover:bg-moon-text transition-colors"
+                className="w-full sm:w-auto sm:min-w-[280px] bg-moon-accent text-moon-black px-8 py-4 text-xs sm:text-sm tracking-[0.3em] hover:bg-moon-text transition-colors"
               >
                 直接預訂本季甜點
               </button>
+              <div className="flex items-center gap-4 sm:gap-5 text-moon-muted/70">
+                <a
+                  href="https://map.kiwimu.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] sm:text-xs tracking-[0.2em] hover:text-moon-accent transition-colors"
+                >
+                  逛展覽地圖 ↗
+                </a>
+                <span className="w-px h-3 bg-moon-border" />
+                <a
+                  href="https://passport.kiwimu.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] sm:text-xs tracking-[0.2em] hover:text-moon-accent transition-colors"
+                >
+                  甜點護照測驗 ↗
+                </a>
+              </div>
             </div>
 
             <div className="w-16 sm:w-20 h-px bg-moon-border mx-auto mt-8 sm:mt-10"></div>
@@ -444,7 +453,7 @@ export default function HomePage() {
                 category.name.includes('飲料');
 
               return (
-                <div key={category.id} className="category-section">
+                <Reveal key={category.id} className="category-section">
                   {/* 分類標題 */}
                   <div className="mb-6 px-4 sm:px-0">
                     <div className="flex items-center gap-4 mb-2">
@@ -482,7 +491,7 @@ export default function HomePage() {
                       />
                     ))}
                   </div>
-                </div>
+                </Reveal>
               );
             })}
           </div>
