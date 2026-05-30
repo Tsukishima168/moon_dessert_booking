@@ -23,11 +23,15 @@ export default function MobileCartBar() {
   const totalItems = hasHydrated ? getTotalItems() : 0;
   const finalPrice = hasHydrated ? getFinalPrice() : 0;
 
+  // 只在「可繼續選購」的情境出現；結帳/訂單結果/會員/登入/後台都不勾引結帳
   const hidden =
     !hasHydrated ||
     totalItems === 0 ||
     pathname?.startsWith('/admin') ||
-    pathname?.startsWith('/checkout');
+    pathname?.startsWith('/checkout') ||
+    pathname?.startsWith('/order') ||
+    pathname?.startsWith('/account') ||
+    pathname?.startsWith('/auth');
 
   if (hidden) return null;
 
