@@ -8,6 +8,8 @@ import ProductRow from '@/components/ProductRow';
 import Banner from '@/components/Banner';
 import { MenuSkeleton } from '@/components/ui/MenuSkeleton';
 import Reveal from '@/components/ui/Reveal';
+import Eyebrow from '@/components/ui/Eyebrow';
+import SectionHeading from '@/components/ui/SectionHeading';
 import { MenuItemWithVariants, MenuCategory } from '@/lib/supabase';
 import { AlertCircle, Sparkles, Search, X } from 'lucide-react';
 import Image from 'next/image';
@@ -210,18 +212,13 @@ export default function HomePage() {
                 alt="月島甜點"
                 width={300}
                 height={100}
-                className="h-16 sm:h-20 lg:h-24 w-auto"
+                className="theme-logo h-16 sm:h-20 lg:h-24 w-auto"
                 priority
               />
             </div>
 
             <div className="mb-4 sm:mb-6">
-              <span className="inline-flex items-center gap-2 border border-moon-border/80 bg-moon-dark/60 px-4 sm:px-5 py-2">
-                <span className="w-1 h-4 bg-moon-accent" />
-                <span className="text-[10px] sm:text-xs tracking-[0.25em] text-moon-muted/80">
-                  {sourceMeta.label}
-                </span>
-              </span>
+              <Eyebrow bordered>{sourceMeta.label}</Eyebrow>
             </div>
 
             {/* Banner 推廣區塊 */}
@@ -229,13 +226,13 @@ export default function HomePage() {
 
             {/* 主敘事文字 */}
             <div className="max-w-3xl mx-auto mb-6 sm:mb-8 px-4 sm:px-0">
-              <h1 className="text-base sm:text-lg lg:text-xl font-light text-moon-accent tracking-[0.25em] mb-3 sm:mb-4">
+              <h1 className="brand-display text-base sm:text-lg lg:text-xl mb-4 sm:mb-5">
                 DESSERT STUDIO
               </h1>
-              <p className="text-sm sm:text-base text-moon-text/90 leading-loose sm:leading-relaxed">
+              <p className="brand-body text-sm sm:text-base text-moon-text/90">
                 {sourceMeta.title}
               </p>
-              <p className="mt-4 sm:mt-5 text-[11px] sm:text-xs text-moon-muted/80 leading-loose sm:leading-relaxed">
+              <p className="brand-body mt-4 sm:mt-5 text-[11px] sm:text-xs text-moon-muted/80">
                 {sourceMeta.desc}
               </p>
             </div>
@@ -340,19 +337,12 @@ export default function HomePage() {
         {/* MBTI 推薦區塊 - 卡片式展示 */}
         {mbtiType && recommendedItems.length > 0 && (
           <div className="mb-16 sm:mb-24">
-            <div className="mb-8 sm:mb-12 text-center">
-              <div className="flex items-center justify-center gap-3 sm:gap-6 mb-3 sm:mb-4">
-                <div className="h-px bg-moon-border flex-1 max-w-[100px] sm:max-w-xs"></div>
-                <h2 className="text-xl sm:text-2xl font-light text-moon-accent tracking-widest flex items-center gap-2 sm:gap-3">
-                  <Sparkles size={16} className="sm:w-5 sm:h-5" />
-                  為您推薦
-                </h2>
-                <div className="h-px bg-moon-border flex-1 max-w-[100px] sm:max-w-xs"></div>
-              </div>
-              <p className="text-xs text-moon-muted tracking-widest px-4">
-                根據您的 {mbtiType} 人格特質精選 - 點擊查看詳情
-              </p>
-            </div>
+            <SectionHeading
+              className="mb-8 sm:mb-12"
+              icon={<Sparkles size={16} className="sm:w-5 sm:h-5" />}
+              title="為您推薦"
+              subtitle={`根據您的 ${mbtiType} 人格特質精選 · 點擊查看詳情`}
+            />
 
             {/* 推薦商品列表 */}
             {/* Mobile: List */}
@@ -379,18 +369,11 @@ export default function HomePage() {
         {/* 本季精選（無 MBTI 且無搜尋時顯示前幾項推薦或熱門） */}
         {!mbtiType && !searchQuery && menuItems.length > 0 && (
           <div className="mb-16 sm:mb-24">
-            <div className="mb-8 sm:mb-12 text-center">
-              <div className="flex items-center justify-center gap-3 sm:gap-6 mb-3 sm:mb-4">
-                <div className="h-px bg-moon-border flex-1 max-w-[100px] sm:max-w-xs"></div>
-                <h2 className="text-xl sm:text-2xl font-light text-moon-accent tracking-widest">
-                  本季精選 · 人氣預訂
-                </h2>
-                <div className="h-px bg-moon-border flex-1 max-w-[100px] sm:max-w-xs"></div>
-              </div>
-              <p className="text-xs text-moon-muted tracking-widest px-4">
-                不確定選什麼？試試這些熱門品項
-              </p>
-            </div>
+            <SectionHeading
+              className="mb-8 sm:mb-12"
+              title="本季精選 · 人氣預訂"
+              subtitle="不確定選什麼？試試這些熱門品項"
+            />
             {/* 顯示前 4 個有規格可預訂的商品 */}
             {(() => {
               const featured = menuItems
@@ -459,7 +442,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-4 mb-2">
                       {/* 裝飾線 - 左 */}
                       <div className="hidden sm:block h-px bg-moon-border w-8"></div>
-                      <h2 className="text-base sm:text-lg lg:text-xl font-light text-moon-accent tracking-widest break-words">
+                      <h2 className="brand-title text-base sm:text-lg lg:text-xl break-words">
                         {category.name.toUpperCase()}
                       </h2>
                       <div className="h-px bg-moon-border flex-1"></div>
@@ -509,8 +492,8 @@ export default function HomePage() {
 
       {/* Kiwimu 故事區塊 */}
       <section className="border-t border-moon-border/60 bg-moon-dark/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16">
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start lg:items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 brand-section">
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start lg:items-center">
             {/* 左側：Logo 或象徵圖 */}
             <div className="w-full lg:w-auto flex justify-center lg:justify-start">
               <div className="inline-flex flex-col items-center gap-3">
@@ -521,7 +504,7 @@ export default function HomePage() {
                   height={120}
                   className="h-16 sm:h-20 w-auto opacity-80"
                 />
-                <span className="text-[10px] sm:text-xs tracking-[0.25em] text-moon-muted/70">
+                <span className="brand-eyebrow text-moon-muted/70">
                   KIWIMU MBTI LAB
                 </span>
               </div>
@@ -529,19 +512,18 @@ export default function HomePage() {
 
             {/* 右側：文字敘事 */}
             <div className="flex-1 text-left">
-              <p className="text-[11px] sm:text-xs tracking-[0.25em] text-moon-muted/70 mb-3">
-                STORY BEHIND THE BRIDGE
-              </p>
-              <h2 className="text-sm sm:text-base lg:text-lg font-light text-moon-text/90 leading-relaxed mb-3">
+              <Eyebrow className="mb-4">STORY BEHIND THE BRIDGE</Eyebrow>
+              <h2 className="brand-body text-base sm:text-lg lg:text-xl text-moon-text mb-5">
                 Kiwimu 不是一個品牌，而是一團從鮮奶油誕生、會融化又重組的奶霜生物。
               </h2>
-              <p className="text-xs sm:text-sm text-moon-muted/90 leading-relaxed mb-2">
+              <p className="brand-body text-xs sm:text-sm text-moon-muted/90 mb-3">
                 牠沒有固定形狀，情緒一來就會融化；願意停下來面對、命名、整理，牠就又能被重新打發成形。
                 在 Kiwimu 的實驗室裡，我們做的事很單純：先陪你看見自己現在的狀態，再想像一塊適合這個狀態的甜點。
               </p>
-              <p className="text-xs sm:text-sm text-moon-muted/80 leading-relaxed mb-4">
+              <p className="brand-body text-xs sm:text-sm text-moon-muted/80 mb-5">
                 測驗和標籤不是最後的答案，只是一面鏡子；Kiwimu 的角色，是在每一個階段提醒你：
-                「成長不是變堅硬，而是學會柔軟地存在。」你現在打開的這個預訂頁，則是那面鏡子在月島裡的其中一個出口。
+                <span className="text-moon-gold">「成長不是變堅硬，而是學會柔軟地存在。」</span>
+                你現在打開的這個預訂頁，則是那面鏡子在月島裡的其中一個出口。
               </p>
 
               <Link
@@ -594,13 +576,13 @@ export default function HomePage() {
               alt="月島甜點"
               width={150}
               height={50}
-              className="h-8 w-auto opacity-60"
+              className="theme-logo h-8 w-auto opacity-60"
             />
           </div>
 
           {/* 版權資訊 */}
-          <p className="text-xs text-moon-muted tracking-widest mb-2">© 2024 MOON MOON DESSERT</p>
-          <p className="text-xs text-moon-muted/60">安南區本原街・果菜市場周邊療癒系甜點</p>
+          <p className="brand-eyebrow mb-2">© 2024 MOON MOON DESSERT</p>
+          <p className="brand-subtitle text-moon-muted/60">安南區本原街・果菜市場周邊療癒系甜點</p>
         </div>
       </footer>
     </div>
