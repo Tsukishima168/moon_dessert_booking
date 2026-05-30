@@ -526,15 +526,24 @@ export default function HomePage() {
                 你現在打開的這個預訂頁，則是那面鏡子在月島裡的其中一個出口。
               </p>
 
-              <Link
-                href="https://kiwimu.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 border border-moon-border/80 px-4 py-2 text-[11px] sm:text-xs tracking-[0.25em] text-moon-text hover:bg-moon-border/40 transition-colors"
-              >
-                前往 Kiwimu 人格實驗室
-                <span className="text-[10px]">↗</span>
-              </Link>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/about"
+                  className="inline-flex items-center gap-2 bg-moon-accent text-moon-black px-4 py-2 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-text transition-colors"
+                >
+                  品牌故事
+                  <span className="text-[10px]">→</span>
+                </Link>
+                <Link
+                  href="https://kiwimu.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 border border-moon-border/80 px-4 py-2 text-[11px] sm:text-xs tracking-[0.25em] text-moon-text hover:bg-moon-border/40 transition-colors"
+                >
+                  前往 Kiwimu 人格實驗室
+                  <span className="text-[10px]">↗</span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -555,7 +564,13 @@ export default function HomePage() {
           </div>
 
           {/* 導航連結 */}
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            <Link
+              href="/about"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors"
+            >
+              <span>品牌故事 →</span>
+            </Link>
             <a
               href="https://map.kiwimu.com"
               target="_blank"
