@@ -37,8 +37,10 @@ export async function updateBusinessSetting(
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('business_settings')
-    .update({ setting_value: settingValue, updated_at: new Date().toISOString() })
-    .eq('setting_key', settingKey)
+    .upsert(
+      { setting_key: settingKey, setting_value: settingValue, updated_at: new Date().toISOString() },
+      { onConflict: 'setting_key' }
+    )
     .select()
     .single()
   if (error) {
