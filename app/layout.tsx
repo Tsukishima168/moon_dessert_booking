@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import CartSidebar from '@/components/CartSidebar';
+import MobileCartBar from '@/components/MobileCartBar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import FacebookPixel from '@/components/FacebookPixel';
 
@@ -263,6 +264,7 @@ export default function RootLayout({
           <main>{children}</main>
         </Suspense>
         <CartSidebar />
+        <MobileCartBar />
       </body>
     </html>
   );

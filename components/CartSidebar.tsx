@@ -6,6 +6,9 @@ import { useCartStore } from '@/store/cartStore';
 import Image from 'next/image';
 import Link from 'next/link';
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
 export default function CartSidebar() {
   const {
     items,
@@ -25,6 +28,27 @@ export default function CartSidebar() {
 
   useEffect(() => {
     setHasHydrated(true);
+  }, []);
+
+  // 免運門檻（讀公開業務設定，串接後台「配送與取貨」）
+  const [freeShipThreshold, setFreeShipThreshold] = useState(0);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: unknown) => {
+        if (!active || !isRecord(s)) return;
+        const ds = s.delivery_settings;
+        const t =
+          isRecord(ds) && typeof ds.free_delivery_threshold === 'number'
+            ? ds.free_delivery_threshold
+            : 0;
+        setFreeShipThreshold(t);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   const totalPrice = hasHydrated ? getTotalPrice() : 0;
@@ -91,7 +115,7 @@ export default function CartSidebar() {
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="border border-moon-border p-4 hover:border-moon-muted transition-colors"
+                    className="border border-moon-border p-4 hover:border-moon-muted transition-colors animate-fadeIn"
                   >
                     <div className="flex gap-4">
                       {/* 商品圖片 */}
@@ -165,6 +189,26 @@ export default function CartSidebar() {
 
               {/* 底部結帳區 */}
               <div className="border-t border-moon-border p-4 sm:p-8 bg-moon-dark">
+                {/* 免運進度（讀後台配送設定）*/}
+                {freeShipThreshold > 0 && (
+                  <div className="mb-4">
+                    {totalPrice >= freeShipThreshold ? (
+                      <p className="text-xs text-moon-accent tracking-wider text-center">🎉 已達免運門檻</p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-moon-muted tracking-wider mb-2 text-center">
+                          再買 <span className="text-moon-accent">${freeShipThreshold - totalPrice}</span> 享免運
+                        </p>
+                        <div className="h-1 w-full bg-moon-border/40 overflow-hidden">
+                          <div
+                            className="h-full bg-moon-accent transition-all duration-500"
+                            style={{ width: `${Math.min(100, (totalPrice / freeShipThreshold) * 100)}%` }}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 {/* 價格明細 */}
                 <div className="space-y-2 mb-4 sm:mb-6">
                   {/* 小計 */}
