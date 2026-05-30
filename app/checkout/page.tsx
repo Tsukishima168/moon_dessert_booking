@@ -30,6 +30,7 @@ interface CheckoutFormData {
   delivery_address?: string;       // 完整地址 (組合後)
   delivery_notes?: string;
   payment_date: string;
+  marketing_consent?: boolean;
 }
 
 interface PendingOrderSnapshot {
@@ -562,6 +563,7 @@ export default function CheckoutPage() {
           utm_content: attribution?.utm_content || null,
           utm_term: attribution?.utm_term || null,
           user_id: loggedInUser?.id || null,
+          marketing_consent: data.marketing_consent ?? false,
         }),
       });
 
@@ -1176,6 +1178,12 @@ export default function CheckoutPage() {
                   </div>
                 )}
               </div>
+
+              {/* 行銷 opt-in（可隨時退訂）*/}
+              <label className="flex items-start gap-2 cursor-pointer text-xs text-moon-muted">
+                <input type="checkbox" {...register('marketing_consent')} className="mt-0.5 w-4 h-4 shrink-0" />
+                <span>我願意接收月島甜點的優惠與新品資訊（可隨時退訂）</span>
+              </label>
 
               <button
                 type="submit"

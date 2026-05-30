@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { createOrder, OrderValidationError } from '@/src/services/order.service'
+import { setConsent } from '@/src/repositories/marketing.repository'
 
 // POST /api/order - 建立新訂單
 export async function POST(request: NextRequest) {
@@ -56,6 +57,15 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const { orderId, finalPrice } = await createOrder(body, user?.id ?? null)
+
+    // 行銷 opt-in：結帳勾選「接收優惠資訊」→ 寫入同意（綁真實訂單 email，非阻斷）
+    if (body.marketing_consent === true && typeof body.email === 'string' && body.email) {
+      try {
+        await setConsent(body.email, true, 'checkout')
+      } catch (consentError) {
+        console.error('寫入行銷同意失敗（不影響訂單）:', consentError)
+      }
+    }
 
     return NextResponse.json({
       success: true,
