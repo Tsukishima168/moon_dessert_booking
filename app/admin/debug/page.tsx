@@ -3,8 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+interface ApiTestResult {
+  status?: number;
+  ok?: boolean;
+  data?: unknown;
+  error?: string;
+  timestamp: string;
+}
+
 export default function DebugPage() {
-  const [apiTest, setApiTest] = useState<any>(null);
+  const [apiTest, setApiTest] = useState<ApiTestResult | null>(null);
   const [authTest, setAuthTest] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
@@ -25,9 +33,9 @@ export default function DebugPage() {
         data: data,
         timestamp: new Date().toLocaleString()
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       setApiTest({
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         timestamp: new Date().toLocaleString()
       });
     }
@@ -127,7 +135,7 @@ export default function DebugPage() {
           <ol className="space-y-2 text-moon-text text-sm">
             <li><strong>1.</strong> 檢查認證狀態是否有 admin_token</li>
             <li><strong>2.</strong> 確認環境變數已加載 (✅)</li>
-            <li><strong>3.</strong> 執行 API 測試看是否返回数据</li>
+            <li><strong>3.</strong> 執行 API 測試看是否返回資料</li>
             <li><strong>4.</strong> 如果返回空數組，檢查 Supabase 表是否有數據</li>
             <li><strong>5.</strong> 檢查 Supabase RLS 策略是否允許訪問</li>
             <li><strong>6.</strong> 查看瀏覽器控制台和服務器日誌</li>
