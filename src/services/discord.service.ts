@@ -10,11 +10,18 @@ export interface DiscordConfigStatus {
  * 回傳 Discord Webhook 設定狀態（不暴露實際 URL）
  */
 export function getDiscordConfigStatus(): DiscordConfigStatus {
-  const isConfigured = !!process.env.DISCORD_WEBHOOK_URL
+  const hasBotToken = !!process.env.DISCORD_TOKEN
+  const hasWebhook = !!process.env.DISCORD_WEBHOOK_URL
+  const isConfigured = hasBotToken || hasWebhook
+  const transport = hasBotToken
+    ? 'Bot Token（共用 #月島訂單通知 頻道）'
+    : hasWebhook
+      ? 'Webhook'
+      : ''
   return {
     isConfigured,
     status: isConfigured ? 'connected' : 'not_configured',
-    message: isConfigured ? 'Discord Webhook 已設定' : 'Discord Webhook 未設定',
+    message: isConfigured ? `Discord 已設定（${transport}）` : 'Discord 未設定',
   }
 }
 
