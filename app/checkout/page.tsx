@@ -58,6 +58,50 @@ const getMenuItemIdFromCartItemId = (cartItemId: string) => {
   return match?.[1] ?? cartItemId;
 };
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+interface DeliveryConfig {
+  delivery_fee: number;
+  free_delivery_threshold: number;
+  delivery_available: boolean;
+  pickup_available: boolean;
+}
+interface PaymentConfig {
+  bank_name: string;
+  bank_code: string;
+  bank_account: string;
+  line_pay: boolean;
+  bank_transfer: boolean;
+}
+
+// 解析公開 /api/settings（raw key-value）；缺值時回退結帳頁既有寫死值（行為不變）
+function parseDeliveryConfig(raw: unknown): DeliveryConfig {
+  const o = isRecord(raw) ? raw : {};
+  return {
+    delivery_fee: typeof o.delivery_fee === 'number' ? o.delivery_fee : 150,
+    free_delivery_threshold:
+      typeof o.free_delivery_threshold === 'number' ? o.free_delivery_threshold : 2000,
+    delivery_available: typeof o.delivery_available === 'boolean' ? o.delivery_available : true,
+    pickup_available: typeof o.pickup_available === 'boolean' ? o.pickup_available : true,
+  };
+}
+function parsePaymentConfig(raw: unknown): PaymentConfig {
+  const o = isRecord(raw) ? raw : {};
+  const m = isRecord(o.methods) ? o.methods : {};
+  return {
+    bank_name: typeof o.bank_name === 'string' && o.bank_name ? o.bank_name : '連線商業銀行',
+    bank_code: typeof o.bank_code === 'string' && o.bank_code ? o.bank_code : '824',
+    bank_account: typeof o.bank_account === 'string' && o.bank_account ? o.bank_account : '111007479473',
+    line_pay: typeof m.line_pay === 'boolean' ? m.line_pay : true,
+    bank_transfer: typeof m.bank_transfer === 'boolean' ? m.bank_transfer : true,
+  };
+}
+function parseMinOrderAmount(raw: unknown): number {
+  const o = isRecord(raw) ? raw : {};
+  return typeof o.minimum_order_amount === 'number' ? o.minimum_order_amount : 0;
+}
+
 export default function CheckoutPage() {
   const {
     items,
@@ -83,6 +127,9 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [reservationRules, setReservationRules] = useState<any>(null);
+  const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
+  const [minOrderAmount, setMinOrderAmount] = useState(0);
   const [dateValidation, setDateValidation] = useState<{ valid: boolean; reason: string } | null>(null);
   const [validatedDateKey, setValidatedDateKey] = useState<string | null>(null);
   const [isDateValidationPending, setIsDateValidationPending] = useState(false);
@@ -258,6 +305,9 @@ export default function CheckoutPage() {
         if (response.ok) {
           const settings = await response.json();
           setReservationRules(settings.reservation_rules);
+          setDeliveryConfig(parseDeliveryConfig(settings.delivery_settings));
+          setPaymentConfig(parsePaymentConfig(settings.payment_settings));
+          setMinOrderAmount(parseMinOrderAmount(settings.order_rules));
         }
       } catch (error) {
         console.error('載入預訂規則錯誤:', error);
@@ -384,8 +434,10 @@ export default function CheckoutPage() {
 
   const calculateDeliveryFee = (method: 'pickup' | 'delivery', subtotal: number): number => {
     if (method === 'pickup') return 0;
-    if (subtotal >= 2000) return 0;
-    return 150;
+    const fee = deliveryConfig?.delivery_fee ?? 150;
+    const threshold = deliveryConfig?.free_delivery_threshold ?? 2000;
+    if (threshold > 0 && subtotal >= threshold) return 0;
+    return fee;
   };
 
   const deliveryFee = calculateDeliveryFee(deliveryMethod, totalPrice);
@@ -414,6 +466,11 @@ export default function CheckoutPage() {
 
   // 提交訂單
   const onSubmit = async (data: CheckoutFormData) => {
+    if (minOrderAmount > 0 && totalPrice < minOrderAmount) {
+      alert(`本店最低消費金額為 $${minOrderAmount}（目前小計 $${totalPrice}），請再加購後送出。`);
+      return;
+    }
+
     const currentValidationKey = data.pickup_date ? `${data.delivery_method}:${data.pickup_date}` : null;
 
     const isValidationStale = validatedDateKey !== currentValidationKey;
@@ -539,8 +596,8 @@ export default function CheckoutPage() {
         if (data.delivery_notes) msg += `\n備註：${data.delivery_notes}`;
 
         msg += `\n\n付款方式：\n`;
-        msg += `LINE Bank (824) 連線商業銀行\n`;
-        msg += `帳號：111007479473\n`;
+        msg += `LINE Bank (${paymentConfig?.bank_code ?? '824'}) ${paymentConfig?.bank_name ?? '連線商業銀行'}\n`;
+        msg += `帳號：${paymentConfig?.bank_account ?? '111007479473'}\n`;
         msg += `備註欄請填寫：${newOrderId}\n`;
         msg += `\n付款完成後請回傳「後五碼」\n`;
         msg += `   （轉帳通知中的後五碼數字）`;
@@ -726,20 +783,22 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* LINE Pay 按鈕 */}
-          <button
-            onClick={handleLinePayRedirect}
-            disabled={isLinePayLoading}
-            className="flex items-center justify-center gap-2 w-full bg-[#00B900] disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 tracking-widest text-sm"
-          >
-            {isLinePayLoading ? '前往 LINE Pay 中...' : '使用 LINE Pay 付款'}
-          </button>
+          {/* LINE Pay 按鈕（可由後台付款設定關閉）*/}
+          {(paymentConfig?.line_pay ?? true) && (
+            <button
+              onClick={handleLinePayRedirect}
+              disabled={isLinePayLoading}
+              className="flex items-center justify-center gap-2 w-full bg-[#00B900] disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 tracking-widest text-sm"
+            >
+              {isLinePayLoading ? '前往 LINE Pay 中...' : '使用 LINE Pay 付款'}
+            </button>
+          )}
 
           {/* 轉帳備用方案 */}
           <div className="border border-moon-border/20 p-4 space-y-2 bg-moon-dark/20">
             <p className="text-xs text-moon-muted tracking-wider mb-2">— 或改用轉帳 —</p>
-            <p className="text-sm text-moon-text">LINE Bank（824）連線商業銀行</p>
-            <p className="text-sm text-moon-text">帳號：111007479473</p>
+            <p className="text-sm text-moon-text">LINE Bank（{paymentConfig?.bank_code ?? '824'}）{paymentConfig?.bank_name ?? '連線商業銀行'}</p>
+            <p className="text-sm text-moon-text">帳號：{paymentConfig?.bank_account ?? '111007479473'}</p>
             <p className="text-xs text-moon-muted mt-2">
               轉帳備註請填寫訂單編號：<span className="text-moon-accent font-mono">{orderId}</span>
             </p>
@@ -981,7 +1040,7 @@ export default function CheckoutPage() {
                   <label className={`border p-4 cursor-pointer text-center transition-all ${watchedDeliveryMethod === 'delivery' ? 'border-moon-accent bg-moon-accent/10' : 'border-moon-border'}`}>
                     <input type="radio" value="delivery" {...register('delivery_method')} className="sr-only" />
                     <div className="text-xl mb-1">🚚</div>
-                    <div className="text-xs">宅配 (+$150)</div>
+                    <div className="text-xs">{`宅配 (+$${deliveryConfig?.delivery_fee ?? 150})`}</div>
                   </label>
                 </div>
               </div>

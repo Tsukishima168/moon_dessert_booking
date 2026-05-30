@@ -4,6 +4,12 @@ import { createAdminClient } from './supabase-admin';
 import { sendEmail } from './email/resend';
 import { orderReadyTemplate } from './email/templates/order-ready';
 import { orderCancelledTemplate } from './email/templates/order-cancelled';
+import { fetchBusinessSettings } from '@/src/repositories/settings.repository';
+import {
+  getStoreInfo,
+  getPaymentSettings,
+  getNotificationSettings,
+} from '@/src/services/settings.service';
 
 export type NotificationDeliveryState = 'sent' | 'failed' | 'skipped';
 
@@ -26,22 +32,62 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-// Discord Webhook 通知
+// Discord 通知設定
+// 與 map / menu 共用「Kiwimu宇宙 → #月島訂單通知」頻道：
+//   優先用 Bot Token（DISCORD_TOKEN）直接發到該頻道（與 map 相同機制），
+//   無 token 時 fallback 用 Webhook。每則訊息都加來源標籤，方便在共用頻道區分 shop 與 map/menu。
+const DISCORD_API = 'https://discord.com/api/v10';
+const DISCORD_ORDER_CHANNEL_ID =
+  process.env.DISCORD_ORDER_CHANNEL_ID || '1467024414699819152'; // #月島訂單通知
+const DISCORD_SOURCE_LABEL =
+  process.env.DISCORD_SOURCE_LABEL || '線上商店 shop.kiwimu.com';
+
+export function isDiscordConfigured(): boolean {
+  return !!(process.env.DISCORD_TOKEN || process.env.DISCORD_WEBHOOK_URL);
+}
+
 export async function sendDiscordNotify(message: string, embed?: unknown): Promise<boolean> {
+  const botToken = process.env.DISCORD_TOKEN;
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) { console.warn('DISCORD_WEBHOOK_URL 未設定'); return false; }
+  if (!botToken && !webhookUrl) {
+    console.warn('Discord 未設定（DISCORD_TOKEN / DISCORD_WEBHOOK_URL 皆空），略過通知');
+    return false;
+  }
+
+  // 來源標籤：在共用頻道中標明這則訊息來自 shop
+  const payload: Record<string, unknown> = {
+    content: `〔🛍️ ${DISCORD_SOURCE_LABEL}〕\n${message}`,
+  };
+  if (embed) payload.embeds = [embed];
+
+  let url: string;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (botToken) {
+    // 與 map/menu 相同：用同一個 bot 發到同一個頻道
+    url = `${DISCORD_API}/channels/${DISCORD_ORDER_CHANNEL_ID}/messages`;
+    headers.Authorization = `Bot ${botToken}`;
+  } else {
+    // Fallback：Webhook 可直接用顯示名稱標注來源
+    url = webhookUrl as string;
+    payload.username = `月島・${DISCORD_SOURCE_LABEL}`;
+  }
+
   try {
-    const payload: Record<string, unknown> = { content: message };
-    if (embed) payload.embeds = [embed];
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error(`Discord Webhook 失敗: ${response.status}`);
-    console.log('Discord 通知發送成功');
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(`Discord 發送失敗: ${response.status} ${detail}`.trim());
+    }
+    console.log(`Discord 通知發送成功（${botToken ? 'bot→channel' : 'webhook'}）`);
     return true;
-  } catch (error) { console.error('Discord Notify 錯誤:', error); return false; }
+  } catch (error) {
+    console.error('Discord Notify 錯誤:', error);
+    return false;
+  }
 }
 
 export async function sendLineNotify(message: string): Promise<boolean> {
@@ -55,9 +101,16 @@ export async function sendCustomerEmail(data: {
   deliveryAddress?: string; deliveryFee?: number; deliveryNotes?: string;
 }): Promise<boolean> {
   if (!resend) { console.warn('RESEND_API_KEY 未設定，跳過 Email 通知'); return false; }
+  // 店名 / 匯款資訊改讀業務設定（service 預設已鏡像原 env fallback，行為不變）
+  const settingsMap = await fetchBusinessSettings().catch(() => ({}));
+  const store = await getStoreInfo(settingsMap);
+  const payment = await getPaymentSettings(settingsMap);
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-  const storeName = process.env.STORE_NAME || 'MoonMoon Dessert';
-  const bankAccount = process.env.BANK_ACCOUNT || '111007479473';
+  const storeName = store.name;
+  const bankAccount = payment.bank_account;
+  const bankLabel = payment.bank_name
+    ? `${payment.bank_code} (${payment.bank_name})`
+    : payment.bank_code;
   const itemsList = data.items.map((item) => {
     const v = item.variant_name ? ` (${item.variant_name})` : '';
     return `  • ${item.name}${v} x${item.quantity} ($${item.price * item.quantity})`;
@@ -69,7 +122,7 @@ export async function sendCustomerEmail(data: {
     <p>取貨/配送時間: <b>${data.pickupTime}</b></p>
     ${data.deliveryMethod === 'delivery' ? `<p>配送地址: ${data.deliveryAddress}</p>` : '<p>取貨方式: 門市自取</p>'}
     <div style="background:#eee;padding:10px;margin-top:20px;">
-      <h3>匯款資訊</h3><p>銀行代碼: 824 (連線銀行)</p>
+      <h3>匯款資訊</h3><p>銀行代碼: ${bankLabel}</p>
       <p>帳號: <b>${bankAccount}</b></p>
       <p style="color:red">請於 24 小時內匯款並回傳末五碼</p>
     </div>
@@ -94,6 +147,12 @@ export async function notifyNewOrder(data: {
   deliveryAddress?: string; deliveryFee?: number; deliveryNotes?: string;
   orderSource?: string; utmSource?: string;
 }): Promise<boolean> {
+  // 通知開關：店家可在後台關閉新訂單 Discord 通知（預設開，行為不變）
+  const ns = await getNotificationSettings();
+  if (!ns.order_created.discord) {
+    console.log('通知設定已關閉新訂單 Discord 通知，略過');
+    return false;
+  }
   const isDelivery = data.deliveryMethod === 'delivery';
   const sourceMap: Record<string, string> = { map: '月島地圖 🗺️', passport: '甜點護照 🎫', gacha: '扭蛋 🎰', direct: '直接訪問' };
   const sourceLabel = data.orderSource ? (sourceMap[data.orderSource] || data.orderSource) : '直接訪問';
@@ -124,7 +183,16 @@ export async function sendOrderStatusNotification(data: {
   manual?: boolean;
   selectedChannels?: StatusNotificationChannel[];
 }): Promise<OrderStatusNotificationResult> {
-  const selectedChannels = data.selectedChannels ?? ['discord', 'email'];
+  // 未指定通道時（自動觸發），採用後台 notification_settings；
+  // 有指定時（後台手動重送）尊重呼叫端選擇。預設兩者皆開 → 行為不變。
+  let defaultChannels: StatusNotificationChannel[] = ['discord', 'email'];
+  if (!data.selectedChannels) {
+    const ns = await getNotificationSettings();
+    defaultChannels = [];
+    if (ns.order_status.discord) defaultChannels.push('discord');
+    if (ns.order_status.email) defaultChannels.push('email');
+  }
+  const selectedChannels = data.selectedChannels ?? defaultChannels;
   const shouldSendDiscord = selectedChannels.includes('discord');
   const shouldSendEmail = selectedChannels.includes('email');
 
@@ -132,7 +200,7 @@ export async function sendOrderStatusNotification(data: {
   const msg = data.manual
     ? `🔁 手動重送訂單通知: ${data.orderId}\n${data.customerName} 的訂單目前狀態為 **${data.newStatus}**`
     : `🔄 訂單狀態更新: ${data.orderId}\n${data.customerName} 的訂單從 ${data.oldStatus} 變更為 **${data.newStatus}**`;
-  const discordConfigured = !!process.env.DISCORD_WEBHOOK_URL;
+  const discordConfigured = isDiscordConfigured();
   const discord = shouldSendDiscord && discordConfigured
     ? await sendDiscordNotify(msg)
     : false;
@@ -146,7 +214,7 @@ export async function sendOrderStatusNotification(data: {
     ? {
       channel: 'discord',
       state: 'skipped',
-      message: 'Discord Webhook 未設定，已略過店家通知',
+      message: 'Discord 未設定，已略過店家通知',
     }
     : discord
       ? {
@@ -279,6 +347,8 @@ export async function sendPickupReminderLineNotify(data: {
   orderId: string; customerName: string; phone?: string; pickupTime: string;
   items: { name: string; quantity: number }[]; deliveryMethod?: string;
 }): Promise<boolean> {
+  const ns = await getNotificationSettings();
+  if (!ns.pickup_reminder.discord) return false;
   const itemsList = (data.items || []).map((i) => `• ${i.name} x${i.quantity}`).join('\n');
   const message = `📦 明日取貨提醒\n訂單: ${data.orderId}\n客戶: ${data.customerName}\n電話: ${data.phone || '-'}\n時間: ${data.pickupTime}\n\n${itemsList}`;
   return sendDiscordNotify(message);

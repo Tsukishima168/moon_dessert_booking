@@ -1,4 +1,5 @@
 import { resend } from '@/lib/resend';
+import { getStoreInfo } from '@/src/services/settings.service';
 
 /**
  * 訂單狀態變更 Email 通知 handler
@@ -20,7 +21,6 @@ type StatusChangedPayload = {
   total_price?: number;
 };
 
-const STORE_NAME = process.env.STORE_NAME ?? 'MoonMoon Dessert';
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
 
 export async function handleOrderStatusChanged(
@@ -35,11 +35,14 @@ export async function handleOrderStatusChanged(
   const isCancelled = new_status === 'cancelled';
   if (!isReady && !isCancelled) return;
 
+  // 店名改讀業務設定（預設鏡像 env，行為不變）
+  const store = await getStoreInfo();
+
   let subject: string;
   let html: string;
 
   if (isReady) {
-    subject = `【${STORE_NAME}】您的訂單已可取貨 🎉`;
+    subject = `【${store.name}】您的訂單已可取貨 🎉`;
     html = `
       <div style="font-family:sans-serif; max-width:500px; margin:0 auto;">
         <h2 style="color:#d4a574;">您的訂單已準備好了！</h2>
@@ -48,18 +51,18 @@ export async function handleOrderStatusChanged(
         ${pickup_time ? `<p>預約時間：<b>${pickup_time}</b></p>` : ''}
         ${total_price ? `<p>訂單金額：<b>$${total_price}</b></p>` : ''}
         <p>期待在店裡見到您！🍰</p>
-        <p style="color:#888; font-size:12px;">— ${STORE_NAME} 團隊</p>
+        <p style="color:#888; font-size:12px;">— ${store.name} 團隊</p>
       </div>
     `;
   } else {
-    subject = `【${STORE_NAME}】您的訂單已取消`;
+    subject = `【${store.name}】您的訂單已取消`;
     html = `
       <div style="font-family:sans-serif; max-width:500px; margin:0 auto;">
         <h2>訂單取消通知</h2>
         <p>親愛的 ${customer_name}，</p>
         <p>您的訂單 <b>${order_id}</b> 已被取消。</p>
         <p>如有任何問題，歡迎透過 LINE 或電話與我們聯繫。</p>
-        <p style="color:#888; font-size:12px;">— ${STORE_NAME} 團隊</p>
+        <p style="color:#888; font-size:12px;">— ${store.name} 團隊</p>
       </div>
     `;
   }
