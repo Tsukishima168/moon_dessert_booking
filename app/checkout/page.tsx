@@ -763,8 +763,8 @@ export default function CheckoutPage() {
           {/* 標題 */}
           <div className="text-center space-y-2">
             <CheckCircle className="w-12 h-12 text-moon-accent mx-auto" />
-            <h2 className="text-xl text-moon-accent tracking-widest">訂單成立</h2>
-            <p className="text-xs text-moon-muted tracking-wider">ORDER CONFIRMED</p>
+            <h2 className="brand-title text-xl">訂單成立</h2>
+            <p className="brand-eyebrow">ORDER CONFIRMED</p>
           </div>
 
           {/* 訂單摘要 */}
@@ -846,7 +846,7 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen bg-moon-black py-16 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-light text-moon-accent mb-4">購物車是空的</h2>
+          <h2 className="brand-title text-2xl mb-4">購物車是空的</h2>
           <p className="text-sm text-moon-muted mb-6">先選一些甜點再來結帳吧</p>
           <Link
             href="/"
@@ -880,7 +880,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-moon-accent text-center mb-8 sm:mb-12 lg:mb-16 tracking-wider">
+        <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl text-center mb-8 sm:mb-12 lg:mb-16">
           填寫訂單
         </h1>
 
@@ -888,7 +888,7 @@ export default function CheckoutPage() {
           {/* 左側：訂單總覽 */}
           <div>
             <div className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 sticky top-24">
-              <h2 className="text-lg sm:text-xl font-light text-moon-accent mb-6 sm:mb-8 tracking-wider">訂單摘要</h2>
+              <h2 className="brand-title text-lg sm:text-xl mb-6 sm:mb-8">訂單摘要</h2>
               {/* Product List */}
               <div className="space-y-4 mb-6">
                 {items.map((item) => (

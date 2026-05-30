@@ -26,8 +26,8 @@ function ErrorContent() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <XCircle className="w-12 h-12 text-red-400 mx-auto" />
-          <h2 className="text-xl text-moon-accent tracking-widest">付款未完成</h2>
-          <p className="text-xs text-moon-muted tracking-wider">PAYMENT FAILED</p>
+          <h2 className="brand-title text-xl">付款未完成</h2>
+          <p className="brand-eyebrow">PAYMENT FAILED</p>
         </div>
 
         <div className="border border-red-400/20 p-5 space-y-3 bg-red-400/5">

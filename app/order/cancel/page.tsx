@@ -14,8 +14,8 @@ function CancelContent() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <XCircle className="w-12 h-12 text-moon-muted mx-auto" />
-          <h2 className="text-xl text-moon-accent tracking-widest">已取消付款</h2>
-          <p className="text-xs text-moon-muted tracking-wider">PAYMENT CANCELLED</p>
+          <h2 className="brand-title text-xl">已取消付款</h2>
+          <p className="brand-eyebrow">PAYMENT CANCELLED</p>
         </div>
 
         <div className="border border-moon-border/30 p-5 space-y-3 bg-moon-dark/40">

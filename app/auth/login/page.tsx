@@ -73,11 +73,11 @@ export default function LoginPage() {
             <div className="w-full max-w-md space-y-8">
                 <div className="text-center space-y-2">
                     <Link href="/" className="inline-block">
-                        <h1 className="text-3xl font-light text-moon-accent tracking-widest hover:opacity-80 transition-opacity">
+                        <h1 className="brand-display text-3xl hover:opacity-80 transition-opacity">
                             MOON MOON
                         </h1>
                     </Link>
-                    <p className="text-moon-muted text-sm tracking-wide">
+                    <p className="brand-subtitle">
                         會員登入 / 註冊
                     </p>
                 </div>

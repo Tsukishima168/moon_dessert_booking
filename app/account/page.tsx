@@ -221,8 +221,8 @@ export default function AccountPage() {
       <header className="sticky top-0 z-10 border-b border-moon-border bg-moon-black/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-moon-muted">Moon Passport</p>
-            <h1 className="mt-2 text-2xl font-light tracking-wider text-moon-accent">
+            <p className="brand-eyebrow">Moon Passport</p>
+            <h1 className="mt-2 text-2xl brand-title">
               會員中心
             </h1>
           </div>
