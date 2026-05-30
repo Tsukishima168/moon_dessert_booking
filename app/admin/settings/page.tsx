@@ -5,6 +5,7 @@ import { Settings, Save, Calendar, Clock, DollarSign } from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
 import { LoadingState } from '@/components/shared/loading-state';
 import { PageHeader } from '@/components/shared/page-header';
+import ExtendedSettings from '@/components/admin/settings/ExtendedSettings';
 
 interface ReservationRules {
     min_advance_days: number;
@@ -387,6 +388,11 @@ export default function SettingsPage() {
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* 進階業務設定（鞏固式補全：店家資訊／付款／配送／訂單規則／通知／營業時間）*/}
+                <div className="mt-6">
+                    <ExtendedSettings />
                 </div>
             </div>
         </div>
