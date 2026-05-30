@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -43,6 +43,20 @@ export default function Navbar() {
   }, []);
 
   const totalItems = hasHydrated ? getTotalItems() : 0;
+
+  // 加入購物車時徽章彈跳（僅在數量增加時，跳過初次 hydration）
+  const [cartBump, setCartBump] = useState(false);
+  const prevItemsRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hasHydrated) return;
+    if (prevItemsRef.current !== null && totalItems > prevItemsRef.current) {
+      setCartBump(true);
+      const t = setTimeout(() => setCartBump(false), 420);
+      prevItemsRef.current = totalItems;
+      return () => clearTimeout(t);
+    }
+    prevItemsRef.current = totalItems;
+  }, [totalItems, hasHydrated]);
 
   const handleLogout = async () => {
     try {
@@ -153,7 +167,7 @@ export default function Navbar() {
                 </div>
 
                 {totalItems > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-moon-accent text-[10px] font-bold text-moon-black sm:-right-2 sm:-top-2 sm:h-6 sm:w-6 sm:text-xs">
+                  <span className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-moon-accent text-[10px] font-bold text-moon-black sm:-right-2 sm:-top-2 sm:h-6 sm:w-6 sm:text-xs ${cartBump ? 'animate-cart-bump' : ''}`}>
                     {totalItems}
                   </span>
                 )}

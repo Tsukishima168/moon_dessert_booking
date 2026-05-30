@@ -189,7 +189,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                         <button
                             onClick={handleAddToCart}
                             className={`flex items-center gap-1.5 text-[11px] tracking-widest px-3 py-2 transition-all whitespace-nowrap ${added
-                                    ? 'bg-green-500/20 text-green-400 border border-green-500/40'
+                                    ? 'bg-green-500/20 text-green-400 border border-green-500/40 animate-added-pop'
                                     : 'bg-moon-accent text-moon-black hover:bg-moon-text'
                                 }`}
                         >

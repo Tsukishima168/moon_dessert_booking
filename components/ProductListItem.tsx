@@ -17,6 +17,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
   const [selectedVariant, setSelectedVariant] = useState(item.variants[0]);
   const [quantity, setQuantity] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [added, setAdded] = useState(false);
 
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
@@ -43,7 +44,11 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
       });
     }
     setQuantity(1);
-    setIsExpanded(false); // 加入後自動收合
+    setAdded(true);
+    setTimeout(() => {
+      setAdded(false);
+      setIsExpanded(false); // 顯示加入回饋後自動收合
+    }, 1100);
   };
 
   // 是否為純展示（例如飲料）
@@ -101,7 +106,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
 
       {/* 展開狀態 - 完整資訊 */}
       {isExpanded && (
-        <div className="px-4 pb-4 bg-moon-dark/50">
+        <div className="px-4 pb-4 bg-moon-dark/50 animate-fadeIn">
           {/* 商品圖片 */}
           <div className="relative aspect-square w-full bg-moon-gray mb-4 overflow-hidden">
             {item.image_url && item.image_url.trim() !== '' ? (
@@ -170,14 +175,14 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
               <div className="flex items-center border border-moon-border">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-2 hover:bg-moon-border transition-colors"
+                  className="p-3 hover:bg-moon-border transition-colors"
                 >
                   <Minus size={14} className="text-moon-text" />
                 </button>
                 <span className="px-4 text-sm text-moon-text flex-1 text-center">{quantity}</span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="p-2 hover:bg-moon-border transition-colors"
+                  className="p-3 hover:bg-moon-border transition-colors"
                 >
                   <Plus size={14} className="text-moon-text" />
                 </button>
@@ -186,9 +191,13 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
               {/* 加入購物車按鈕 */}
               <button
                 onClick={handleAddToCart}
-                className="w-full sm:flex-1 bg-moon-accent text-moon-black py-2.5 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors"
+                disabled={added}
+                className={`w-full sm:flex-1 py-3 text-xs sm:text-sm tracking-widest transition-colors ${added
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/40 animate-added-pop'
+                  : 'bg-moon-accent text-moon-black hover:bg-moon-text'
+                  }`}
               >
-                加入購物車 ${selectedVariant?.price ? selectedVariant.price * quantity : ''}
+                {added ? '✓ 已加入購物車' : `加入購物車 $${selectedVariant?.price ? selectedVariant.price * quantity : ''}`}
               </button>
             </div>
           )}
