@@ -122,3 +122,70 @@ export async function fetchTemplate(id: string): Promise<PushTemplate | null> {
     .maybeSingle()
   return (data as PushTemplate | null) ?? null
 }
+
+// ── 活動（campaigns）─────────────────────────────────────────
+export interface Campaign {
+  id: string
+  title: string
+  description: string | null
+  type: string
+  status: string
+  target_audience: string | null
+  scheduled_at: string | null
+  template_id: string | null
+  sent_count: number | null
+}
+
+/** 撈「已排程、type=email、已到期」的活動 */
+export async function fetchDueEmailCampaigns(): Promise<Campaign[]> {
+  const db = createAdminClient()
+  const { data } = await db
+    .from('campaigns')
+    .select('*')
+    .eq('status', 'scheduled')
+    .eq('type', 'email')
+    .lte('scheduled_at', new Date().toISOString())
+  return (data as Campaign[] | null) ?? []
+}
+
+export async function fetchCampaign(id: string): Promise<Campaign | null> {
+  const db = createAdminClient()
+  const { data } = await db.from('campaigns').select('*').eq('id', id).maybeSingle()
+  return (data as Campaign | null) ?? null
+}
+
+export async function markCampaignSent(id: string, sentCount: number): Promise<void> {
+  const db = createAdminClient()
+  await db
+    .from('campaigns')
+    .update({ status: 'completed', sent_at: new Date().toISOString(), sent_count: sentCount })
+    .eq('id', id)
+}
+
+/** 所有曾下單顧客的 email（去重）。分眾 target_audience 之後再擴充 */
+export async function getCustomerEmails(): Promise<string[]> {
+  const db = createAdminClient()
+  const { data } = await db.from('orders').select('email').not('email', 'is', null)
+  return Array.from(new Set((data ?? []).map((r) => r.email as string).filter(Boolean)))
+}
+
+// ── 自動化規則（marketing_automation_rules）──────────────────
+export interface MarketingRule {
+  id: string
+  title: string
+  trigger_type: string
+  delay_minutes: number
+  channels: string[]
+  is_active: boolean
+  template_id: string | null
+}
+
+export async function fetchActiveRules(trigger: string): Promise<MarketingRule[]> {
+  const db = createAdminClient()
+  const { data } = await db
+    .from('marketing_automation_rules')
+    .select('*')
+    .eq('trigger_type', trigger)
+    .eq('is_active', true)
+  return (data as MarketingRule[] | null) ?? []
+}

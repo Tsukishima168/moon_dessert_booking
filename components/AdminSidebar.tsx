@@ -18,6 +18,9 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  Bell,
+  Megaphone,
+  Zap,
 } from 'lucide-react';
 
 interface NavItem {
@@ -76,16 +79,22 @@ const operationsNavItems: NavItem[] = [
     href: '/admin/email-templates',
     icon: <Mail size={20} />,
   },
-  // ── 幽靈系統：已從選單隱藏（2026-05-30）──────────────────────────────
-  // 以下三項有 UI / 表 / CRUD，但 runtime 沒有任何執行端，建資料不會有效果：
-  //   推送模板 push-templates        → 無推播供應商（web-push / FCM / Expo 皆未接）
-  //   行銷活動 campaigns             → 無發送器 / 排程
-  //   自動化行銷 marketing-automation → 無規則執行器
-  // 頁面與 API 仍保留，可由 URL 直達；待「接真 or 砍」決策後再處理。
-  // 還原方式：取消下列註解，並把 Bell / Megaphone / Zap 加回 lucide-react import。
-  // { label: '推送模板',  href: '/admin/push-templates',       icon: <Bell size={20} /> },
-  // { label: '行銷活動',  href: '/admin/campaigns',            icon: <Megaphone size={20} /> },
-  // { label: '自動化行銷', href: '/admin/marketing-automation', icon: <Zap size={20} /> },
+  // ── 行銷系統（2026-05-31 接真：Email 通道 + 行銷同意/退訂機制）──────
+  {
+    label: '推送模板',
+    href: '/admin/push-templates',
+    icon: <Bell size={20} />,
+  },
+  {
+    label: '行銷活動',
+    href: '/admin/campaigns',
+    icon: <Megaphone size={20} />,
+  },
+  {
+    label: '自動化行銷',
+    href: '/admin/marketing-automation',
+    icon: <Zap size={20} />,
+  },
   {
     label: 'Discord 設置',
     href: '/admin/discord-settings',

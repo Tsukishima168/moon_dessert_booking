@@ -23,6 +23,7 @@ import {
   handleOrderCreatedEmail,
   handleOrderStatusUpdatedEmail,
 } from '@/src/modules/notifications/email.handler';
+import { handleOrderCreatedAutomation } from '@/src/modules/marketing/automation.handler';
 // import { handleOrderCreated as handleOrderBadge } from '@/src/modules/gamification/badge.handler';
 // import { handleOrderPaid } from '@/src/modules/marketing/promo.handler';
 // import { handleOrderCompleted } from '@/src/modules/passport/stamp.handler';
@@ -56,6 +57,7 @@ export function registerAllEventHandlers(): void {
   EventBus.on('order.created', handleOrderCreatedNotifications); // → 店家 Discord
   EventBus.on('order.created', handleOrderCreatedEmail);   // → 訂單確認信
   EventBus.on('order.created', handleOrderCreatedUserEvent); // → user_events 行為追蹤
+  EventBus.on('order.created', handleOrderCreatedAutomation); // → 行銷自動化（order 觸發規則）
   // EventBus.on('order.created', handleOrderBadge);     // → 觸發勳章解鎖檢查
 
   EventBus.on('order.status_updated', handleOrderStatusUpdatedEmail); // → ready/cancelled 狀態通知信

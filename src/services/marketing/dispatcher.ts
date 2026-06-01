@@ -55,7 +55,10 @@ export async function sendViaChannel(
   opts: { unsubscribeToken: string }
 ): Promise<DispatchResult> {
   if (channel === 'email') {
-    const html = withUnsubscribeFooter(rendered.html, opts.unsubscribeToken)
+    // 真顧客（已同意）一定有 token → 附退訂頁尾；測試信無 token → 不附
+    const html = opts.unsubscribeToken
+      ? withUnsubscribeFooter(rendered.html, opts.unsubscribeToken)
+      : rendered.html
     const ok = await sendEmail(to, rendered.subject, html)
     return { ok, channel, reason: ok ? undefined : 'send_failed' }
   }
