@@ -265,14 +265,17 @@ export default function CheckoutPage() {
     void resolveCheckoutSession();
 
     // 2. 監聽 Auth 狀態變更
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         const { id, email } = session.user;
         setLoggedInUser({ email: email || '', id });
         setAuthStatus('authenticated');
         setAuthMessage('會員資料已同步，姓名 / 電話 / Email 會自動帶入。');
         void loadUserProfile(email || '');
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        // 只有「明確登出」才降級為訪客；忽略 INITIAL_SESSION / null 事件，
+        // 避免覆蓋掉 resolveCheckoutSession 透過 server cookie 確認的登入狀態
+        // （passport SSO 登入只設 server cookie，client localStorage 可能沒有 session）。
         setLoggedInUser(null);
         setAuthStatus('guest');
         setAuthMessage('尚未登入也可以下單；若要自動帶入會員資料，請先登入。');
