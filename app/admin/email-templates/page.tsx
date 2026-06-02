@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, Eye, X, Copy, Check, AlertCircle, Bold, Italic, List, Link as LinkIcon } from 'lucide-react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 
@@ -104,7 +104,7 @@ const EMPTY_FORM = {
 };
 
 // ── Tiptap Toolbar ─────────────────────────────────────────────
-function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+function EditorToolbar({ editor }: { editor: Editor | null }) {
     if (!editor) return null;
 
     const setLink = () => {
@@ -188,6 +188,7 @@ export default function EmailTemplatesPage() {
             StarterKit,
             Link.configure({ openOnClick: false }),
         ],
+        immediatelyRender: false,
         content: '',
         editorProps: {
             attributes: {
