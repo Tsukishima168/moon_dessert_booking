@@ -165,6 +165,12 @@ export const metadata: Metadata = {
   verification: {
     google: '2RFBMYJ30DsIGKJ9nRS1286s4lbJNFMOsK7s_QDQhSs',
   },
+
+  icons: {
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+    shortcut: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+  },
 };
 
 export default function RootLayout({
