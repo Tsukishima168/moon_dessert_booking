@@ -5,7 +5,8 @@ import {
   getCustomerEmails,
   filterConsented,
   ensureUnsubscribeToken,
-  alreadySent,
+  claimCampaignSend,
+  completeCampaignSend,
   logSend,
   type Campaign,
 } from '@/src/repositories/marketing.repository'
@@ -14,9 +15,14 @@ import { renderTemplate, sendViaChannel } from './dispatcher'
 /**
  * 行銷活動引擎（Service 層）
  * - 收件人一律先過「已同意」(filterConsented)；test 模式只寄給指定測試信箱。
- * - idempotency：同 campaign 對同 email 只寄一次（alreadySent）。
+ * - idempotency：同 campaign 對同 email 先 claim 再寄送，避免並發重複寄送。
  * - 內容：優先 template_id（push_templates），否則用 campaign 標題/描述。
  */
+
+function isSupportedTargetAudience(targetAudience: string | null): boolean {
+  const normalized = targetAudience?.trim().toLowerCase()
+  return !normalized || normalized === 'all'
+}
 
 async function resolveContent(c: Campaign): Promise<{ subject: string; body: string }> {
   if (c.template_id) {
@@ -39,6 +45,13 @@ export async function runCampaign(
   c: Campaign,
   opts?: { testEmail?: string }
 ): Promise<CampaignRunResult> {
+  if (!opts?.testEmail && !isSupportedTargetAudience(c.target_audience)) {
+    console.warn(
+      `[marketing/campaign] Campaign ${c.id} has unsupported target_audience="${c.target_audience}". Skipping send.`
+    )
+    return { sent: 0, skipped: 0, failed: 0 }
+  }
+
   const { subject, body } = await resolveContent(c)
 
   const recipients = opts?.testEmail
@@ -50,21 +63,45 @@ export async function runCampaign(
   let failed = 0
 
   for (const email of recipients) {
-    if (!opts?.testEmail && (await alreadySent(c.id, email))) {
-      skipped++
-      continue
+    if (!opts?.testEmail) {
+      const claimed = await claimCampaignSend(c.id, email)
+      if (!claimed) {
+        skipped++
+        continue
+      }
     }
-    const token = (await ensureUnsubscribeToken(email)) ?? ''
-    const result = await sendViaChannel('email', email, { subject, html: body }, { unsubscribeToken: token })
-    await logSend({
-      campaign_id: opts?.testEmail ? null : c.id,
-      email,
-      channel: 'email',
-      status: result.ok ? 'sent' : 'failed',
-      error: result.reason ?? null,
-    })
-    if (result.ok) sent++
-    else failed++
+
+    try {
+      const token = (await ensureUnsubscribeToken(email)) ?? ''
+      const result = await sendViaChannel('email', email, { subject, html: body }, { unsubscribeToken: token })
+      if (!opts?.testEmail) {
+        await completeCampaignSend(c.id, email, result.ok ? 'sent' : 'failed', result.reason ?? null)
+      } else {
+        await logSend({
+          campaign_id: null,
+          email,
+          channel: 'email',
+          status: result.ok ? 'sent' : 'failed',
+          error: result.reason ?? null,
+        })
+      }
+      if (result.ok) sent++
+      else failed++
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      if (!opts?.testEmail) {
+        await completeCampaignSend(c.id, email, 'failed', reason)
+      } else {
+        await logSend({
+          campaign_id: null,
+          email,
+          channel: 'email',
+          status: 'failed',
+          error: reason,
+        })
+      }
+      failed++
+    }
   }
 
   if (!opts?.testEmail) await markCampaignSent(c.id, sent)

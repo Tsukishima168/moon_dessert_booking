@@ -4,6 +4,27 @@ import { createAdminClient } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
+function isValidTemplateId(value: unknown): value is string | null | undefined {
+    return value === undefined || value === null || typeof value === 'string';
+}
+
+function normalizeTemplateId(value: string | null | undefined) {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed === '' ? null : trimmed;
+    }
+
+    return value;
+}
+
+function normalizeTargetAudience(value: unknown): string | null {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'string') throw new Error('Invalid target_audience');
+    const normalized = value.trim().toLowerCase();
+    if (!normalized || normalized === 'all') return normalized || null;
+    throw new Error('Invalid target_audience');
+}
+
 export async function GET(req: NextRequest) {
     try {
         if (!(await ensureAdmin())) {
@@ -43,10 +64,19 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { title, description, type, status, target_audience, scheduled_at } = body;
+        const { title, description, type, status, target_audience, scheduled_at, template_id } = body;
+        let normalizedTargetAudience: string | null;
 
         if (!title || !type) {
             return NextResponse.json({ error: 'title and type are required' }, { status: 400 });
+        }
+        if (!isValidTemplateId(template_id)) {
+            return NextResponse.json({ error: 'Invalid template_id' }, { status: 400 });
+        }
+        try {
+            normalizedTargetAudience = normalizeTargetAudience(target_audience);
+        } catch {
+            return NextResponse.json({ error: 'Invalid target_audience' }, { status: 400 });
         }
 
         const ALLOWED_TYPES = ['email', 'push', 'sms'];
@@ -67,8 +97,9 @@ export async function POST(req: NextRequest) {
                 description: description ?? null,
                 type,
                 status: status ?? 'draft',
-                target_audience: target_audience ?? null,
+                target_audience: normalizedTargetAudience,
                 scheduled_at: scheduled_at ?? null,
+                template_id: normalizeTemplateId(template_id) ?? null,
             })
             .select()
             .single();

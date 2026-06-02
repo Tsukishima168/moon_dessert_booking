@@ -11,6 +11,7 @@ import {
   normalizeMenuItemAvailabilityResult,
   type MenuItemAvailabilitySettings,
 } from '@/src/lib/menu-availability'
+import { getDeliverySettings, getOrderRules } from '@/src/services/settings.service'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -122,12 +123,22 @@ function extractPickupDate(pickupTime: string): string {
   return match[1]
 }
 
+function normalizeDeliveryMethod(
+  deliveryMethod: string | undefined
+): 'pickup' | 'delivery' {
+  if (deliveryMethod === 'delivery') return 'delivery'
+  if (deliveryMethod === undefined || deliveryMethod === 'pickup') return 'pickup'
+  throw new OrderValidationError('取貨方式不正確')
+}
+
 function calculateDeliveryFee(
   deliveryMethod: string | undefined,
-  subtotal: number
+  subtotal: number,
+  deliveryFee: number,
+  freeDeliveryThreshold: number
 ): number {
   if (deliveryMethod !== 'delivery') return 0
-  return subtotal >= 2000 ? 0 : 150
+  return freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold ? 0 : deliveryFee
 }
 
 async function recalculateOrderPricing(items: OrderItem[]) {
@@ -224,20 +235,9 @@ async function recalculateOrderPricing(items: OrderItem[]) {
 
 async function validateOrderAvailability(
   pickupTime: string,
-  deliveryMethod: string | undefined,
+  normalizedDeliveryMethod: 'pickup' | 'delivery',
   items: CanonicalOrderItem[]
 ): Promise<'pickup' | 'delivery'> {
-  const normalizedDeliveryMethod =
-    deliveryMethod === 'delivery'
-      ? 'delivery'
-      : deliveryMethod === undefined || deliveryMethod === 'pickup'
-        ? 'pickup'
-        : null
-
-  if (!normalizedDeliveryMethod) {
-    throw new OrderValidationError('取貨方式不正確')
-  }
-
   const pickupDate = extractPickupDate(pickupTime)
   const adminClient = createAdminClient()
 
@@ -490,13 +490,37 @@ export async function createOrder(
   }
 
   const { canonicalItems, subtotal } = await recalculateOrderPricing(input.items)
-  const normalizedDeliveryMethod = await validateOrderAvailability(
+  const [deliverySettings, orderRules] = await Promise.all([
+    getDeliverySettings(),
+    getOrderRules(),
+  ])
+
+  if (orderRules.minimum_order_amount > 0 && subtotal < orderRules.minimum_order_amount) {
+    throw new OrderValidationError(
+      `本店最低消費金額為 $${orderRules.minimum_order_amount}`
+    )
+  }
+
+  const normalizedDeliveryMethod = normalizeDeliveryMethod(input.delivery_method)
+  if (normalizedDeliveryMethod === 'pickup' && !deliverySettings.pickup_available) {
+    throw new OrderValidationError('目前未開放門市自取')
+  }
+  if (normalizedDeliveryMethod === 'delivery' && !deliverySettings.delivery_available) {
+    throw new OrderValidationError('目前未開放宅配')
+  }
+
+  await validateOrderAvailability(
     input.pickup_time,
-    input.delivery_method,
+    normalizedDeliveryMethod,
     canonicalItems
   )
 
-  const deliveryFee = calculateDeliveryFee(normalizedDeliveryMethod, subtotal)
+  const deliveryFee = calculateDeliveryFee(
+    normalizedDeliveryMethod,
+    subtotal,
+    deliverySettings.delivery_fee,
+    deliverySettings.free_delivery_threshold
+  )
 
   let promoCode: string | null = null
   let discountAmount = 0

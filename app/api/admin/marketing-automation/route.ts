@@ -4,6 +4,19 @@ import { createAdminClient } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
+function isValidTemplateId(value: unknown): value is string | null | undefined {
+    return value === undefined || value === null || typeof value === 'string';
+}
+
+function normalizeTemplateId(value: string | null | undefined) {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed === '' ? null : trimmed;
+    }
+
+    return value;
+}
+
 export async function GET(req: NextRequest) {
     try {
         if (!(await ensureAdmin())) {
@@ -35,10 +48,13 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { title, trigger_type, delay_minutes, channels, is_active } = body;
+        const { title, trigger_type, delay_minutes, channels, is_active, template_id } = body;
 
         if (!title || !trigger_type) {
             return NextResponse.json({ error: 'title and trigger_type are required' }, { status: 400 });
+        }
+        if (!isValidTemplateId(template_id)) {
+            return NextResponse.json({ error: 'Invalid template_id' }, { status: 400 });
         }
 
         const ALLOWED_TRIGGERS = ['order', 'birthday', 'inactive'];
@@ -55,6 +71,7 @@ export async function POST(req: NextRequest) {
                 delay_minutes: delay_minutes ?? 0,
                 channels: channels ?? [],
                 is_active: is_active ?? true,
+                template_id: normalizeTemplateId(template_id) ?? null,
             })
             .select()
             .single();

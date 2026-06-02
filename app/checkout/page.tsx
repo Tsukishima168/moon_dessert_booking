@@ -322,6 +322,10 @@ export default function CheckoutPage() {
 
   const watchedDeliveryMethod = watch('delivery_method') as 'pickup' | 'delivery';
   const deliveryMethod = watchedDeliveryMethod || 'pickup';
+  const pickupAvailable = deliveryConfig?.pickup_available ?? true;
+  const deliveryAvailable = deliveryConfig?.delivery_available ?? true;
+  const hasAvailableDeliveryMethod = pickupAvailable || deliveryAvailable;
+  const bankTransferAvailable = paymentConfig?.bank_transfer ?? true;
   const watchedPickupDate = watch('pickup_date');
   const watchedPickupTime = watch('pickup_time');
   const watchedPickupDateRef = useRef(watchedPickupDate);
@@ -341,6 +345,19 @@ export default function CheckoutPage() {
       setValue('delivery_district', '');
     }
   }, [deliveryMethod, setValue]);
+
+  useEffect(() => {
+    if (!deliveryConfig) return;
+
+    if (deliveryMethod === 'pickup' && !pickupAvailable && deliveryAvailable) {
+      setValue('delivery_method', 'delivery', { shouldDirty: true, shouldValidate: true });
+      return;
+    }
+
+    if (deliveryMethod === 'delivery' && !deliveryAvailable && pickupAvailable) {
+      setValue('delivery_method', 'pickup', { shouldDirty: true, shouldValidate: true });
+    }
+  }, [deliveryConfig, deliveryMethod, deliveryAvailable, pickupAvailable, setValue]);
 
   // 產生格子日期列表（今天 + minDays 開始，到 maxDays 截止）
   useEffect(() => {
@@ -470,6 +487,19 @@ export default function CheckoutPage() {
 
   // 提交訂單
   const onSubmit = async (data: CheckoutFormData) => {
+    if (!hasAvailableDeliveryMethod) {
+      alert('目前未開放自取或宅配，請稍後再試。');
+      return;
+    }
+    if (data.delivery_method === 'pickup' && !pickupAvailable) {
+      alert('目前未開放門市自取，請改選宅配。');
+      return;
+    }
+    if (data.delivery_method === 'delivery' && !deliveryAvailable) {
+      alert('目前未開放宅配，請改選門市自取。');
+      return;
+    }
+
     if (minOrderAmount > 0 && totalPrice < minOrderAmount) {
       alert(`本店最低消費金額為 $${minOrderAmount}（目前小計 $${totalPrice}），請再加購後送出。`);
       return;
@@ -600,15 +630,18 @@ export default function CheckoutPage() {
 
         if (data.delivery_notes) msg += `\n備註：${data.delivery_notes}`;
 
-        msg += `\n\n付款方式：\n`;
-        msg += `LINE Bank (${paymentConfig?.bank_code ?? '824'}) ${paymentConfig?.bank_name ?? '連線商業銀行'}\n`;
-        msg += `帳號：${paymentConfig?.bank_account ?? '111007479473'}\n`;
-        msg += `備註欄請填寫：${newOrderId}\n`;
-        msg += `\n付款完成後請回傳「後五碼」\n`;
-        msg += `   （轉帳通知中的後五碼數字）`;
+        let lineUrl = '';
+        if (bankTransferAvailable) {
+          msg += `\n\n付款方式：\n`;
+          msg += `LINE Bank (${paymentConfig?.bank_code ?? '824'}) ${paymentConfig?.bank_name ?? '連線商業銀行'}\n`;
+          msg += `帳號：${paymentConfig?.bank_account ?? '111007479473'}\n`;
+          msg += `備註欄請填寫：${newOrderId}\n`;
+          msg += `\n付款完成後請回傳「後五碼」\n`;
+          msg += `   （轉帳通知中的後五碼數字）`;
 
-        const encodedMsg = encodeURIComponent(msg);
-        const lineUrl = `https://line.me/R/oaMessage/@931cxefd/?text=${encodedMsg}`;
+          const encodedMsg = encodeURIComponent(msg);
+          lineUrl = `https://line.me/R/oaMessage/@931cxefd/?text=${encodedMsg}`;
+        }
 
         setOrderId(newOrderId);
         setConfirmedName(data.customer_name);
@@ -799,19 +832,20 @@ export default function CheckoutPage() {
             </button>
           )}
 
-          {/* 轉帳備用方案 */}
-          <div className="border border-moon-border/20 p-4 space-y-2 bg-moon-dark/20">
-            <p className="text-xs text-moon-muted tracking-wider mb-2">— 或改用轉帳 —</p>
-            <p className="text-sm text-moon-text">LINE Bank（{paymentConfig?.bank_code ?? '824'}）{paymentConfig?.bank_name ?? '連線商業銀行'}</p>
-            <p className="text-sm text-moon-text">帳號：{paymentConfig?.bank_account ?? '111007479473'}</p>
-            <p className="text-xs text-moon-muted mt-2">
-              轉帳備註請填寫訂單編號：<span className="text-moon-accent font-mono">{orderId}</span>
-            </p>
-            <p className="text-xs text-moon-muted">完成後請在 LINE 回傳後五碼</p>
-          </div>
+          {bankTransferAvailable && (
+            <div className="border border-moon-border/20 p-4 space-y-2 bg-moon-dark/20">
+              <p className="text-xs text-moon-muted tracking-wider mb-2">— 或改用轉帳 —</p>
+              <p className="text-sm text-moon-text">LINE Bank（{paymentConfig?.bank_code ?? '824'}）{paymentConfig?.bank_name ?? '連線商業銀行'}</p>
+              <p className="text-sm text-moon-text">帳號：{paymentConfig?.bank_account ?? '111007479473'}</p>
+              <p className="text-xs text-moon-muted mt-2">
+                轉帳備註請填寫訂單編號：<span className="text-moon-accent font-mono">{orderId}</span>
+              </p>
+              <p className="text-xs text-moon-muted">完成後請在 LINE 回傳後五碼</p>
+            </div>
+          )}
 
           {/* LINE 訊息按鈕（轉帳用） */}
-          {linePayUrl && (
+          {bankTransferAvailable && linePayUrl && (
             <a
               href={linePayUrl}
               className="flex items-center justify-center gap-2 w-full border border-[#00B900]/40 text-[#00B900] hover:bg-[#00B900]/10 py-3 tracking-widest text-sm transition-colors"
@@ -1037,17 +1071,22 @@ export default function CheckoutPage() {
               <div className="space-y-4">
                 <h3 className="text-sm font-light text-moon-accent border-b border-moon-border pb-2">取貨方式</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <label className={`border p-4 cursor-pointer text-center transition-all ${watchedDeliveryMethod === 'pickup' ? 'border-moon-accent bg-moon-accent/10' : 'border-moon-border'}`}>
-                    <input type="radio" value="pickup" {...register('delivery_method')} className="sr-only" />
+                  <label className={`border p-4 text-center transition-all ${!pickupAvailable ? 'cursor-not-allowed border-moon-border/30 text-moon-muted/40 opacity-50' : watchedDeliveryMethod === 'pickup' ? 'cursor-pointer border-moon-accent bg-moon-accent/10' : 'cursor-pointer border-moon-border'}`}>
+                    <input type="radio" value="pickup" {...register('delivery_method')} disabled={!pickupAvailable} className="sr-only" />
                     <div className="text-xl mb-1">🏪</div>
                     <div className="text-xs">門市自取</div>
+                    {!pickupAvailable && <div className="mt-1 text-[10px] text-moon-muted">暫停開放</div>}
                   </label>
-                  <label className={`border p-4 cursor-pointer text-center transition-all ${watchedDeliveryMethod === 'delivery' ? 'border-moon-accent bg-moon-accent/10' : 'border-moon-border'}`}>
-                    <input type="radio" value="delivery" {...register('delivery_method')} className="sr-only" />
+                  <label className={`border p-4 text-center transition-all ${!deliveryAvailable ? 'cursor-not-allowed border-moon-border/30 text-moon-muted/40 opacity-50' : watchedDeliveryMethod === 'delivery' ? 'cursor-pointer border-moon-accent bg-moon-accent/10' : 'cursor-pointer border-moon-border'}`}>
+                    <input type="radio" value="delivery" {...register('delivery_method')} disabled={!deliveryAvailable} className="sr-only" />
                     <div className="text-xl mb-1">🚚</div>
                     <div className="text-xs">{`宅配 (+$${deliveryConfig?.delivery_fee ?? 150})`}</div>
+                    {!deliveryAvailable && <div className="mt-1 text-[10px] text-moon-muted">暫停開放</div>}
                   </label>
                 </div>
+                {!hasAvailableDeliveryMethod && (
+                  <p className="text-xs text-red-400">目前未開放自取或宅配，請稍後再試。</p>
+                )}
               </div>
 
               {/* Date Selection — 格子選單 */}
@@ -1190,11 +1229,13 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting || isDateValidationPending || isSelectedDateInvalid}
+                disabled={isSubmitting || isDateValidationPending || isSelectedDateInvalid || !hasAvailableDeliveryMethod}
                 className="w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-moon-text transition-colors disabled:opacity-50"
               >
                 {isSubmitting
                   ? '處理中，請稍候...'
+                  : !hasAvailableDeliveryMethod
+                    ? '目前未開放下單'
                   : isDateValidationPending
                     ? '驗證日期中，請稍候...'
                     : isSelectedDateInvalid

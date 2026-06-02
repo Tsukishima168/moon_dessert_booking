@@ -5,6 +5,28 @@ import { createAdminClient } from '@/lib/supabase-admin';
 const ALLOWED_TYPES   = ['email', 'push', 'sms'];
 const ALLOWED_STATUS  = ['draft', 'scheduled', 'active', 'completed', 'paused'];
 
+function isValidTemplateId(value: unknown): value is string | null | undefined {
+    return value === undefined || value === null || typeof value === 'string';
+}
+
+function normalizeTemplateId(value: string | null | undefined) {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed === '' ? null : trimmed;
+    }
+
+    return value;
+}
+
+function normalizeTargetAudience(value: unknown): string | null | undefined {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value !== 'string') throw new Error('Invalid target_audience');
+    const normalized = value.trim().toLowerCase();
+    if (!normalized || normalized === 'all') return normalized || null;
+    throw new Error('Invalid target_audience');
+}
+
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -18,7 +40,8 @@ export async function PATCH(
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
         const body = await req.json();
-        const { title, description, type, status, target_audience, scheduled_at } = body;
+        const { title, description, type, status, target_audience, scheduled_at, template_id } = body;
+        let normalizedTargetAudience: string | null | undefined;
 
         if (type && !ALLOWED_TYPES.includes(type)) {
             return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
@@ -26,14 +49,23 @@ export async function PATCH(
         if (status && !ALLOWED_STATUS.includes(status)) {
             return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
         }
+        if (!isValidTemplateId(template_id)) {
+            return NextResponse.json({ error: 'Invalid template_id' }, { status: 400 });
+        }
+        try {
+            normalizedTargetAudience = normalizeTargetAudience(target_audience);
+        } catch {
+            return NextResponse.json({ error: 'Invalid target_audience' }, { status: 400 });
+        }
 
         const payload: Record<string, unknown> = {};
         if (title           !== undefined) payload.title           = title;
         if (description     !== undefined) payload.description     = description;
         if (type            !== undefined) payload.type            = type;
         if (status          !== undefined) payload.status          = status;
-        if (target_audience !== undefined) payload.target_audience = target_audience;
+        if (target_audience !== undefined) payload.target_audience = normalizedTargetAudience;
         if (scheduled_at    !== undefined) payload.scheduled_at    = scheduled_at;
+        if (template_id     !== undefined) payload.template_id     = normalizeTemplateId(template_id);
 
         const db = createAdminClient();
         const { data, error } = await db

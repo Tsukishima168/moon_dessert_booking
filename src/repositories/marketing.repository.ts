@@ -27,6 +27,8 @@ export interface MarketingSendRecord {
   error?: string | null
 }
 
+const CAMPAIGN_SEND_CLAIM_STALE_MS = 15 * 60 * 1000
+
 // ── 同意 / 退訂 ──────────────────────────────────────────────
 export async function isConsented(email: string): Promise<boolean> {
   const db = createAdminClient()
@@ -99,9 +101,74 @@ export async function alreadySent(campaignId: string, email: string): Promise<bo
   return !!data
 }
 
+function isUniqueConflict(error: { code?: string } | null): boolean {
+  return error?.code === '23505'
+}
+
+export async function claimCampaignSend(campaignId: string, email: string): Promise<boolean> {
+  const db = createAdminClient()
+  const { error } = await db.from('marketing_sends').insert({
+    campaign_id: campaignId,
+    rule_id: null,
+    email,
+    channel: 'email',
+    status: 'sending',
+    error: null,
+    sent_at: new Date().toISOString(),
+  })
+
+  if (!error) return true
+  if (isUniqueConflict(error)) return reclaimStaleCampaignSend(campaignId, email)
+  throw error
+}
+
+async function reclaimStaleCampaignSend(
+  campaignId: string,
+  email: string
+): Promise<boolean> {
+  const db = createAdminClient()
+  const staleBefore = new Date(Date.now() - CAMPAIGN_SEND_CLAIM_STALE_MS).toISOString()
+  const { data, error } = await db
+    .from('marketing_sends')
+    .update({
+      status: 'sending',
+      error: null,
+      sent_at: new Date().toISOString(),
+    })
+    .eq('campaign_id', campaignId)
+    .eq('email', email)
+    .eq('status', 'sending')
+    .lt('sent_at', staleBefore)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw error
+  return !!data
+}
+
+export async function completeCampaignSend(
+  campaignId: string,
+  email: string,
+  status: string,
+  errorMessage?: string | null
+): Promise<void> {
+  const db = createAdminClient()
+  const { error } = await db
+    .from('marketing_sends')
+    .update({
+      status,
+      error: errorMessage ?? null,
+      sent_at: new Date().toISOString(),
+    })
+    .eq('campaign_id', campaignId)
+    .eq('email', email)
+
+  if (error) throw error
+}
+
 export async function logSend(rec: MarketingSendRecord): Promise<void> {
   const db = createAdminClient()
-  await db.from('marketing_sends').insert({
+  const row = {
     campaign_id: rec.campaign_id ?? null,
     rule_id: rec.rule_id ?? null,
     email: rec.email,
@@ -109,7 +176,14 @@ export async function logSend(rec: MarketingSendRecord): Promise<void> {
     status: rec.status,
     error: rec.error ?? null,
     sent_at: new Date().toISOString(),
-  })
+  }
+  const { error } = await db.from('marketing_sends').insert(row)
+
+  if (!error) return
+  if (!isUniqueConflict(error)) throw error
+  if (!rec.campaign_id) return
+
+  await completeCampaignSend(rec.campaign_id, rec.email, rec.status, rec.error)
 }
 
 // ── 範本 ─────────────────────────────────────────────────────

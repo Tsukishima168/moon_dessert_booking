@@ -42,6 +42,16 @@ const EMPTY_FORM: FormState = {
     template_id: '',
 };
 
+const isSupportedTargetAudience = (targetAudience: string | null) => {
+    const normalized = targetAudience?.trim().toLowerCase();
+    return !normalized || normalized === 'all';
+};
+
+const getTargetAudienceLabel = (targetAudience: string | null) => {
+    if (isSupportedTargetAudience(targetAudience)) return '全部已同意顧客';
+    return `不支援分眾：${targetAudience}`;
+};
+
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [templates, setTemplates] = useState<PushTemplate[]>([]);
@@ -96,7 +106,7 @@ export default function CampaignsPage() {
             description: campaign.description ?? '',
             type: campaign.type,
             status: campaign.status,
-            target_audience: campaign.target_audience ?? '',
+            target_audience: campaign.target_audience?.trim().toLowerCase() === 'all' ? 'all' : '',
             scheduled_at: campaign.scheduled_at
                 ? new Date(campaign.scheduled_at).toISOString().slice(0, 16)
                 : '',
@@ -120,7 +130,7 @@ export default function CampaignsPage() {
                 description: form.description.trim() || null,
                 type: form.type,
                 status: form.status,
-                target_audience: form.target_audience.trim() || null,
+                target_audience: form.target_audience === 'all' ? 'all' : null,
                 scheduled_at: form.scheduled_at
                     ? new Date(form.scheduled_at).toISOString()
                     : null,
@@ -322,11 +332,9 @@ export default function CampaignsPage() {
                                             <p className="text-xs text-moon-muted mb-2">{campaign.description}</p>
                                         )}
                                         <div className="flex items-center gap-6 text-xs text-moon-muted">
-                                            {campaign.target_audience && (
-                                                <span className="flex items-center gap-1">
-                                                    <Target size={14} /> {campaign.target_audience}
-                                                </span>
-                                            )}
+                                            <span className={`flex items-center gap-1 ${isSupportedTargetAudience(campaign.target_audience) ? '' : 'text-red-400'}`}>
+                                                <Target size={14} /> {getTargetAudienceLabel(campaign.target_audience)}
+                                            </span>
                                             {campaign.scheduled_at && (
                                                 <span className="flex items-center gap-1">
                                                     <Calendar size={14} />
@@ -455,14 +463,15 @@ export default function CampaignsPage() {
 
                             {/* 發送對象 */}
                             <div>
-                                <label className="block text-xs text-moon-muted mb-1">發送對象</label>
-                                <input
-                                    type="text"
+                                <label className="block text-xs text-moon-muted mb-1">發送對象（目前只支援全部）</label>
+                                <select
                                     value={form.target_audience}
                                     onChange={e => setForm(f => ({ ...f, target_audience: e.target.value }))}
-                                    placeholder="例：所有客戶、VIP 會員"
                                     className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
-                                />
+                                >
+                                    <option value="">全部已同意顧客</option>
+                                    <option value="all">all</option>
+                                </select>
                             </div>
 
                             {/* 排程時間 */}
