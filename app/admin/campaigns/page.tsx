@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, Send, Target, Calendar, Eye, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Send, Target, Calendar, Eye, X, FlaskConical } from 'lucide-react';
 
 interface Campaign {
     id: string;
@@ -16,6 +16,12 @@ interface Campaign {
     created_at: string;
 }
 
+interface PushTemplate {
+    id: string;
+    name: string;
+    template_type: string;
+}
+
 interface FormState {
     title: string;
     description: string;
@@ -23,6 +29,7 @@ interface FormState {
     status: 'draft' | 'scheduled' | 'active' | 'completed' | 'paused';
     target_audience: string;
     scheduled_at: string;
+    template_id: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -32,20 +39,35 @@ const EMPTY_FORM: FormState = {
     status: 'draft',
     target_audience: '',
     scheduled_at: '',
+    template_id: '',
 };
 
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [templates, setTemplates] = useState<PushTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [submitting, setSubmitting] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [testEmailInput, setTestEmailInput] = useState<string>('');
+    const [testingId, setTestingId] = useState<string | null>(null);
+    const [testMsg, setTestMsg] = useState<string>('');
 
     useEffect(() => {
-        fetchCampaigns();
+        void fetchCampaigns();
+        void fetchTemplates();
     }, []);
+
+    const fetchTemplates = async () => {
+        try {
+            const res = await fetch('/api/admin/push-templates');
+            if (!res.ok) return;
+            const data = await res.json();
+            setTemplates(data.templates ?? []);
+        } catch { /* 靜默 */ }
+    };
 
     const fetchCampaigns = async () => {
         try {
@@ -78,6 +100,7 @@ export default function CampaignsPage() {
             scheduled_at: campaign.scheduled_at
                 ? new Date(campaign.scheduled_at).toISOString().slice(0, 16)
                 : '',
+            template_id: (campaign as Campaign & { template_id?: string }).template_id ?? '',
         });
         setShowForm(true);
     };
@@ -101,6 +124,7 @@ export default function CampaignsPage() {
                 scheduled_at: form.scheduled_at
                     ? new Date(form.scheduled_at).toISOString()
                     : null,
+                template_id: form.template_id || null,
             };
 
             const url = editingCampaign
@@ -138,6 +162,31 @@ export default function CampaignsPage() {
     const filteredCampaigns = campaigns.filter(c =>
         statusFilter === 'all' || c.status === statusFilter
     );
+
+    const handleTestSend = async (campaignId: string) => {
+        const email = prompt('測試收件 Email（只寄給這個信箱，不碰真顧客名單）：');
+        if (!email?.trim()) return;
+        setTestingId(campaignId);
+        setTestMsg('');
+        try {
+            const res = await fetch(`/api/admin/campaigns/${campaignId}/send-test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ testEmail: email.trim() }),
+            });
+            const data = await res.json();
+            setTestEmailInput(email.trim());
+            setTestMsg(data.success
+                ? `✅ 測試信已寄至 ${email.trim()}（sent=${data.sent}, failed=${data.failed}）`
+                : `❌ 失敗：${data.error ?? '未知錯誤'}`
+            );
+        } catch (err) {
+            setTestMsg(`❌ 請求失敗：${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+            setTestingId(null);
+            setTimeout(() => setTestMsg(''), 5000);
+        }
+    };
 
     const getStatusColor = (status: string) => {
         const colors: Record<string, string> = {
@@ -293,6 +342,17 @@ export default function CampaignsPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
+                                        {campaign.type === 'email' && (
+                                            <button
+                                                onClick={() => void handleTestSend(campaign.id)}
+                                                disabled={testingId === campaign.id}
+                                                className="flex items-center gap-1 px-2 py-1.5 text-xs border border-blue-400/40 text-blue-400 hover:bg-blue-400/10 rounded transition-colors disabled:opacity-50"
+                                                title="測試寄送（只寄你填的信箱）"
+                                            >
+                                                <FlaskConical size={14} />
+                                                {testingId === campaign.id ? '寄送中...' : '測試'}
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => openEdit(campaign)}
                                             className="p-2 text-moon-muted hover:text-moon-accent hover:bg-moon-accent/10 rounded transition-colors"
@@ -312,6 +372,13 @@ export default function CampaignsPage() {
                     </div>
                 )}
             </div>
+
+            {/* 測試寄送回饋訊息 */}
+            {testMsg && (
+                <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 text-sm z-50 border ${testMsg.startsWith('✅') ? 'border-green-500/40 bg-green-500/10 text-green-400' : 'border-red-500/40 bg-red-500/10 text-red-400'}`}>
+                    {testMsg}
+                </div>
+            )}
 
             {/* ── Modal ── */}
             {showForm && (
@@ -408,6 +475,23 @@ export default function CampaignsPage() {
                                     className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
                                 />
                             </div>
+
+                            {/* Email 範本（type=email 才顯示）*/}
+                            {form.type === 'email' && (
+                                <div>
+                                    <label className="block text-xs text-moon-muted mb-1">Email 範本（推送模板）</label>
+                                    <select
+                                        value={form.template_id}
+                                        onChange={e => setForm(f => ({ ...f, template_id: e.target.value }))}
+                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                    >
+                                        <option value="">— 不使用範本（用活動標題/說明）—</option>
+                                        {templates.filter(t => t.template_type !== 'push').map(t => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         {/* Modal Footer */}

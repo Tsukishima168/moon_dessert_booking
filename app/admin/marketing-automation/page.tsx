@@ -14,11 +14,14 @@ interface AutomationRule {
     created_at: string;
 }
 
+interface PushTemplate { id: string; name: string; }
+
 interface FormState {
     title: string;
     trigger_type: 'order' | 'birthday' | 'inactive';
     delay_minutes: number;
     channels: string[];
+    template_id: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -26,6 +29,7 @@ const EMPTY_FORM: FormState = {
     trigger_type: 'order',
     delay_minutes: 0,
     channels: [],
+    template_id: '',
 };
 
 const CHANNEL_OPTIONS = [
@@ -64,6 +68,7 @@ const TRIGGER_TEMPLATES = [
 
 export default function MarketingAutomationPage() {
     const [rules, setRules] = useState<AutomationRule[]>([]);
+    const [templates, setTemplates] = useState<PushTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editingRule, setEditingRule] = useState<AutomationRule | null>(null);
@@ -71,7 +76,13 @@ export default function MarketingAutomationPage() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        fetchRules();
+        void fetchRules();
+        void (async () => {
+            try {
+                const res = await fetch('/api/admin/push-templates');
+                if (res.ok) setTemplates((await res.json()).templates ?? []);
+            } catch { /* 靜默 */ }
+        })();
     }, []);
 
     const fetchRules = async () => {
@@ -101,6 +112,7 @@ export default function MarketingAutomationPage() {
             trigger_type: rule.trigger_type,
             delay_minutes: rule.delay_minutes,
             channels: rule.channels ?? [],
+            template_id: (rule as AutomationRule & { template_id?: string }).template_id ?? '',
         });
         setShowForm(true);
     };
@@ -129,6 +141,7 @@ export default function MarketingAutomationPage() {
                 trigger_type: form.trigger_type,
                 delay_minutes: form.delay_minutes,
                 channels: form.channels,
+                template_id: form.template_id || null,
             };
 
             const url = editingRule
@@ -442,6 +455,24 @@ export default function MarketingAutomationPage() {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Email 範本 */}
+                            {form.channels.includes('email') && (
+                                <div>
+                                    <label className="block text-xs text-moon-muted mb-1">Email 範本（推送模板）</label>
+                                    <select
+                                        value={form.template_id}
+                                        onChange={e => setForm(f => ({ ...f, template_id: e.target.value }))}
+                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                    >
+                                        <option value="">— 不使用範本 —</option>
+                                        {templates.map(t => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-moon-muted/60 mt-1">須先在「推送模板」建立 Email 範本</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Modal Footer */}
