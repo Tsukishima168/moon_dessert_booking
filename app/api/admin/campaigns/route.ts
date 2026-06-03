@@ -25,6 +25,10 @@ function normalizeTargetAudience(value: unknown): string | null {
     throw new Error('Invalid target_audience');
 }
 
+function serializeCampaign(row: Record<string, unknown>) {
+    return { target_audience: null, ...row };
+}
+
 export async function GET(req: NextRequest) {
     try {
         if (!(await ensureAdmin())) {
@@ -50,7 +54,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ campaigns: data ?? [] });
+        return NextResponse.json({ campaigns: (data ?? []).map(serializeCampaign) });
     } catch (error) {
         console.error('GET /api/admin/campaigns error:', error);
         return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
@@ -65,7 +69,6 @@ export async function POST(req: NextRequest) {
 
         const body = await req.json();
         const { title, description, type, status, target_audience, scheduled_at, template_id } = body;
-        let normalizedTargetAudience: string | null;
 
         if (!title || !type) {
             return NextResponse.json({ error: 'title and type are required' }, { status: 400 });
@@ -74,7 +77,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid template_id' }, { status: 400 });
         }
         try {
-            normalizedTargetAudience = normalizeTargetAudience(target_audience);
+            normalizeTargetAudience(target_audience);
         } catch {
             return NextResponse.json({ error: 'Invalid target_audience' }, { status: 400 });
         }
@@ -97,7 +100,6 @@ export async function POST(req: NextRequest) {
                 description: description ?? null,
                 type,
                 status: status ?? 'draft',
-                target_audience: normalizedTargetAudience,
                 scheduled_at: scheduled_at ?? null,
                 template_id: normalizeTemplateId(template_id) ?? null,
             })
@@ -109,7 +111,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ success: true, data });
+        return NextResponse.json({ success: true, data: serializeCampaign(data) });
     } catch (error) {
         console.error('POST /api/admin/campaigns error:', error);
         return NextResponse.json({ error: 'Failed to create campaign' }, { status: 500 });

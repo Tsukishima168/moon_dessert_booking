@@ -1,11 +1,20 @@
 import { ensureAdmin } from '../../_utils/ensureAdmin';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-admin';
+import {
+    editMenuItem,
+    removeMenuItem,
+} from '@/src/services/menu.service';
 
-// PATCH - 更新菜單項目（如切換上/下架）
-export async function PATCH(
+const isInvalidCategoryError = (error: unknown) =>
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === '23503' &&
+    String((error as { message?: unknown }).message ?? '').includes('menu_items_category_id_fkey');
+
+async function updateMenuItemFromRequest(
     req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    params: Promise<{ id: string }>
 ) {
     try {
         // 檢查認證
@@ -15,38 +24,38 @@ export async function PATCH(
 
         const body = await req.json();
         const { id } = await params;
-
-        const adminClient = createAdminClient();
-        
-        // 準備更新資料，對齊資料庫真實欄位
-        const { id: _, category, image_url, price, variants, is_active, ...cleanData } = body;
-        
-        const finalUpdateData = {
-            ...cleanData,
-            category_id: body.category_id || category,
-            image: body.image || image_url,
-            prices: body.prices || variants || [],
-            is_available: body.is_available !== undefined ? body.is_available : is_active,
-            updated_at: new Date().toISOString(),
-        };
-
-        const { data, error } = await adminClient
-            .from('menu_items')
-            .update(finalUpdateData)
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
+        const data = await editMenuItem({ ...body, id });
 
         return NextResponse.json({ success: true, data });
     } catch (error) {
-        console.error('PATCH /api/admin/menu/[id] error:', error);
+        if (isInvalidCategoryError(error)) {
+            return NextResponse.json(
+                { error: 'Invalid category' },
+                { status: 400 }
+            );
+        }
+        console.error('UPDATE /api/admin/menu/[id] error:', error);
         return NextResponse.json(
             { error: 'Failed to update menu item' },
             { status: 500 }
         );
     }
+}
+
+// PATCH - 更新菜單項目（如切換上/下架）
+export async function PATCH(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    return updateMenuItemFromRequest(req, params);
+}
+
+// PUT - 編輯菜單項目（管理頁表單使用）
+export async function PUT(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    return updateMenuItemFromRequest(req, params);
 }
 
 // DELETE - 刪除菜單項目
@@ -61,14 +70,7 @@ export async function DELETE(
         }
 
         const { id } = await params;
-
-        const adminClient = createAdminClient();
-        const { error } = await adminClient
-            .from('menu_items')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
+        await removeMenuItem(id);
 
         return NextResponse.json({ success: true });
     } catch (error) {

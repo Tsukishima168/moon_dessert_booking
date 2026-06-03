@@ -27,6 +27,10 @@ function normalizeTargetAudience(value: unknown): string | null | undefined {
     throw new Error('Invalid target_audience');
 }
 
+function serializeCampaign(row: Record<string, unknown>) {
+    return { target_audience: null, ...row };
+}
+
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -41,7 +45,6 @@ export async function PATCH(
 
         const body = await req.json();
         const { title, description, type, status, target_audience, scheduled_at, template_id } = body;
-        let normalizedTargetAudience: string | null | undefined;
 
         if (type && !ALLOWED_TYPES.includes(type)) {
             return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
@@ -53,7 +56,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Invalid template_id' }, { status: 400 });
         }
         try {
-            normalizedTargetAudience = normalizeTargetAudience(target_audience);
+            normalizeTargetAudience(target_audience);
         } catch {
             return NextResponse.json({ error: 'Invalid target_audience' }, { status: 400 });
         }
@@ -63,7 +66,6 @@ export async function PATCH(
         if (description     !== undefined) payload.description     = description;
         if (type            !== undefined) payload.type            = type;
         if (status          !== undefined) payload.status          = status;
-        if (target_audience !== undefined) payload.target_audience = normalizedTargetAudience;
         if (scheduled_at    !== undefined) payload.scheduled_at    = scheduled_at;
         if (template_id     !== undefined) payload.template_id     = normalizeTemplateId(template_id);
 
@@ -80,7 +82,7 @@ export async function PATCH(
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ success: true, data });
+        return NextResponse.json({ success: true, data: serializeCampaign(data) });
     } catch (error) {
         console.error('PATCH /api/admin/campaigns/[id] error:', error);
         return NextResponse.json({ error: 'Failed to update campaign' }, { status: 500 });

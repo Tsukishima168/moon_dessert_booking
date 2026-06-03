@@ -13,6 +13,20 @@ const unauthorized = () =>
 const errorMsg = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback
 
+const isInvalidCategoryError = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  (error as { code?: unknown }).code === '23503' &&
+  String((error as { message?: unknown }).message ?? '').includes('menu_items_category_id_fkey')
+
+const menuWriteError = (error: unknown, fallback: string) => {
+  if (isInvalidCategoryError(error)) {
+    return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
+  }
+  return NextResponse.json({ error: fallback }, { status: 500 })
+}
+
 // GET - 取得所有菜單品項
 export async function GET() {
   if (!(await ensureAdmin())) return unauthorized()
@@ -33,14 +47,22 @@ export async function POST(req: NextRequest) {
   if (!(await ensureAdmin())) return unauthorized()
   try {
     const body = await req.json()
-    if (!body.name || !body.category || body.price === undefined) {
+    const hasCategory = Boolean(body.category || body.category_id)
+    const hasPrice =
+      body.price !== undefined ||
+      Array.isArray(body.variants) ||
+      Array.isArray(body.prices)
+    if (!body.name || !hasCategory || !hasPrice) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
     const data = await createMenuItem(body)
     return NextResponse.json({ success: true, data })
   } catch (error) {
+    if (isInvalidCategoryError(error)) {
+      return menuWriteError(error, 'Failed to create menu item')
+    }
     console.error('POST /api/admin/menu error:', error)
-    return NextResponse.json({ error: 'Failed to create menu item' }, { status: 500 })
+    return menuWriteError(error, 'Failed to create menu item')
   }
 }
 
@@ -55,8 +77,11 @@ export async function PUT(req: NextRequest) {
     const data = await editMenuItem(body)
     return NextResponse.json({ success: true, data })
   } catch (error) {
+    if (isInvalidCategoryError(error)) {
+      return menuWriteError(error, 'Failed to update menu item')
+    }
     console.error('PUT /api/admin/menu error:', error)
-    return NextResponse.json({ error: 'Failed to update menu item' }, { status: 500 })
+    return menuWriteError(error, 'Failed to update menu item')
   }
 }
 

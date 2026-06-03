@@ -6,7 +6,7 @@ export interface BannerRow {
   description: string | null
   image_url: string | null
   link_url: string | null
-  link_text: string
+  link_text?: string
   background_color: string
   text_color: string
   is_active: boolean
@@ -22,7 +22,6 @@ export interface InsertBannerPayload {
   description: string | null
   image_url: string | null
   link_url: string | null
-  link_text: string
   background_color: string
   text_color: string
   is_active: boolean
