@@ -19,6 +19,11 @@ import { getLinePayClient, type LinePayRequestBody } from '@/lib/linepay';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 import { getPublicSiteUrl } from '@/src/lib/site-url';
+import { ensureAdmin } from '@/app/api/admin/_utils/ensureAdmin';
+import {
+  canUseLinePay,
+  getPaymentSettings,
+} from '@/src/services/settings.service';
 
 interface RequestItem {
   name: string;
@@ -52,6 +57,18 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const [paymentSettings, isAdmin] = await Promise.all([
+      getPaymentSettings(),
+      ensureAdmin(),
+    ]);
+
+    if (!canUseLinePay(paymentSettings, isAdmin)) {
+      return NextResponse.json(
+        { success: false, message: 'LINE Pay 尚未公開，目前請使用銀行轉帳付款' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { orderId, amount } = body as {
       orderId: string;

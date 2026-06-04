@@ -14,6 +14,7 @@ import {
 import type {
   StoreInfo,
   PaymentSettings,
+  LinePayStatus,
   DeliverySettings,
   OrderRules,
   NotificationSettings,
@@ -33,6 +34,28 @@ const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 const inputCls =
   'w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent';
+
+const LINE_PAY_STATUS_OPTIONS: Array<{
+  value: LinePayStatus;
+  label: string;
+  hint: string;
+}> = [
+  {
+    value: 'hidden',
+    label: '隱藏',
+    hint: '客人看不到 LINE Pay，API 也不接受新付款請求。',
+  },
+  {
+    value: 'internal_test',
+    label: '內部測試',
+    hint: '一般客人看不到；同瀏覽器有後台 session 時可測。',
+  },
+  {
+    value: 'public',
+    label: '正式公開',
+    hint: '所有客人在訂單成立後都可使用 LINE Pay。',
+  },
+];
 
 // ── 共用小元件 ──────────────────────────────────────────────
 function Field({
@@ -199,8 +222,21 @@ function PaymentSection({
           checked={f.methods.line_pay}
           onChange={(v) => setF((p) => ({ ...p, methods: { ...p.methods, line_pay: v } }))}
           label="LINE Pay"
-          hint="需後端已設定 LINE Pay 金鑰才會生效"
+          hint="總開關；仍需下方公開狀態允許才會出現在前台"
         />
+        <Field label="LINE Pay 公開狀態" hint={LINE_PAY_STATUS_OPTIONS.find((o) => o.value === f.line_pay_status)?.hint}>
+          <select
+            className={inputCls}
+            value={f.line_pay_status}
+            onChange={(e) => setF((p) => ({ ...p, line_pay_status: e.target.value as LinePayStatus }))}
+          >
+            {LINE_PAY_STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
     </SectionCard>
   );

@@ -170,6 +170,7 @@ LINE_NOTIFY_TOKEN=
 LINEPAY_CHANNEL_ID=
 LINEPAY_CHANNEL_SECRET=
 # LINEPAY_API_URL=https://sandbox-api-pay.line.me
+# LINEPAY_PUBLIC_STATUS=hidden
 # NEXT_PUBLIC_SITE_URL=https://shop.kiwimu.com
 
 # 匯款資訊（必填）

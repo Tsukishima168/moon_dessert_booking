@@ -73,11 +73,12 @@
    | `LINEPAY_CHANNEL_ID` | LINE Pay 後台取得 |
    | `LINEPAY_CHANNEL_SECRET` | LINE Pay 後台取得 |
    | `LINEPAY_API_URL` | sandbox: `https://sandbox-api-pay.line.me`；正式: `https://api-pay.line.me` |
+   | `LINEPAY_PUBLIC_STATUS` | fallback 公開狀態；預設 `hidden`，可用 `internal_test` / `public` |
    | `NEXT_PUBLIC_SITE_URL` | `https://shop.kiwimu.com` |
    | `PUBLIC_SITE_HOST_ALLOWLIST` | `shop.kiwimu.com` |
 
 3. **仍需真人 / 外部服務封測**
-   - LINE Pay sandbox 實付流程：request → LINE Pay → confirm → `/order/success`
+   - LINE Pay sandbox / 正式小額實付流程：先於後台設為 `internal_test` 或短暫 `public`，再跑 request → LINE Pay → confirm → `/order/success`
    - Resend 正式寄信
    - Discord webhook 正式頻道
    - n8n webhook 部署位置與實際觸發

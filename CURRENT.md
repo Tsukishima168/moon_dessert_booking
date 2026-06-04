@@ -1,5 +1,31 @@
 # CURRENT.md — shop.kiwimu.com
 
+## Snapshot · 2026-06-04
+
+Status: `production 可測；LINE Pay 進入 feature-flag 營運控制`
+
+已完成驗證與收斂：
+- `main` 已與 `origin/main` 對齊於 `f51f61c fix(admin): align menu marketing writes with schema`
+- production `https://shop.kiwimu.com/` 可回應
+- production `/api/menu` 可回應
+- Vercel Production 已設定 `LINEPAY_CHANNEL_ID`、`LINEPAY_CHANNEL_SECRET`、`LINEPAY_API_URL`
+- LINE Pay request / confirm API 已部署
+- 新增 LINE Pay 公開狀態：`hidden` / `internal_test` / `public`
+- 未公告時，LINE Pay 可維持 `hidden` 或 `internal_test`，避免一般客人在訂單成立後看到付款入口
+- `VERIFY.md` 已新增 Shop 固定驗證清單
+
+目前 Blockers / 待真人驗證：
+1. LINE Pay 正式小額或 sandbox 真人 E2E 尚未完成：request → LINE Pay → confirm → `/order/success`
+2. 外部整合仍需真人觀察：Resend、Discord、n8n、GA4 key events
+3. LINE Pay 對外公告前，後台 `line_pay_status` 不應長時間設為 `public`
+
+下一步 gate：
+- 後台確認 `payment_settings.line_pay_status` 為 `hidden` 或 `internal_test`
+- 用同一瀏覽器 admin session 跑一筆內部 LINE Pay 測試訂單
+- 通過後再決定公告與切 `public`
+
+---
+
 ## Snapshot · 2026-04-01
 
 Status: `可驗證交付候選`
@@ -41,4 +67,3 @@ Status: `可驗證交付候選`
 - 實際收件匣收到訂單信
 - 實際 Discord 頻道收到通知
 - 手機端或 LINE 內建瀏覽器完成 checkout 與登入驗證
-

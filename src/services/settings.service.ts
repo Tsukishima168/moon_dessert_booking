@@ -22,12 +22,15 @@ export interface PaymentMethods {
   line_pay: boolean
 }
 
+export type LinePayStatus = 'hidden' | 'internal_test' | 'public'
+
 export interface PaymentSettings {
   bank_name: string
   bank_code: string
   bank_branch: string
   bank_account: string
   account_holder: string
+  line_pay_status: LinePayStatus
   methods: PaymentMethods
 }
 
@@ -68,6 +71,7 @@ const isNumArr = (v: unknown): v is number[] => Array.isArray(v) && v.every(isNu
 const str = (v: unknown, d: string): string => (isStr(v) ? v : d)
 const num = (v: unknown, d: number): number => (isNum(v) ? v : d)
 const bool = (v: unknown, d: boolean): boolean => (isBool(v) ? v : d)
+const LINE_PAY_STATUSES: readonly LinePayStatus[] = ['hidden', 'internal_test', 'public']
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -85,6 +89,25 @@ async function resolveMap(pre?: SettingsMap): Promise<SettingsMap> {
   }
 }
 
+export function isLinePayStatus(value: unknown): value is LinePayStatus {
+  return isStr(value) && LINE_PAY_STATUSES.includes(value as LinePayStatus)
+}
+
+function getDefaultLinePayStatus(): LinePayStatus {
+  const raw = process.env.LINEPAY_PUBLIC_STATUS || process.env.LINE_PAY_PUBLIC_STATUS
+  return isLinePayStatus(raw) ? raw : 'hidden'
+}
+
+export function hasLinePayCredentials(): boolean {
+  return !!process.env.LINEPAY_CHANNEL_ID && !!process.env.LINEPAY_CHANNEL_SECRET
+}
+
+export function canUseLinePay(settings: PaymentSettings, isAdmin: boolean): boolean {
+  if (!hasLinePayCredentials() || !settings.methods.line_pay) return false
+  if (settings.line_pay_status === 'public') return true
+  return settings.line_pay_status === 'internal_test' && isAdmin
+}
+
 // ── Getters ────────────────────────────────────────────────────────
 export async function getStoreInfo(pre?: SettingsMap): Promise<StoreInfo> {
   const raw = asObject((await resolveMap(pre)).store_info)
@@ -100,6 +123,9 @@ export async function getStoreInfo(pre?: SettingsMap): Promise<StoreInfo> {
 export async function getPaymentSettings(pre?: SettingsMap): Promise<PaymentSettings> {
   const raw = asObject((await resolveMap(pre)).payment_settings)
   const methods = asObject(raw.methods)
+  const linePayStatus = isLinePayStatus(raw.line_pay_status)
+    ? raw.line_pay_status
+    : getDefaultLinePayStatus()
   return {
     // 預設值鏡像 lib/notifications.ts 既有的 live fallback，確保 P3 接線後行為不變
     bank_name: str(raw.bank_name, process.env.BANK_NAME || '連線銀行'),
@@ -107,9 +133,10 @@ export async function getPaymentSettings(pre?: SettingsMap): Promise<PaymentSett
     bank_branch: str(raw.bank_branch, process.env.BANK_BRANCH || ''),
     bank_account: str(raw.bank_account, process.env.BANK_ACCOUNT || '111007479473'),
     account_holder: str(raw.account_holder, process.env.ACCOUNT_HOLDER || ''),
+    line_pay_status: linePayStatus,
     methods: {
       bank_transfer: bool(methods.bank_transfer, true),
-      line_pay: bool(methods.line_pay, !!process.env.LINEPAY_CHANNEL_ID),
+      line_pay: bool(methods.line_pay, hasLinePayCredentials()),
     },
   }
 }

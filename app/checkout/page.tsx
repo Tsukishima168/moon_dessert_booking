@@ -68,11 +68,14 @@ interface DeliveryConfig {
   delivery_available: boolean;
   pickup_available: boolean;
 }
+type LinePayStatus = 'hidden' | 'internal_test' | 'public';
 interface PaymentConfig {
   bank_name: string;
   bank_code: string;
   bank_account: string;
   line_pay: boolean;
+  line_pay_status: LinePayStatus;
+  can_use_line_pay: boolean;
   bank_transfer: boolean;
 }
 
@@ -87,15 +90,35 @@ function parseDeliveryConfig(raw: unknown): DeliveryConfig {
     pickup_available: typeof o.pickup_available === 'boolean' ? o.pickup_available : true,
   };
 }
+function parseLinePayStatus(value: unknown): LinePayStatus {
+  return value === 'internal_test' || value === 'public' ? value : 'hidden';
+}
 function parsePaymentConfig(raw: unknown): PaymentConfig {
   const o = isRecord(raw) ? raw : {};
   const m = isRecord(o.methods) ? o.methods : {};
+  const linePayEnabled = typeof m.line_pay === 'boolean' ? m.line_pay : false;
+  const linePayStatus = parseLinePayStatus(o.line_pay_status);
   return {
     bank_name: typeof o.bank_name === 'string' && o.bank_name ? o.bank_name : '連線商業銀行',
     bank_code: typeof o.bank_code === 'string' && o.bank_code ? o.bank_code : '824',
     bank_account: typeof o.bank_account === 'string' && o.bank_account ? o.bank_account : '111007479473',
-    line_pay: typeof m.line_pay === 'boolean' ? m.line_pay : true,
+    line_pay: linePayEnabled,
+    line_pay_status: linePayStatus,
+    can_use_line_pay: linePayEnabled && linePayStatus === 'public',
     bank_transfer: typeof m.bank_transfer === 'boolean' ? m.bank_transfer : true,
+  };
+}
+function mergeLinePayStatus(base: PaymentConfig, raw: unknown): PaymentConfig {
+  const o = isRecord(raw) ? raw : {};
+  const linePayEnabled = typeof o.enabled === 'boolean' ? o.enabled : base.line_pay;
+  const linePayStatus = parseLinePayStatus(o.status);
+  return {
+    ...base,
+    line_pay: linePayEnabled,
+    line_pay_status: linePayStatus,
+    can_use_line_pay: typeof o.can_use_line_pay === 'boolean'
+      ? o.can_use_line_pay
+      : linePayEnabled && linePayStatus === 'public',
   };
 }
 function parseMinOrderAmount(raw: unknown): number {
@@ -308,10 +331,15 @@ export default function CheckoutPage() {
         const response = await fetch('/api/settings');
         if (response.ok) {
           const settings = await response.json();
+          const parsedPaymentConfig = parsePaymentConfig(settings.payment_settings);
           setReservationRules(settings.reservation_rules);
           setDeliveryConfig(parseDeliveryConfig(settings.delivery_settings));
-          setPaymentConfig(parsePaymentConfig(settings.payment_settings));
+          setPaymentConfig(parsedPaymentConfig);
           setMinOrderAmount(parseMinOrderAmount(settings.order_rules));
+          const linePayStatusResponse = await fetch('/api/payment/linepay/status');
+          if (linePayStatusResponse.ok) {
+            setPaymentConfig(mergeLinePayStatus(parsedPaymentConfig, await linePayStatusResponse.json()));
+          }
         }
       } catch (error) {
         console.error('載入預訂規則錯誤:', error);
@@ -699,6 +727,11 @@ export default function CheckoutPage() {
 
   // LINE Pay 付款跳轉
   const handleLinePayRedirect = async () => {
+    if (!paymentConfig?.can_use_line_pay) {
+      alert('LINE Pay 尚未開放，請先使用銀行轉帳付款');
+      return;
+    }
+
     setIsLinePayLoading(true);
     try {
       const res = await fetch('/api/payment/linepay/request', {
@@ -821,8 +854,8 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* LINE Pay 按鈕（可由後台付款設定關閉）*/}
-          {(paymentConfig?.line_pay ?? true) && (
+          {/* LINE Pay 按鈕（由後台付款設定與公開狀態控制）*/}
+          {paymentConfig?.can_use_line_pay && (
             <button
               onClick={handleLinePayRedirect}
               disabled={isLinePayLoading}

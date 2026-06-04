@@ -22,9 +22,10 @@ INSERT INTO business_settings (setting_key, setting_value, description) VALUES
       "bank_branch": "",
       "bank_account": "111007479473",
       "account_holder": "",
+      "line_pay_status": "hidden",
       "methods": { "bank_transfer": true, "line_pay": true }
     }'::jsonb,
-    '付款與匯款: 銀行帳戶資訊、啟用的付款方式 (轉帳 / LINE Pay)。預設值沿用 notifications.ts 既有寫死值'
+    '付款與匯款: 銀行帳戶資訊、啟用的付款方式 (轉帳 / LINE Pay) 與 LINE Pay 公開狀態。預設值沿用 notifications.ts 既有寫死值，LINE Pay 預設 hidden 避免未公告即公開'
   ),
   (
     'order_rules',
