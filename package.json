@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "setup:discord": "bash scripts/setup-discord-env.sh",
-    "export:menu": "node scripts/export-menu-to-csv.mjs"
+    "export:menu": "node scripts/export-menu-to-csv.mjs",
+    "verify:analytics-seo": "node scripts/verify-analytics-seo.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

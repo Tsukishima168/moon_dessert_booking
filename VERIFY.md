@@ -57,6 +57,30 @@ curl -sS https://shop.kiwimu.com/api/payment/linepay/status
 - `/api/settings` HTTP 200。
 - `/api/payment/linepay/status` 回傳 `configured`、`enabled`、`status`、`can_use_line_pay`。
 
+## Analytics / SEO smoke
+
+本檢查不建立訂單、不觸發付款，只驗證 GA4 / Search Console / canonical / robots / JSON-LD 是否出現在可檢查的輸出中。
+
+改版前後本機 build 後跑：
+
+```bash
+npm run build
+npm run verify:analytics-seo -- --profile=local-build
+```
+
+部署後 production 跑：
+
+```bash
+npm run verify:analytics-seo -- --profile=production
+```
+
+標準：
+
+- 首頁需有 canonical、GA4 `G-DM6F27KL8B`、Search Console verification、indexable robots、Bakery JSON-LD。
+- Checkout 需維持 `noindex,nofollow`，避免被搜尋引擎收錄。
+- `robots.txt` 需阻擋 query URL，避免 UTM URL 持續進入 index。
+- 若 production profile 缺 canonical，但 local-build profile 通過，優先判定為 production 尚未部署最新 build。
+
 ## LINE Pay feature flag
 
 LINE Pay 使用三段狀態：

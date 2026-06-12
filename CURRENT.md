@@ -1,5 +1,33 @@
 # CURRENT.md — shop.kiwimu.com
 
+## Snapshot · 2026-06-05
+
+Status: `Shop 數據與 SEO 量測已收斂；production 仍待部署最新 build`
+
+本輪完成：
+- GA4 Shop 事件統一走 `lib/shop-analytics.ts`。
+- `add_to_cart` / `begin_checkout` / `purchase` 都會帶 `site_id=shop` 與 attribution / UTM context。
+- 首頁 attribution 的 `landing_url` 改存 scrub 前原始入口 URL。
+- 新增 `npm run verify:analytics-seo`，可分 `local-build` / `production` profile 驗證。
+
+已完成驗證：
+- `npx tsc --noEmit --pretty false`
+- `npm run lint`（0 errors；既有 13 warnings）
+- `rm -rf .next && npm run build`
+- `npm run verify:analytics-seo -- --profile=local-build`（11 passed / 0 failed）
+
+Production 觀察：
+- `npm run verify:analytics-seo -- --profile=production` 目前 12 passed / 3 failed。
+- 失敗項為首頁 canonical、Bakery JSON-LD、robots query URL block。
+- local build 已產出這些項目，因此 production 問題屬於尚未部署最新 build，而不是本機 source 缺漏。
+- 本輪未執行 production deploy；付款公開狀態未更動。
+
+下一步 gate：
+- 若要修正 production SEO 差距，需要部署 Shop 最新 build 後再跑 production profile。
+- LINE Pay 仍維持公告前 internal test / hidden 策略，不應長時間切 `public`。
+
+---
+
 ## Snapshot · 2026-06-04
 
 Status: `production 可測；LINE Pay 進入 feature-flag 營運控制`

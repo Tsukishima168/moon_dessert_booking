@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 import { MenuItemWithVariants } from '@/lib/supabase';
+import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
 
 interface ProductListItemProps {
@@ -31,18 +32,17 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
     }
 
     openCart();
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'add_to_cart', {
-        currency: 'TWD',
-        value: selectedVariant.price * quantity,
-        items: [{
-          item_id: item.id,
-          item_name: item.name,
-          price: selectedVariant.price,
-          quantity: quantity,
-        }]
-      });
-    }
+    trackShopEvent('add_to_cart', {
+      currency: 'TWD',
+      value: selectedVariant.price * quantity,
+      items: [{
+        item_id: item.id,
+        item_name: item.name,
+        item_variant: selectedVariant.variant_name,
+        price: selectedVariant.price,
+        quantity,
+      }],
+    });
     setQuantity(1);
     setAdded(true);
     setTimeout(() => {

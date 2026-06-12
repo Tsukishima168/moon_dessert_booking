@@ -8,14 +8,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { TAIWAN_CITIES } from '@/lib/taiwan-data';
 import { supabase } from '@/lib/supabase'; // Import Supabase
+import { readShopAttribution, trackShopEvent } from '@/lib/shop-analytics';
 import { getResolvedUser, getServerSessionUser } from '@/lib/client-auth';
 import liff from '@line/liff';
-
-declare global {
-  interface Window {
-    gtag?: (...args: any[]) => void;
-  }
-}
 
 interface CheckoutFormData {
   customer_name: string;
@@ -501,12 +496,7 @@ export default function CheckoutPage() {
   );
 
   const getAttribution = () => {
-    if (typeof window === 'undefined') return {};
-    try {
-      return JSON.parse(localStorage.getItem('moonmoon_attribution') || '{}');
-    } catch {
-      return {};
-    }
+    return readShopAttribution();
   };
 
   useEffect(() => {
@@ -698,21 +688,23 @@ export default function CheckoutPage() {
         setOrderSuccess(true);
         clearCart();
 
-        // 追蹤 GA4 purchase 事件
-        if (typeof window !== 'undefined' && window.gtag) {
-          window.gtag('event', 'purchase', {
-            transaction_id: newOrderId,
-            value: confirmedFinalPrice,
-            currency: 'TWD',
-            items: items.map(item => ({
-              item_name: item.name,
-              item_id: item.id,
-              price: item.price,
-              quantity: item.quantity,
-              item_variant: item.variant_name || '單一規格',
-            }))
-          });
-        }
+        trackShopEvent('purchase', {
+          transaction_id: newOrderId,
+          value: confirmedFinalPrice,
+          currency: 'TWD',
+          coupon: promoCode || undefined,
+          discount: discountAmount || undefined,
+          delivery_method: data.delivery_method,
+          payment_method: 'bank_transfer',
+          shipping: data.delivery_method === 'delivery' ? deliveryFee : 0,
+          items: items.map(item => ({
+            item_name: item.name,
+            item_id: item.id,
+            price: item.price,
+            quantity: item.quantity,
+            item_variant: item.variant_name || '單一規格',
+          })),
+        }, attribution);
 
       } else {
       alert(`訂單失敗：${result.message}`);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
+import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -240,18 +241,19 @@ export default function CartSidebar() {
                 <Link
                   href="/checkout"
                   onClick={() => {
-                    if (typeof window !== 'undefined' && window.gtag) {
-                      window.gtag('event', 'begin_checkout', {
-                        currency: 'TWD',
-                        value: finalPrice,
-                        items: items.map(item => ({
-                          item_id: item.id,
-                          item_name: item.name,
-                          price: item.price,
-                          quantity: item.quantity,
-                        }))
-                      });
-                    }
+                    trackShopEvent('begin_checkout', {
+                      currency: 'TWD',
+                      value: finalPrice,
+                      coupon: promoCode || undefined,
+                      discount: discountAmount || undefined,
+                      items: items.map(item => ({
+                        item_id: item.id,
+                        item_name: item.name,
+                        item_variant: item.variant_name || '單一規格',
+                        price: item.price,
+                        quantity: item.quantity,
+                      })),
+                    });
                     closeCart();
                   }}
                   className="block w-full bg-moon-accent text-moon-black py-3 sm:py-4 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors text-center"

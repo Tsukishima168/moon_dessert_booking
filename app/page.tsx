@@ -11,6 +11,7 @@ import Reveal from '@/components/ui/Reveal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
 import { MenuItemWithVariants, MenuCategory } from '@/lib/supabase';
+import { SHOP_ATTRIBUTION_STORAGE_KEY } from '@/lib/shop-analytics';
 import { AlertCircle, Sparkles, Search, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -102,6 +103,7 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const attributionParams = new URLSearchParams(initialSearch);
+    const originalLandingUrl = `${window.location.origin}${window.location.pathname}${initialSearch}${window.location.hash}`;
     const utm_source = attributionParams.get('utm_source') || null;
     const utm_medium = attributionParams.get('utm_medium') || null;
     const utm_campaign = attributionParams.get('utm_campaign') || null;
@@ -114,7 +116,7 @@ export default function HomePage() {
 
     if (hasAttribution) {
       localStorage.setItem(
-        'moonmoon_attribution',
+        SHOP_ATTRIBUTION_STORAGE_KEY,
         JSON.stringify({
           from: fromSource || null,
           mbti: mbtiType || null,
@@ -123,7 +125,7 @@ export default function HomePage() {
           utm_campaign,
           utm_content,
           utm_term,
-          landing_url: window.location.href,
+          landing_url: originalLandingUrl,
           captured_at: new Date().toISOString(),
         })
       );

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 
 import type { OrderItem } from '@/lib/supabase';
+import { trackShopEvent } from '@/lib/shop-analytics';
 
 interface PurchaseTrackerProps {
   transactionId: string;
@@ -12,7 +13,7 @@ interface PurchaseTrackerProps {
 
 export function PurchaseTracker({ transactionId, value, items }: PurchaseTrackerProps) {
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.gtag || !transactionId) return;
+    if (typeof window === 'undefined' || !transactionId) return;
 
     const storageKey = `shop_purchase_tracked:${transactionId}`;
     try {
@@ -21,10 +22,11 @@ export function PurchaseTracker({ transactionId, value, items }: PurchaseTracker
       // Analytics should still fire if sessionStorage is unavailable.
     }
 
-    window.gtag('event', 'purchase', {
+    trackShopEvent('purchase', {
       transaction_id: transactionId,
       value,
       currency: 'TWD',
+      payment_method: 'line_pay',
       items: items.map((item) => ({
         item_id: item.id,
         item_name: item.name,

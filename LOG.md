@@ -1,5 +1,36 @@
 # LOG.md — shop.kiwimu.com
 
+## 2026-06-05
+
+- 進入下一階段 Shop 數據與 SEO 優化，先處理可量測性，不變更付款公開狀態、不做 production deploy。
+- 新增 `lib/shop-analytics.ts`：
+  - 統一 GA4 `add_to_cart` / `begin_checkout` / `purchase` 事件。
+  - 所有 Shop 事件補 `site_id=shop`、`source_site=shop`。
+  - 從 `moonmoon_attribution` 帶入 `source_from`、`mbti_type`、`utm_*`、`landing_url`。
+- 首頁 attribution 修正：
+  - `landing_url` 改用 scrub 前的 `window.__SHOP_INITIAL_SEARCH__` 重建，避免移除網址列 UTM 後才保存，造成原始入口遺失。
+- 商品與結帳事件修正：
+  - `ProductListItem` / `ProductCard` / `ProductRow` 的 `add_to_cart` 改用共用 helper，補 `item_variant`。
+  - `CartSidebar` 的 `begin_checkout` 補 coupon / discount / item_variant / attribution。
+  - `/checkout` 銀行轉帳建單成功的 `purchase` 補 delivery/payment/coupon/discount/attribution。
+  - LINE Pay `/order/success` 的 `PurchaseTracker` 補 `payment_method=line_pay` 並改用共用 helper。
+- 新增 analytics / SEO smoke：
+  - `scripts/verify-analytics-seo.mjs`
+  - `npm run verify:analytics-seo -- --profile=local-build`
+  - `npm run verify:analytics-seo -- --profile=production`
+- 驗證結果：
+  - `npx tsc --noEmit --pretty false` ✅
+  - `npm run lint` ✅ 0 errors；維持既有 13 warnings。
+  - `rm -rf .next && npm run build` ✅
+  - `npm run verify:analytics-seo -- --profile=local-build` ✅ 11 passed / 0 failed。
+  - local production server `http://127.0.0.1:4141/` 與 `/checkout` 皆回 200；首頁 HTML 可看到 canonical、GA4 ID、GSC verification、Bakery JSON-LD。
+  - `npm run verify:analytics-seo -- --profile=production`：12 passed / 3 failed。
+- Production 差距：
+  - production 首頁目前仍缺 canonical。
+  - production 首頁目前仍缺 Bakery JSON-LD。
+  - production `robots.txt` 尚未阻擋 `/*?*` query URL。
+  - local build 以上三項都已通過，判定為 production 尚未部署最新 Shop build。
+
 ## 2026-06-04
 
 - 啟動五站長期穩定營運策略 Phase 0，先處理 Shop 收入核心。
