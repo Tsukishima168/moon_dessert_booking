@@ -97,7 +97,7 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
 
         {/* 分類標籤 */}
         <div className="absolute top-4 left-4">
-          <span className="text-xs tracking-widest text-moon-muted border border-moon-border bg-moon-black/80 px-3 py-1 backdrop-blur-sm">
+          <span className="text-xs tracking-widest text-moon-muted border border-moon-border bg-moon-black/80 px-3 py-1 backdrop-blur-xs">
             {item.category}
           </span>
         </div>
@@ -109,7 +109,7 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
           {item.name}
         </h3>
 
-        <p className="text-xs sm:text-sm text-moon-muted leading-relaxed mb-4 sm:mb-6 min-h-[2.5rem] sm:min-h-[3rem]">
+        <p className="text-xs sm:text-sm text-moon-muted leading-relaxed mb-4 sm:mb-6 min-h-10 sm:min-h-12">
           {item.description}
         </p>
 

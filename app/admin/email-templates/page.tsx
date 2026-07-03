@@ -192,7 +192,7 @@ export default function EmailTemplatesPage() {
         content: '',
         editorProps: {
             attributes: {
-                class: 'min-h-[280px] p-4 focus:outline-none text-moon-text leading-relaxed',
+                class: 'min-h-[280px] p-4 focus:outline-hidden text-moon-text leading-relaxed',
             },
         },
     });
@@ -448,7 +448,7 @@ export default function EmailTemplatesPage() {
                                             type="text"
                                             value={form.name}
                                             onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                             placeholder="例: 訂單確認郵件"
                                             required
                                         />
@@ -458,7 +458,7 @@ export default function EmailTemplatesPage() {
                                         <select
                                             value={form.type}
                                             onChange={(e) => setForm({ ...form, type: e.target.value as typeof form.type })}
-                                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-none focus:border-moon-accent"
+                                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-hidden focus:border-moon-accent"
                                         >
                                             <option value="order_confirmation">訂單確認</option>
                                             <option value="shipping">出貨通知</option>
@@ -476,7 +476,7 @@ export default function EmailTemplatesPage() {
                                         type="text"
                                         value={form.subject}
                                         onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                         placeholder="例: 您的訂單已確認"
                                         required
                                     />
@@ -489,7 +489,7 @@ export default function EmailTemplatesPage() {
                                         type="text"
                                         value={form.preview_text}
                                         onChange={(e) => setForm({ ...form, preview_text: e.target.value })}
-                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                         placeholder="在收件人列表中顯示的預覽"
                                     />
                                 </div>

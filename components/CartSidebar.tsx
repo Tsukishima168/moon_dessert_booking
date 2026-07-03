@@ -61,7 +61,7 @@ export default function CartSidebar() {
       {/* 背景遮罩 */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/80 z-40 transition-opacity backdrop-blur-sm"
+          className="fixed inset-0 bg-black/80 z-40 transition-opacity backdrop-blur-xs"
           onClick={closeCart}
         />
       )}
@@ -120,7 +120,7 @@ export default function CartSidebar() {
                   >
                     <div className="flex gap-4">
                       {/* 商品圖片 */}
-                      <div className="relative w-20 h-20 flex-shrink-0 bg-moon-gray">
+                      <div className="relative w-20 h-20 shrink-0 bg-moon-gray">
                         {item.image_url ? (
                           <Image
                             src={item.image_url}

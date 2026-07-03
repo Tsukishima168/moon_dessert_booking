@@ -349,7 +349,7 @@ export default function CampaignsPage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         {campaign.type === 'email' && (
                                             <button
                                                 onClick={() => void handleTestSend(campaign.id)}
@@ -415,7 +415,7 @@ export default function CampaignsPage() {
                                     value={form.title}
                                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                                     placeholder="例：夏季甜點優惠"
-                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -427,7 +427,7 @@ export default function CampaignsPage() {
                                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                                     placeholder="活動說明（選填）"
                                     rows={2}
-                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent resize-none"
+                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent resize-none"
                                 />
                             </div>
 
@@ -438,7 +438,7 @@ export default function CampaignsPage() {
                                     <select
                                         value={form.type}
                                         onChange={e => setForm(f => ({ ...f, type: e.target.value as FormState['type'] }))}
-                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                     >
                                         <option value="email">📧 Email</option>
                                         <option value="push">🔔 推送</option>
@@ -450,7 +450,7 @@ export default function CampaignsPage() {
                                     <select
                                         value={form.status}
                                         onChange={e => setForm(f => ({ ...f, status: e.target.value as FormState['status'] }))}
-                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                     >
                                         <option value="draft">草稿</option>
                                         <option value="scheduled">已排程</option>
@@ -467,7 +467,7 @@ export default function CampaignsPage() {
                                 <select
                                     value={form.target_audience}
                                     onChange={e => setForm(f => ({ ...f, target_audience: e.target.value }))}
-                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                 >
                                     <option value="">全部已同意顧客</option>
                                     <option value="all">all</option>
@@ -481,7 +481,7 @@ export default function CampaignsPage() {
                                     type="datetime-local"
                                     value={form.scheduled_at}
                                     onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
-                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -492,7 +492,7 @@ export default function CampaignsPage() {
                                     <select
                                         value={form.template_id}
                                         onChange={e => setForm(f => ({ ...f, template_id: e.target.value }))}
-                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                     >
                                         <option value="">— 不使用範本（用活動標題/說明）—</option>
                                         {templates.filter(t => t.template_type !== 'push').map(t => (

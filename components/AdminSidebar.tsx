@@ -136,7 +136,7 @@ export default function AdminSidebar() {
               onClick={() => setIsMobileOpen(false)}
               title={isCollapsed ? item.label : ''}
             >
-              <span className="flex-shrink-0">{item.icon}</span>
+              <span className="shrink-0">{item.icon}</span>
               {!isCollapsed && <span className="flex-1">{item.label}</span>}
               {!isCollapsed && item.badge && (
                 <span className="px-2 py-1 text-xs bg-red-500 text-white">

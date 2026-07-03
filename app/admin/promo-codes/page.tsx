@@ -237,7 +237,7 @@ export default function PromoCodesPage() {
                                     type="text"
                                     value={currentCode.code}
                                     onChange={e => setCurrentCode({ ...currentCode, code: e.target.value.toUpperCase() })}
-                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-hidden"
                                     required
                                 />
                             </div>
@@ -248,7 +248,7 @@ export default function PromoCodesPage() {
                                     type="text"
                                     value={currentCode.description || ''}
                                     onChange={e => setCurrentCode({ ...currentCode, description: e.target.value })}
-                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-hidden"
                                 />
                             </div>
 
@@ -258,7 +258,7 @@ export default function PromoCodesPage() {
                                     <select
                                         value={currentCode.discount_type}
                                         onChange={e => setCurrentCode({ ...currentCode, discount_type: e.target.value as any })}
-                                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-hidden"
                                     >
                                         <option value="fixed">定額折抵 ($)</option>
                                         <option value="percentage">百分比折扣 (%)</option>
@@ -272,7 +272,7 @@ export default function PromoCodesPage() {
                                         type="number"
                                         value={currentCode.discount_value}
                                         onChange={e => setCurrentCode({ ...currentCode, discount_value: Number(e.target.value) })}
-                                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-hidden"
                                         required
                                     />
                                 </div>
@@ -284,7 +284,7 @@ export default function PromoCodesPage() {
                                     type="number"
                                     value={currentCode.min_order_amount}
                                     onChange={e => setCurrentCode({ ...currentCode, min_order_amount: Number(e.target.value) })}
-                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
+                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-hidden"
                                 />
                             </div>
 

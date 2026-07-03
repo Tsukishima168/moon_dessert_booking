@@ -218,7 +218,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-moon-dark text-moon-text">
-      <header className="sticky top-0 z-10 border-b border-moon-border bg-moon-black/95 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-moon-border bg-moon-black/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div>
             <p className="brand-eyebrow">Moon Passport</p>

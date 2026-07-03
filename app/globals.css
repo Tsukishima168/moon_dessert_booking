@@ -1,290 +1,410 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
-  --radius: 0.75rem;
-  --radius-md: 0.625rem;
+@theme {
+  --color-moon-black: rgb(var(--moon-black));
+  --color-moon-dark: rgb(var(--moon-dark));
+  --color-moon-gray: rgb(var(--moon-gray));
+  --color-moon-border: rgb(var(--moon-border));
+  --color-moon-text: rgb(var(--moon-text));
+  --color-moon-muted: rgb(var(--moon-muted));
+  --color-moon-accent: rgb(var(--moon-accent));
+  --color-moon-gold: rgb(var(--moon-gold));
 
-  --moon-black: 10 10 10;
-  --moon-dark: 20 20 20;
-  --moon-gray: 31 31 31;
-  --moon-border: 42 42 42;
-  --moon-text: 229 229 229;
-  --moon-muted: 153 153 153;
-  --moon-accent: 255 255 255;
-  --moon-gold: 212 175 55;
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--card-foreground));
+  --color-popover: rgb(var(--popover));
+  --color-popover-foreground: rgb(var(--popover-foreground));
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-foreground: rgb(var(--secondary-foreground));
+  --color-muted: rgb(var(--muted));
+  --color-muted-foreground: rgb(var(--muted-foreground));
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--accent-foreground));
+  --color-destructive: rgb(var(--destructive));
+  --color-border: rgb(var(--border));
+  --color-input: rgb(var(--input));
+  --color-ring: rgb(var(--ring));
 
-  --background: 10 10 10;
-  --foreground: 229 229 229;
-  --card: 20 20 20;
-  --card-foreground: 229 229 229;
-  --popover: 20 20 20;
-  --popover-foreground: 229 229 229;
-  --primary: 255 255 255;
-  --primary-foreground: 10 10 10;
-  --secondary: 31 31 31;
-  --secondary-foreground: 229 229 229;
-  --muted: 31 31 31;
-  --muted-foreground: 153 153 153;
-  --accent: 31 31 31;
-  --accent-foreground: 229 229 229;
-  --destructive: 239 68 68;
-  --border: 42 42 42;
-  --input: 42 42 42;
-  --ring: 255 255 255;
+  --radius-lg: var(--radius);
+  --radius-md: var(--radius-md);
+  --radius-sm: calc(var(--radius-md) - 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+  --font-heading: var(--font-sans), system-ui, sans-serif;
+  --font-serif: Georgia, serif;
 }
 
-html[data-theme='dark'] {
-  color-scheme: dark;
-}
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
 
-html[data-theme='light'] {
-  color-scheme: light;
-
-  --moon-black: 247 243 236;
-  --moon-dark: 255 251 246;
-  --moon-gray: 240 232 222;
-  --moon-border: 220 209 195;
-  --moon-text: 42 35 30;
-  --moon-muted: 110 97 84;
-  --moon-accent: 28 24 22;
-  --moon-gold: 176 134 48;
-
-  --background: 247 243 236;
-  --foreground: 42 35 30;
-  --card: 255 251 246;
-  --card-foreground: 42 35 30;
-  --popover: 255 251 246;
-  --popover-foreground: 42 35 30;
-  --primary: 28 24 22;
-  --primary-foreground: 247 243 236;
-  --secondary: 240 232 222;
-  --secondary-foreground: 42 35 30;
-  --muted: 240 232 222;
-  --muted-foreground: 110 97 84;
-  --accent: 240 232 222;
-  --accent-foreground: 42 35 30;
-  --destructive: 220 38 38;
-  --border: 220 209 195;
-  --input: 220 209 195;
-  --ring: 28 24 22;
-}
-
-.admin-shell {
-  --moon-black: 10 10 10;
-  --moon-dark: 20 20 20;
-  --moon-gray: 31 31 31;
-  --moon-border: 42 42 42;
-  --moon-text: 229 229 229;
-  --moon-muted: 153 153 153;
-  --moon-accent: 255 255 255;
-  --moon-gold: 212 175 55;
-
-  --background: 10 10 10;
-  --foreground: 229 229 229;
-  --card: 20 20 20;
-  --card-foreground: 229 229 229;
-  --popover: 20 20 20;
-  --popover-foreground: 229 229 229;
-  --primary: 255 255 255;
-  --primary-foreground: 10 10 10;
-  --secondary: 31 31 31;
-  --secondary-foreground: 229 229 229;
-  --muted: 31 31 31;
-  --muted-foreground: 153 153 153;
-  --accent: 31 31 31;
-  --accent-foreground: 229 229 229;
-  --destructive: 239 68 68;
-  --border: 42 42 42;
-  --input: 42 42 42;
-  --ring: 255 255 255;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: rgb(var(--foreground));
-  background: rgb(var(--background));
-  font-family: var(--font-sans, var(--font-inter));
-  letter-spacing: 0.02em;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgb(var(--muted));
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgb(var(--border));
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--moon-muted));
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-out;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* ── 訂購首頁精緻化動效（純 CSS、雙主題用 moon-* token、可被 reduced-motion 關閉）── */
-
-/* 捲動浮現：初始隱藏，進視窗由 useInView 加 .is-visible */
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-  will-change: opacity, transform;
-}
-.reveal.is-visible {
-  opacity: 1;
-  transform: none;
-}
-
-/* 購物車徽章彈跳 */
-@keyframes cartBump {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.35); }
-  60% { transform: scale(0.92); }
-  100% { transform: scale(1); }
-}
-.animate-cart-bump {
-  animation: cartBump 0.4s ease-out;
-}
-
-/* 加入購物車成功 micro pop */
-@keyframes addedPop {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.06); }
-  100% { transform: scale(1); }
-}
-.animate-added-pop {
-  animation: addedPop 0.35s ease-out;
-}
-
-/* 骨架屏 shimmer（雙主題 token） */
-@keyframes shimmer {
-  0% { background-position: 100% 0; }
-  100% { background-position: 0 0; }
-}
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    rgb(var(--moon-gray)) 25%,
-    rgb(var(--moon-border)) 37%,
-    rgb(var(--moon-gray)) 63%
-  );
-  background-size: 400% 100%;
-  animation: shimmer 1.4s ease infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
-  }
-  .animate-cart-bump,
-  .animate-added-pop,
-  .skeleton {
-    animation: none !important;
-  }
-}
-
-.ProseMirror {
-  outline: none;
-}
-
-.ProseMirror p {
-  margin: 0.5em 0;
-  color: rgb(var(--moon-text));
-  line-height: 1.7;
-}
-
-.ProseMirror h2 {
-  margin: 1em 0 0.5em;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: rgb(var(--moon-gold));
-}
-
-.ProseMirror h3 {
-  margin: 0.75em 0 0.4em;
-  font-size: 1rem;
-  font-weight: 600;
-  color: rgb(var(--moon-gold));
-}
-
-.ProseMirror ul {
-  margin: 0.5em 0;
-  padding-left: 1.4em;
-  color: rgb(var(--moon-text));
-}
-
-.ProseMirror li {
-  margin: 0.2em 0;
-}
-
-.ProseMirror strong,
-.ProseMirror a {
-  color: rgb(var(--moon-gold));
-}
-
-.ProseMirror em {
-  opacity: 0.8;
-}
-
-.ProseMirror a {
-  text-decoration: underline;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
+@utility brand-eyebrow {
+  /* uppercase Latin 小標 */
+  font-size: 0.66rem;
+  line-height: 1;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-weight: 300;
   color: rgb(var(--moon-muted));
-  pointer-events: none;
+}
+@utility brand-display {
+  /* 品牌大標（Latin display；尺寸由 Tailwind 控制） */
+  font-weight: 300;
+  letter-spacing: 0.25em;
+  color: rgb(var(--moon-accent));
+}
+@utility brand-title {
+  /* 區段標題 */
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  color: rgb(var(--moon-accent));
+}
+@utility brand-subtitle {
+  /* 副標 */
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  line-height: 1.6;
+  color: rgb(var(--moon-muted));
+}
+@utility brand-body {
+  /* 敘事文（CJK 放鬆行距；尺寸由 Tailwind 控制） */
+  font-weight: 300;
+  line-height: 1.9;
+  letter-spacing: 0.02em;
+  color: rgb(var(--moon-text));
+}
+@utility brand-section {
+  /* 統一 section 垂直節奏（流體） */
+  padding-top: clamp(3rem, 8vw, 6rem);
+  padding-bottom: clamp(3rem, 8vw, 6rem);
+}
+
+@layer utilities {
+  :root {
+    --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+    --radius: 0.75rem;
+    --radius-md: 0.625rem;
+
+    --moon-black: 10 10 10;
+    --moon-dark: 20 20 20;
+    --moon-gray: 31 31 31;
+    --moon-border: 42 42 42;
+    --moon-text: 229 229 229;
+    --moon-muted: 153 153 153;
+    --moon-accent: 255 255 255;
+    --moon-gold: 212 175 55;
+
+    --background: 10 10 10;
+    --foreground: 229 229 229;
+    --card: 20 20 20;
+    --card-foreground: 229 229 229;
+    --popover: 20 20 20;
+    --popover-foreground: 229 229 229;
+    --primary: 255 255 255;
+    --primary-foreground: 10 10 10;
+    --secondary: 31 31 31;
+    --secondary-foreground: 229 229 229;
+    --muted: 31 31 31;
+    --muted-foreground: 153 153 153;
+    --accent: 31 31 31;
+    --accent-foreground: 229 229 229;
+    --destructive: 239 68 68;
+    --border: 42 42 42;
+    --input: 42 42 42;
+    --ring: 255 255 255;
+  }
+
+  html[data-theme='dark'] {
+    color-scheme: dark;
+  }
+
+  html[data-theme='light'] {
+    color-scheme: light;
+
+    --moon-black: 247 243 236;
+    --moon-dark: 255 251 246;
+    --moon-gray: 240 232 222;
+    --moon-border: 220 209 195;
+    --moon-text: 42 35 30;
+    --moon-muted: 110 97 84;
+    --moon-accent: 28 24 22;
+    --moon-gold: 176 134 48;
+
+    --background: 247 243 236;
+    --foreground: 42 35 30;
+    --card: 255 251 246;
+    --card-foreground: 42 35 30;
+    --popover: 255 251 246;
+    --popover-foreground: 42 35 30;
+    --primary: 28 24 22;
+    --primary-foreground: 247 243 236;
+    --secondary: 240 232 222;
+    --secondary-foreground: 42 35 30;
+    --muted: 240 232 222;
+    --muted-foreground: 110 97 84;
+    --accent: 240 232 222;
+    --accent-foreground: 42 35 30;
+    --destructive: 220 38 38;
+    --border: 220 209 195;
+    --input: 220 209 195;
+    --ring: 28 24 22;
+  }
+
+  .admin-shell {
+    --moon-black: 10 10 10;
+    --moon-dark: 20 20 20;
+    --moon-gray: 31 31 31;
+    --moon-border: 42 42 42;
+    --moon-text: 229 229 229;
+    --moon-muted: 153 153 153;
+    --moon-accent: 255 255 255;
+    --moon-gold: 212 175 55;
+
+    --background: 10 10 10;
+    --foreground: 229 229 229;
+    --card: 20 20 20;
+    --card-foreground: 229 229 229;
+    --popover: 20 20 20;
+    --popover-foreground: 229 229 229;
+    --primary: 255 255 255;
+    --primary-foreground: 10 10 10;
+    --secondary: 31 31 31;
+    --secondary-foreground: 229 229 229;
+    --muted: 31 31 31;
+    --muted-foreground: 153 153 153;
+    --accent: 31 31 31;
+    --accent-foreground: 229 229 229;
+    --destructive: 239 68 68;
+    --border: 42 42 42;
+    --input: 42 42 42;
+    --ring: 255 255 255;
+  }
+
+  * {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  body {
+    color: rgb(var(--foreground));
+    background: rgb(var(--background));
+    font-family: var(--font-sans, var(--font-inter));
+    letter-spacing: 0.02em;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border));
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--moon-muted));
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* ── 訂購首頁精緻化動效（純 CSS、雙主題用 moon-* token、可被 reduced-motion 關閉）── */
+
+  /* 捲動浮現：初始隱藏，進視窗由 useInView 加 .is-visible */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.6s ease-out,
+      transform 0.6s ease-out;
+    will-change: opacity, transform;
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* 購物車徽章彈跳 */
+  @keyframes cartBump {
+    0% {
+      transform: scale(1);
+    }
+    30% {
+      transform: scale(1.35);
+    }
+    60% {
+      transform: scale(0.92);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .animate-cart-bump {
+    animation: cartBump 0.4s ease-out;
+  }
+
+  /* 加入購物車成功 micro pop */
+  @keyframes addedPop {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.06);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .animate-added-pop {
+    animation: addedPop 0.35s ease-out;
+  }
+
+  /* 骨架屏 shimmer（雙主題 token） */
+  @keyframes shimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--moon-gray)) 25%,
+      rgb(var(--moon-border)) 37%,
+      rgb(var(--moon-gray)) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: none !important;
+    }
+    .animate-cart-bump,
+    .animate-added-pop,
+    .skeleton {
+      animation: none !important;
+    }
+  }
+
+  .ProseMirror {
+    outline: none;
+  }
+
+  .ProseMirror p {
+    margin: 0.5em 0;
+    color: rgb(var(--moon-text));
+    line-height: 1.7;
+  }
+
+  .ProseMirror h2 {
+    margin: 1em 0 0.5em;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: rgb(var(--moon-gold));
+  }
+
+  .ProseMirror h3 {
+    margin: 0.75em 0 0.4em;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(var(--moon-gold));
+  }
+
+  .ProseMirror ul {
+    margin: 0.5em 0;
+    padding-left: 1.4em;
+    color: rgb(var(--moon-text));
+  }
+
+  .ProseMirror li {
+    margin: 0.2em 0;
+  }
+
+  .ProseMirror strong,
+  .ProseMirror a {
+    color: rgb(var(--moon-gold));
+  }
+
+  .ProseMirror em {
+    opacity: 0.8;
+  }
+
+  .ProseMirror a {
+    text-decoration: underline;
+  }
+
+  .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: rgb(var(--moon-muted));
+    pointer-events: none;
+  }
 }
 
 @layer base {
@@ -301,58 +421,13 @@ body {
   }
 }
 
-/* 白色 logo 在淺色模式自動變黑（invert 能處理各種深淺的白/灰） */
-html[data-theme='light'] .theme-logo {
-  filter: invert(1) brightness(0.1);
-}
+@layer utilities {
+  /* 白色 logo 在淺色模式自動變黑（invert 能處理各種深淺的白/灰） */
+  html[data-theme='light'] .theme-logo {
+    filter: invert(1) brightness(0.1);
+  }
 
-/* ── 品牌視覺識別系統（type 角色 / 節奏）──
+  /* ── 品牌視覺識別系統（type 角色 / 節奏）──
    放 @layer components：編碼品牌「語氣」（weight/tracking/leading/color），
    尺寸交給 Tailwind text-* 控制；Tailwind utilities 仍可覆蓋顏色。雙主題走 moon-* token。*/
-@layer components {
-  /* uppercase Latin 小標 */
-  .brand-eyebrow {
-    font-size: 0.66rem;
-    line-height: 1;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    font-weight: 300;
-    color: rgb(var(--moon-muted));
-  }
-
-  /* 品牌大標（Latin display；尺寸由 Tailwind 控制） */
-  .brand-display {
-    font-weight: 300;
-    letter-spacing: 0.25em;
-    color: rgb(var(--moon-accent));
-  }
-
-  /* 區段標題 */
-  .brand-title {
-    font-weight: 300;
-    letter-spacing: 0.18em;
-    color: rgb(var(--moon-accent));
-  }
-
-  /* 副標 */
-  .brand-subtitle {
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-    line-height: 1.6;
-    color: rgb(var(--moon-muted));
-  }
-
-  /* 敘事文（CJK 放鬆行距；尺寸由 Tailwind 控制） */
-  .brand-body {
-    font-weight: 300;
-    line-height: 1.9;
-    letter-spacing: 0.02em;
-    color: rgb(var(--moon-text));
-  }
-
-  /* 統一 section 垂直節奏（流體） */
-  .brand-section {
-    padding-top: clamp(3rem, 8vw, 6rem);
-    padding-bottom: clamp(3rem, 8vw, 6rem);
-  }
 }

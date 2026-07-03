@@ -37,7 +37,7 @@ export default function MobileCartBar() {
 
   return (
     <div
-      className="fixed bottom-0 inset-x-0 z-30 md:hidden border-t border-moon-border bg-moon-black/95 backdrop-blur-sm animate-fadeIn"
+      className="fixed bottom-0 inset-x-0 z-30 md:hidden border-t border-moon-border bg-moon-black/95 backdrop-blur-xs animate-fadeIn"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-stretch gap-3 p-3">

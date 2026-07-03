@@ -317,7 +317,7 @@ export default function HomePage() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="搜尋甜點..."
-              className="w-full pl-9 pr-8 py-2.5 bg-moon-dark border border-moon-border text-moon-text text-sm placeholder-moon-muted focus:outline-none focus:border-moon-accent transition"
+              className="w-full pl-9 pr-8 py-2.5 bg-moon-dark border border-moon-border text-moon-text text-sm placeholder-moon-muted focus:outline-hidden focus:border-moon-accent transition"
             />
             {searchQuery && (
               <button
@@ -444,7 +444,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-4 mb-2">
                       {/* 裝飾線 - 左 */}
                       <div className="hidden sm:block h-px bg-moon-border w-8"></div>
-                      <h2 className="brand-title text-base sm:text-lg lg:text-xl break-words">
+                      <h2 className="brand-title text-base sm:text-lg lg:text-xl wrap-break-word">
                         {category.name.toUpperCase()}
                       </h2>
                       <div className="h-px bg-moon-border flex-1"></div>

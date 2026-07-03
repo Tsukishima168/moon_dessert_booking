@@ -249,7 +249,7 @@ function BannerCard({
             <div className="flex items-start gap-6">
                 {/* Preview */}
                 <div
-                    className="flex-shrink-0 w-16 h-16 border border-moon-border overflow-hidden"
+                    className="shrink-0 w-16 h-16 border border-moon-border overflow-hidden"
                     style={{ backgroundColor: `${banner.background_color}20` }}
                 >
                     {banner.image_url ? (
@@ -438,7 +438,7 @@ function BannerForm({
                                 required
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                 placeholder="例如: 🌹 情人節限定 - 草莓塔 85折"
                             />
                         </div>
@@ -448,7 +448,7 @@ function BannerForm({
                             <textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent resize-none"
+                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent resize-none"
                                 rows={2}
                                 placeholder="例如: 2/14 前預訂享優惠,數量有限"
                             />
@@ -461,7 +461,7 @@ function BannerForm({
                                 type="text"
                                 value={formData.image_url}
                                 onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                 placeholder="https://res.cloudinary.com/..."
                             />
                             {formData.image_url && (
@@ -483,7 +483,7 @@ function BannerForm({
                                     type="text"
                                     value={formData.link_url}
                                     onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
-                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                     placeholder="/"
                                 />
                             </div>
@@ -493,7 +493,7 @@ function BannerForm({
                                     type="text"
                                     value={formData.link_text}
                                     onChange={(e) => setFormData({ ...formData, link_text: e.target.value })}
-                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                     placeholder="立即查看"
                                 />
                             </div>
@@ -530,7 +530,7 @@ function BannerForm({
                                     type="number"
                                     value={formData.priority}
                                     onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
-                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
                         </div>
@@ -541,7 +541,7 @@ function BannerForm({
                                 <select
                                     value={formData.display_type}
                                     onChange={(e) => setFormData({ ...formData, display_type: e.target.value as 'hero' | 'announcement' })}
-                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                 >
                                     <option value="hero">Hero Banner（大型橫幅）</option>
                                     <option value="announcement">Announcement（頂部公告）</option>
@@ -574,7 +574,7 @@ function BannerForm({
                                     type="datetime-local"
                                     value={formData.start_date}
                                     onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
                             <div>
@@ -583,7 +583,7 @@ function BannerForm({
                                     type="datetime-local"
                                     value={formData.end_date}
                                     onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
                         </div>

@@ -957,7 +957,7 @@ export default function CheckoutPage() {
               <div className="space-y-4 mb-6">
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-4 border-b border-moon-border pb-4 last:border-0">
-                    <div className="relative w-16 h-16 bg-moon-gray flex-shrink-0">
+                    <div className="relative w-16 h-16 bg-moon-gray shrink-0">
                       {item.image_url && <Image src={item.image_url} alt={item.name} fill sizes="64px" className="object-cover" />}
                     </div>
                     <div className="flex-1">
@@ -997,7 +997,7 @@ export default function CheckoutPage() {
                   <input
                     value={promoInput}
                     onChange={e => setPromoInput(e.target.value)}
-                    className="flex-1 bg-moon-black border border-moon-border px-3 py-2 text-moon-text text-sm focus:border-moon-accent outline-none placeholder:text-moon-muted"
+                    className="flex-1 bg-moon-black border border-moon-border px-3 py-2 text-moon-text text-sm focus:border-moon-accent outline-hidden placeholder:text-moon-muted"
                     placeholder="若有優惠碼請輸入"
                   />
                   <button
@@ -1063,7 +1063,7 @@ export default function CheckoutPage() {
                   <input
                     {...register('customer_name', { required: '請填寫姓名' })}
                     placeholder="例：王小明"
-                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-hidden placeholder:text-moon-muted"
                   />
                   {errors.customer_name && <p className="text-xs text-red-400 mt-1">{errors.customer_name.message}</p>}
                 </div>
@@ -1073,7 +1073,7 @@ export default function CheckoutPage() {
                     type="tel"
                     {...register('phone', { required: '請填寫聯絡電話' })}
                     placeholder="例：0912-345-678"
-                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-hidden placeholder:text-moon-muted"
                   />
                   {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone.message}</p>}
                 </div>
@@ -1083,7 +1083,7 @@ export default function CheckoutPage() {
                     type="email"
                     {...register('email', { required: '請填寫 Email' })}
                     placeholder="例：example@gmail.com"
-                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
+                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-hidden placeholder:text-moon-muted"
                   />
                   <p className="text-[10px] text-moon-muted mt-1">
                     訂單確認與匯款資訊將寄至此信箱
@@ -1210,7 +1210,7 @@ export default function CheckoutPage() {
                             setSelectedCity(e.target.value);
                             setValue('delivery_district', '', { shouldDirty: true, shouldValidate: true });
                           }}
-                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
+                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-hidden"
                         >
                           <option value="">請選擇縣市</option>
                           {TAIWAN_CITIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
@@ -1220,7 +1220,7 @@ export default function CheckoutPage() {
                       <div>
                         <select
                           {...deliveryDistrictField}
-                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
+                          className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-hidden"
                         >
                           <option value="">請選擇區域</option>
                           {districts.map(d => <option key={d} value={d}>{d}</option>)}
@@ -1232,7 +1232,7 @@ export default function CheckoutPage() {
                       <input
                         {...register('delivery_address_detail', { required: deliveryMethod === 'delivery' ? '請輸入詳細地址' : false })}
                         placeholder="例：中正路 123 號"
-                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
+                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-hidden placeholder:text-moon-muted"
                       />
                       {errors.delivery_address_detail && <p className="text-xs text-red-400 mt-1">{errors.delivery_address_detail.message}</p>}
                     </div>
@@ -1240,7 +1240,7 @@ export default function CheckoutPage() {
                       {...register('delivery_notes')}
                       placeholder="備註 (選填)"
                       rows={2}
-                      className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none"
+                      className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-hidden"
                     />
                   </div>
                 )}

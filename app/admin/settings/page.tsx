@@ -167,7 +167,7 @@ export default function SettingsPage() {
                                 max="30"
                                 value={settings.reservation_rules.min_advance_days}
                                 onChange={(e) => handleReservationRulesChange('min_advance_days', parseInt(e.target.value))}
-                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                             />
                             <p className="text-xs text-moon-muted/60 mt-1">
                                 客戶至少需提前幾天預訂 (例如: 3 = 需提前3天)
@@ -185,7 +185,7 @@ export default function SettingsPage() {
                                 max="365"
                                 value={settings.reservation_rules.max_advance_days}
                                 onChange={(e) => handleReservationRulesChange('max_advance_days', parseInt(e.target.value))}
-                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                             />
                             <p className="text-xs text-moon-muted/60 mt-1">
                                 客戶最多可以提前幾天預訂 (例如: 30 = 一個月內)
@@ -222,7 +222,7 @@ export default function SettingsPage() {
                                     max="100"
                                     value={settings.reservation_rules.rush_order_fee_percentage}
                                     onChange={(e) => handleReservationRulesChange('rush_order_fee_percentage', parseInt(e.target.value))}
-                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                                 />
                                 <p className="text-xs text-moon-muted/60 mt-1">
                                     例如: 20 = 急單需加價 20%
@@ -261,7 +261,7 @@ export default function SettingsPage() {
                                 max="100"
                                 value={settings.daily_capacity.default_limit}
                                 onChange={(e) => handleDailyCapacityChange(parseInt(e.target.value))}
-                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent"
+                                className="w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent"
                             />
                             <p className="text-xs text-moon-muted/60 mt-1">
                                 每天最多可接幾張訂單 (整顆蛋糕產能)
@@ -282,7 +282,7 @@ export default function SettingsPage() {
                                 <input
                                     type="date"
                                     id="new-special-date"
-                                    className="bg-moon-black border border-moon-border px-3 py-2 text-sm text-moon-text focus:outline-none focus:border-moon-accent rounded"
+                                    className="bg-moon-black border border-moon-border px-3 py-2 text-sm text-moon-text focus:outline-hidden focus:border-moon-accent rounded"
                                 />
                                 <button
                                     onClick={() => {

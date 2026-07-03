@@ -197,7 +197,7 @@ export default function MenuAvailabilityPage() {
             placeholder="搜尋商品..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-moon-border/50 border border-moon-border px-4 py-3 pl-10 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+            className="w-full bg-moon-border/50 border border-moon-border px-4 py-3 pl-10 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
           />
         </div>
 
@@ -291,7 +291,7 @@ export default function MenuAvailabilityPage() {
                             onChange={(e) =>
                               setFormData({ ...formData, available_from: e.target.value })
                             }
-                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-none focus:border-moon-accent"
+                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-hidden focus:border-moon-accent"
                           />
                         </div>
                         <div>
@@ -304,7 +304,7 @@ export default function MenuAvailabilityPage() {
                             onChange={(e) =>
                               setFormData({ ...formData, available_until: e.target.value })
                             }
-                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-none focus:border-moon-accent"
+                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-hidden focus:border-moon-accent"
                           />
                         </div>
                       </div>
@@ -324,7 +324,7 @@ export default function MenuAvailabilityPage() {
                               min_advance_hours: parseInt(e.target.value) || 0,
                             })
                           }
-                          className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-none focus:border-moon-accent"
+                          className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-hidden focus:border-moon-accent"
                         />
                         <p className="text-xs text-moon-muted mt-1">
                           顧客需要提前至少多少小時預訂
@@ -340,7 +340,7 @@ export default function MenuAvailabilityPage() {
                           <input
                             type="date"
                             id={`date-${item.id}`}
-                            className="flex-1 bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-none focus:border-moon-accent"
+                            className="flex-1 bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-hidden focus:border-moon-accent"
                           />
                           <button
                             type="button"
@@ -385,7 +385,7 @@ export default function MenuAvailabilityPage() {
                           onChange={(e) =>
                             setFormData({ ...formData, notes: e.target.value || null })
                           }
-                          className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                          className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                           placeholder="例: 週末可能需要更多時間準備"
                           rows={3}
                         />

@@ -177,7 +177,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                             >
                                 <Minus size={11} className="text-moon-text" />
                             </button>
-                            <span className="px-2.5 text-xs text-moon-text min-w-[2rem] text-center">{quantity}</span>
+                            <span className="px-2.5 text-xs text-moon-text min-w-8 text-center">{quantity}</span>
                             <button
                                 onClick={() => setQuantity(quantity + 1)}
                                 className="p-1.5 hover:bg-moon-border/40 transition-colors"

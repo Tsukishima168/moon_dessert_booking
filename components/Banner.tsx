@@ -147,7 +147,7 @@ function HeroBanner({
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-6 pr-6">
                 {/* 圖片 */}
                 {banner.image_url && (
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                         <img
                             src={banner.image_url}
                             alt={banner.title}
