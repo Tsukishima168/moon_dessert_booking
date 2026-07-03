@@ -6,7 +6,7 @@
         },
         {
             "path": "/api/cron/campaign-runner",
-            "schedule": "*/15 * * * *"
+            "schedule": "0 3 * * *"
         }
     ]
 }
