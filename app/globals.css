@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-@theme {
+@theme inline {
   --color-moon-black: rgb(var(--moon-black));
   --color-moon-dark: rgb(var(--moon-dark));
   --color-moon-gray: rgb(var(--moon-gray));
