@@ -437,58 +437,12 @@ export async function createOrder(orderData: {
   }
 }
 
-// 取得所有訂單（管理用）
-export async function getAllOrders(): Promise<Order[]> {
-  try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('checkout_site', SHOP_CHECKOUT_SITE)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return (data || []).map((order) => ({
-      id: order.id.toString(),
-      order_id: order.order_id,
-      customer_name: order.customer_name,
-      phone: order.phone,
-      pickup_time: order.pickup_time,
-      items: order.items,
-      total_price: order.total_price,
-      status: order.status,
-      mbti_type: order.mbti_type,
-      from_mbti_test: order.from_mbti_test,
-      created_at: order.created_at,
-      user_id: order.user_id,
-    }));
-  } catch (error) {
-    console.error('讀取訂單錯誤:', error);
-    throw error;
-  }
-}
-
-// 更新訂單狀態
-export async function updateOrderStatus(
-  orderId: string,
-  status: string
-): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status })
-      .eq('order_id', orderId)
-      .eq('checkout_site', SHOP_CHECKOUT_SITE);
-
-    if (error) throw error;
-
-    console.log(`訂單 ${orderId} 狀態更新為: ${status}`);
-    return true;
-  } catch (error) {
-    console.error('更新訂單狀態錯誤:', error);
-    throw error;
-  }
-}
+// 註：getAllOrders() / updateOrderStatus() 已於安全稽核中移除。
+// 兩者皆使用前端 anon client 直接對 orders 表做 select('*') / update，
+// 且經全庫掃描確認零呼叫端（僅本檔自我定義），屬於死代碼。
+// 後台讀取訂單一律走 src/repositories/order.repository.ts（createAdminClient，
+// service_role，繞過 RLS，自行以 user_id / checkout_site 過濾），
+// 不應再新增依賴 anon client 直接查/改 orders 的路徑。
 
 // 檢查日期是否可預訂
 export interface DateAvailability {
