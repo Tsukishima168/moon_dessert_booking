@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogOut, RefreshCw, ShoppingBag, Sparkles, UserRound } from 'lucide-react';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { clearServerSession, getServerSessionUser } from '@/lib/client-auth';
 import { supabase } from '@/lib/supabase';
+import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
 
 interface Order {
   id: string;
@@ -61,6 +62,7 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [authMissing, setAuthMissing] = useState(false);
+  const [authLoginBusy, setAuthLoginBusy] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
   const recentOrders = useMemo(() => orders.slice(0, 3), [orders]);
@@ -69,11 +71,7 @@ export default function AccountPage() {
     [orders]
   );
 
-  useEffect(() => {
-    void loadAccount();
-  }, []);
-
-  const loadAccount = async () => {
+  const loadAccount = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -126,7 +124,20 @@ export default function AccountPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadAccount();
+
+    const handlePassportComplete = () => {
+      void loadAccount().then(() => router.refresh());
+    };
+    window.addEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
+
+    return () => {
+      window.removeEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
+    };
+  }, [loadAccount, router]);
 
   const handleLogout = async () => {
     try {
@@ -141,6 +152,27 @@ export default function AccountPage() {
     } finally {
       setSigningOut(false);
     }
+  };
+
+  const handlePassportLogin = () => {
+    if (authLoginBusy) return;
+
+    setAuthLoginBusy(true);
+    setError('已開啟 Passport 登入視窗，完成後會留在會員中心。');
+    openPassportLogin({
+      returnTo: window.location.href,
+      intent: 'shop_account_login',
+      onComplete: async () => {
+        await loadAccount();
+        setAuthLoginBusy(false);
+        router.refresh();
+      },
+      onError: (detail) => {
+        setAuthLoginBusy(false);
+        setAuthMissing(true);
+        setError(detail.message || '登入未完成，請允許彈出視窗後再試一次。');
+      },
+    });
   };
 
   const handleProfileSave = async () => {
@@ -198,12 +230,9 @@ export default function AccountPage() {
                   <RefreshCw className="mr-1.5 size-4" />
                   重新檢查
                 </Button>
-                <Link
-                  href="/auth/login?redirect=/account"
-                  className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90"
-                >
-                  前往登入
-                </Link>
+                <Button onClick={handlePassportLogin} disabled={authLoginBusy}>
+                  {authLoginBusy ? '登入中...' : '前往登入'}
+                </Button>
               </div>
             }
           />

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { ensureServerSession } from '@/lib/client-auth';
-import { buildPassportLoginUrl } from '@/src/lib/auth-storage';
+import { openPassportLogin } from '@/src/lib/auth-storage';
 import { getSafeRedirectPath } from '@/src/lib/safe-redirect';
 
 const errorMessages: Record<string, string> = {
@@ -21,6 +21,21 @@ export default function LoginPage() {
 
     const authError = searchParams?.get('error') || null;
     const redirect = getSafeRedirectPath(searchParams?.get('redirect'));
+
+    const completeLogin = async () => {
+        setLoading(true);
+        const user = await ensureServerSession(8, 250);
+        if (user) {
+            router.replace(redirect);
+            return;
+        }
+
+        setLoading(false);
+        setMessage({
+            type: 'error',
+            text: errorMessages.session_missing,
+        });
+    };
 
     useEffect(() => {
         if (!authError) {
@@ -48,8 +63,7 @@ export default function LoginPage() {
                 return;
             }
 
-            const returnTo = new URL(redirect, window.location.origin).toString();
-            window.location.replace(buildPassportLoginUrl(returnTo));
+            setLoading(false);
         };
 
         void restoreLogin();
@@ -65,7 +79,20 @@ export default function LoginPage() {
         setLoading(true);
         setMessage(null);
         const returnTo = new URL(redirect, window.location.origin).toString();
-        window.location.href = buildPassportLoginUrl(returnTo);
+        openPassportLogin({
+            returnTo,
+            intent: 'shop_login',
+            onComplete: () => {
+                void completeLogin();
+            },
+            onError: (detail) => {
+                setLoading(false);
+                setMessage({
+                    type: 'error',
+                    text: detail.message || '登入失敗，請再試一次。',
+                });
+            },
+        });
     };
 
     return (

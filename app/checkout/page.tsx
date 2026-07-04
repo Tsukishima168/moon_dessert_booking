@@ -10,6 +10,7 @@ import { TAIWAN_CITIES } from '@/lib/taiwan-data';
 import { supabase } from '@/lib/supabase'; // Import Supabase
 import { readShopAttribution, trackShopEvent } from '@/lib/shop-analytics';
 import { getResolvedUser, getServerSessionUser } from '@/lib/client-auth';
+import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
 import liff from '@line/liff';
 
 interface CheckoutFormData {
@@ -178,6 +179,7 @@ export default function CheckoutPage() {
   const [loggedInUser, setLoggedInUser] = useState<{ email: string; id: string } | null>(null);
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'guest'>('loading');
   const [authMessage, setAuthMessage] = useState('');
+  const [authLoginBusy, setAuthLoginBusy] = useState(false);
 
   const restorePendingOrder = useCallback(() => {
     if (typeof window === 'undefined') return false;
@@ -224,7 +226,7 @@ export default function CheckoutPage() {
     setLinePayUrl('');
   }, []);
 
-  const loadUserProfile = async (email: string) => {
+  const loadUserProfile = useCallback(async (email: string) => {
     try {
       const response = await fetch('/api/user/profile');
       if (!response.ok) throw new Error('載入會員資料失敗');
@@ -240,9 +242,9 @@ export default function CheckoutPage() {
       // ignore
     }
     setValue('email', email);
-  };
+  }, [setValue]);
 
-  const resolveCheckoutSession = async () => {
+  const resolveCheckoutSession = useCallback(async () => {
     try {
       setAuthStatus('loading');
       setAuthMessage('');
@@ -276,11 +278,36 @@ export default function CheckoutPage() {
       setAuthStatus('guest');
       setAuthMessage('目前無法確認會員登入狀態，你仍可先手動下單。');
     }
+  }, [loadUserProfile]);
+
+  const handleCheckoutLogin = () => {
+    if (authLoginBusy) return;
+
+    setAuthLoginBusy(true);
+    setAuthMessage('已開啟 Passport 登入視窗，完成後會留在結帳頁。');
+    openPassportLogin({
+      returnTo: window.location.href,
+      intent: 'shop_checkout_login',
+      onComplete: async () => {
+        await resolveCheckoutSession();
+        setAuthLoginBusy(false);
+      },
+      onError: (detail) => {
+        setAuthLoginBusy(false);
+        setAuthStatus('guest');
+        setAuthMessage(detail.message || '登入未完成，請允許彈出視窗後再試一次。');
+      },
+    });
   };
 
   useEffect(() => {
     restorePendingOrder();
     void resolveCheckoutSession();
+
+    const handlePassportComplete = () => {
+      void resolveCheckoutSession();
+    };
+    window.addEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
 
     // 2. 監聽 Auth 狀態變更
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -316,8 +343,11 @@ export default function CheckoutPage() {
         .catch((err) => console.error('LIFF init Error:', err));
     }
 
-    return () => subscription.unsubscribe();
-  }, [restorePendingOrder, setValue]);
+    return () => {
+      window.removeEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
+      subscription.unsubscribe();
+    };
+  }, [restorePendingOrder, resolveCheckoutSession, loadUserProfile, setValue]);
 
   // 載入預訂規則
   useEffect(() => {
@@ -1039,9 +1069,14 @@ export default function CheckoutPage() {
                       <User size={12} /> 會員：{loggedInUser.email}
                     </span>
                   ) : (
-                    <Link href="/auth/login?redirect=/checkout" className="text-xs text-moon-muted hover:text-moon-accent flex items-center gap-1 underline decoration-dotted">
-                      <LogIn size={12} /> 已是會員？登入
-                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleCheckoutLogin}
+                      disabled={authLoginBusy}
+                      className="flex items-center gap-1 text-xs text-moon-muted underline decoration-dotted transition-colors hover:text-moon-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <LogIn size={12} /> {authLoginBusy ? '登入中...' : '已是會員？登入'}
+                    </button>
                   )}
                 </div>
                 <div className="rounded border border-moon-border/60 bg-moon-black/40 px-3 py-3 text-xs text-moon-muted">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getServerSessionUser } from '@/lib/client-auth';
 import { ArrowLeft, DollarSign, Package, RefreshCw, Truck } from 'lucide-react';
@@ -10,6 +10,7 @@ import { LoadingState } from '@/components/shared/loading-state';
 import { OrderSummaryCard } from '@/components/shared/order-summary-card';
 import { ProfileCard } from '@/components/shared/profile-card';
 import { Button } from '@/components/ui/button';
+import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
 
 interface OrderItem {
   id: string;
@@ -49,14 +50,9 @@ export default function OrderDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLinePayLoading, setIsLinePayLoading] = useState(false);
   const [linePayError, setLinePayError] = useState<string | null>(null);
+  const [authLoginBusy, setAuthLoginBusy] = useState(false);
 
-  useEffect(() => {
-    if (orderId) {
-      fetchOrder();
-    }
-  }, [orderId]);
-
-  const fetchOrder = async () => {
+  const fetchOrder = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -70,8 +66,7 @@ export default function OrderDetailPage() {
       const response = await fetch(`/api/user/orders/${orderId}`);
       if (!response.ok) {
         if (response.status === 401) {
-          setError('請先登入');
-          router.push('/auth/login?redirect=/account');
+          setError('請先登入，登入完成後會留在這個訂單頁重新載入。');
           return;
         }
         if (response.status === 404) {
@@ -88,6 +83,45 @@ export default function OrderDetailPage() {
     } finally {
       setLoading(false);
     }
+  }, [orderId]);
+
+  useEffect(() => {
+    if (orderId) {
+      void fetchOrder();
+    }
+  }, [fetchOrder, orderId]);
+
+  useEffect(() => {
+    const handlePassportComplete = () => {
+      if (orderId) {
+        void fetchOrder().then(() => router.refresh());
+      }
+    };
+    window.addEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
+
+    return () => {
+      window.removeEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
+    };
+  }, [fetchOrder, orderId, router]);
+
+  const handlePassportLogin = () => {
+    if (authLoginBusy) return;
+
+    setAuthLoginBusy(true);
+    setError('已開啟 Passport 登入視窗，完成後會留在這個訂單頁。');
+    openPassportLogin({
+      returnTo: window.location.href,
+      intent: 'shop_order_login',
+      onComplete: async () => {
+        await fetchOrder();
+        setAuthLoginBusy(false);
+        router.refresh();
+      },
+      onError: (detail) => {
+        setAuthLoginBusy(false);
+        setError(detail.message || '登入未完成，請允許彈出視窗後再試一次。');
+      },
+    });
   };
 
   const handleLinePayRetry = async () => {
@@ -149,12 +183,9 @@ export default function OrderDetailPage() {
                   <RefreshCw className="mr-1.5 size-4" />
                   重新載入
                 </Button>
-                <Link
-                  href="/auth/login?redirect=/account"
-                  className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90"
-                >
-                  重新登入
-                </Link>
+                <Button onClick={handlePassportLogin} disabled={authLoginBusy}>
+                  {authLoginBusy ? '登入中...' : '重新登入'}
+                </Button>
                 <Link
                   href="/account"
                   className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted"

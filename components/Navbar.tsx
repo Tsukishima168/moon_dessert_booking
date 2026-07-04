@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,6 +10,7 @@ import { LogOut, ShoppingCart, User } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { clearServerSession, getResolvedUser } from '@/lib/client-auth';
 import { supabase } from '@/lib/supabase';
+import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
 import { useCartStore } from '@/store/cartStore';
 
 export default function Navbar() {
@@ -19,28 +20,41 @@ export default function Navbar() {
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [authLoginBusy, setAuthLoginBusy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
 
   const isAdminRoute = pathname?.startsWith('/admin');
 
+  const restoreAuth = useCallback(async () => {
+    const user = await getResolvedUser();
+    setCurrentUser(user);
+    setAuthReady(true);
+    return user;
+  }, []);
+
   useEffect(() => {
     setHasHydrated(true);
 
-    const restoreAuth = async () => {
-      const user = await getResolvedUser();
-      setCurrentUser(user);
-      setAuthReady(true);
+    void restoreAuth();
+
+    const handlePassportComplete = () => {
+      setAuthError(null);
+      void restoreAuth().then(() => router.refresh());
     };
 
-    void restoreAuth();
+    window.addEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUser(session?.user ?? null);
       setAuthReady(true);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      window.removeEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
+      subscription.unsubscribe();
+    };
+  }, [restoreAuth, router]);
 
   const totalItems = hasHydrated ? getTotalItems() : 0;
 
@@ -71,6 +85,36 @@ export default function Navbar() {
     } finally {
       setLoggingOut(false);
     }
+  };
+
+  const handleLogin = () => {
+    if (currentUser) {
+      router.push('/account');
+      return;
+    }
+
+    if (authLoginBusy) return;
+
+    setAuthLoginBusy(true);
+    setAuthError(null);
+    openPassportLogin({
+      returnTo: window.location.href,
+      intent: 'shop_navbar_login',
+      onComplete: async () => {
+        const user = await restoreAuth();
+        setAuthLoginBusy(false);
+        if (user) {
+          router.refresh();
+          return;
+        }
+
+        setAuthError('登入已完成，但會員狀態尚未同步，請再試一次。');
+      },
+      onError: (detail) => {
+        setAuthLoginBusy(false);
+        setAuthError(detail.message || '登入失敗，請再試一次。');
+      },
+    });
   };
 
   return (
@@ -107,12 +151,14 @@ export default function Navbar() {
             >
               MBTI測驗
             </a>
-            <Link
-              href="/auth/login"
+            <button
+              type="button"
+              onClick={handleLogin}
+              disabled={authLoginBusy}
               className="flex items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
             >
-              甜點護照
-            </Link>
+              {authLoginBusy ? '登入中...' : '甜點護照'}
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -147,12 +193,15 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
-                <Link
-                  href="/auth/login"
+                <button
+                  type="button"
+                  onClick={handleLogin}
+                  disabled={authLoginBusy}
                   className="border border-moon-border bg-moon-black p-3 transition-all hover:bg-moon-border sm:p-4"
+                  title={authLoginBusy ? '登入中...' : '登入 / 註冊'}
                 >
                   <User size={18} className="text-moon-text transition-colors sm:h-5 sm:w-5" />
-                </Link>
+                </button>
               )
             ) : (
               <div className="border border-moon-border bg-moon-black p-3 opacity-60 sm:p-4">
@@ -175,6 +224,11 @@ export default function Navbar() {
             ) : null}
           </div>
         </div>
+        {authError ? (
+          <div role="alert" className="pb-3 text-center text-xs text-red-300">
+            {authError}
+          </div>
+        ) : null}
       </div>
     </nav>
   );
