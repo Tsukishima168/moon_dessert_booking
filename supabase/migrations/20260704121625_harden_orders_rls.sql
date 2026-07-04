@@ -1,6 +1,18 @@
 -- ============================================================
 -- 修復 orders 表 always-true SELECT 個資外洩漏洞（🔴 Critical）
 -- ============================================================
+-- 【已於 2026-07-04 直接透過 Supabase Management API 套用到線上】
+-- 本檔案是事後補寫的正式 migration 紀錄（repo = prod 對齊用），
+-- 不是「尚待套用」的檔案。已於 2026-07-04 用唯讀查詢核對線上
+-- pg_policies，確認 orders 表目前只剩以下 3 條 policy，與本檔
+-- Step 3 建立的內容完全一致：
+--   INSERT  / anon          / anon_can_insert_orders
+--   INSERT  / authenticated / authenticated_can_insert_orders
+--   SELECT  / authenticated / authenticated_can_select_own_orders
+--     USING (auth.uid() = user_id)
+-- 全檔已改寫為冪等寫法（DROP POLICY IF EXISTS + CREATE POLICY），
+-- 重複執行不會出錯，可安全再次 apply 作為對齊確認。
+-- ============================================================
 -- 背景：/Users/pensoair/Desktop/Web-Projects/UPGRADE_PLAN.md 第 28-30 行
 --   「shop_orders / shop_order_items / orders 的 always-true SELECT =
 --    任何人可讀全部訂單個資」
