@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, BarChart3, Eye, MousePointerClick, RefreshCw, Search } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Database, Eye, MousePointerClick, RefreshCw, Search, Users } from 'lucide-react';
 
 type AnalyticsRange = '7d' | '28d' | '90d';
 
@@ -10,6 +10,7 @@ interface SiteAnalyticsRow {
   label: string;
   hostname: string;
   searchConsoleSiteUrl: string;
+  supabaseSite: string;
   ga4: {
     activeUsers: number;
     sessions: number;
@@ -21,6 +22,16 @@ interface SiteAnalyticsRow {
     impressions: number;
     ctr: number;
     position: number;
+    error?: string;
+  };
+  supabase: {
+    eventCount: number;
+    trackedUsers: number;
+    latestEventAt: string | null;
+    topEvents: Array<{
+      eventType: string;
+      count: number;
+    }>;
     error?: string;
   };
 }
@@ -59,8 +70,10 @@ export default function SiteAnalyticsPage() {
         pageViews: sum.pageViews + site.ga4.screenPageViews,
         clicks: sum.clicks + site.searchConsole.clicks,
         impressions: sum.impressions + site.searchConsole.impressions,
+        supabaseEvents: sum.supabaseEvents + site.supabase.eventCount,
+        trackedUsers: sum.trackedUsers + site.supabase.trackedUsers,
       }),
-      { activeUsers: 0, sessions: 0, pageViews: 0, clicks: 0, impressions: 0 },
+      { activeUsers: 0, sessions: 0, pageViews: 0, clicks: 0, impressions: 0, supabaseEvents: 0, trackedUsers: 0 },
     );
   }, [data]);
 
@@ -88,7 +101,7 @@ export default function SiteAnalyticsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-2xl font-light text-moon-accent tracking-wider mb-2">站點成效</h1>
-            <p className="text-sm text-moon-muted">GA4 流量與 Search Console 搜尋曝光</p>
+            <p className="text-sm text-moon-muted">GA4 流量、Search Console 搜尋曝光與 Supabase 會員事件</p>
           </div>
           <div className="flex items-center gap-2">
             {RANGES.map((item) => (
@@ -140,12 +153,14 @@ export default function SiteAnalyticsPage() {
           <div className="min-h-[320px] flex items-center justify-center text-moon-muted">載入中...</div>
         ) : data ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4 mb-8">
               <MetricCard icon={<Activity size={28} />} label="活躍使用者" value={formatNumber(totals.activeUsers)} tone="text-moon-accent" />
               <MetricCard icon={<BarChart3 size={28} />} label="Sessions" value={formatNumber(totals.sessions)} tone="text-blue-400" />
               <MetricCard icon={<Eye size={28} />} label="Page Views" value={formatNumber(totals.pageViews)} tone="text-green-400" />
               <MetricCard icon={<MousePointerClick size={28} />} label="搜尋點擊" value={formatNumber(totals.clicks)} tone="text-purple-400" />
               <MetricCard icon={<Search size={28} />} label="搜尋曝光" value={formatNumber(totals.impressions)} tone="text-yellow-300" />
+              <MetricCard icon={<Database size={28} />} label="Supabase Events" value={formatNumber(totals.supabaseEvents)} tone="text-cyan-300" />
+              <MetricCard icon={<Users size={28} />} label="追蹤會員" value={formatNumber(totals.trackedUsers)} tone="text-emerald-300" />
             </div>
 
             <div className="border border-moon-border bg-moon-dark/70 overflow-x-auto">
@@ -160,6 +175,9 @@ export default function SiteAnalyticsPage() {
                     <th className="px-4 py-3 font-normal text-right">搜尋曝光</th>
                     <th className="px-4 py-3 font-normal text-right">CTR</th>
                     <th className="px-4 py-3 font-normal text-right">平均排名</th>
+                    <th className="px-4 py-3 font-normal text-right">Supabase 事件</th>
+                    <th className="px-4 py-3 font-normal text-right">追蹤會員</th>
+                    <th className="px-4 py-3 font-normal">Top Events</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -168,8 +186,12 @@ export default function SiteAnalyticsPage() {
                       <td className="px-4 py-4">
                         <p className="text-moon-text font-medium">{site.label}</p>
                         <p className="text-xs text-moon-muted">{site.hostname}</p>
+                        <p className="text-xs text-moon-muted">Supabase: {site.supabaseSite}</p>
                         {site.searchConsole.error && (
                           <p className="text-xs text-yellow-300 mt-1">{site.searchConsole.error}</p>
+                        )}
+                        {site.supabase.error && (
+                          <p className="text-xs text-yellow-300 mt-1">{site.supabase.error}</p>
                         )}
                       </td>
                       <td className="px-4 py-4 text-right text-moon-accent">{formatNumber(site.ga4.activeUsers)}</td>
@@ -179,6 +201,26 @@ export default function SiteAnalyticsPage() {
                       <td className="px-4 py-4 text-right text-yellow-300">{formatNumber(site.searchConsole.impressions)}</td>
                       <td className="px-4 py-4 text-right text-moon-text">{site.searchConsole.ctr}%</td>
                       <td className="px-4 py-4 text-right text-moon-text">{site.searchConsole.position}</td>
+                      <td className="px-4 py-4 text-right text-cyan-300">
+                        <div>{formatNumber(site.supabase.eventCount)}</div>
+                        {site.supabase.latestEventAt && (
+                          <div className="text-[11px] text-moon-muted">{formatDateTime(site.supabase.latestEventAt)}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right text-emerald-300">{formatNumber(site.supabase.trackedUsers)}</td>
+                      <td className="px-4 py-4 text-moon-muted">
+                        {site.supabase.topEvents.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            {site.supabase.topEvents.map((event) => (
+                              <span key={event.eventType} className="whitespace-nowrap">
+                                {event.eventType}: <span className="text-moon-text">{formatNumber(event.count)}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-moon-muted">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -217,4 +259,13 @@ function MetricCard({
 
 function formatNumber(value: number) {
   return Math.round(value).toLocaleString('zh-TW');
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('zh-TW', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
 }

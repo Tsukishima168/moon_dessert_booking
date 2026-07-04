@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { google } from 'googleapis';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 type AnalyticsRange = '7d' | '28d' | '90d';
 
@@ -18,11 +19,21 @@ interface SearchConsoleOAuthConfig {
   refreshToken: string;
 }
 
+interface SiteEventRollupRow {
+  site: string | null;
+  event_type: string | null;
+  total: number | string | null;
+  tracked_users: number | string | null;
+  site_tracked_users: number | string | null;
+  latest_at: string | null;
+}
+
 export interface SiteAnalyticsRow {
   key: string;
   label: string;
   hostname: string;
   searchConsoleSiteUrl: string;
+  supabaseSite: string;
   ga4: {
     activeUsers: number;
     sessions: number;
@@ -34,6 +45,16 @@ export interface SiteAnalyticsRow {
     impressions: number;
     ctr: number;
     position: number;
+    error?: string;
+  };
+  supabase: {
+    eventCount: number;
+    trackedUsers: number;
+    latestEventAt: string | null;
+    topEvents: Array<{
+      eventType: string;
+      count: number;
+    }>;
     error?: string;
   };
 }
@@ -59,6 +80,7 @@ const SITE_CONFIGS = [
     envKey: 'KIWIMU_COM',
     label: 'Kiwimu / MBTI',
     hostname: 'kiwimu.com',
+    supabaseSite: 'kiwimu',
     defaultSearchConsoleSiteUrl: 'sc-domain:kiwimu.com',
   },
   {
@@ -66,6 +88,7 @@ const SITE_CONFIGS = [
     envKey: 'SHOP_KIWIMU_COM',
     label: 'Shop',
     hostname: 'shop.kiwimu.com',
+    supabaseSite: 'shop',
     defaultSearchConsoleSiteUrl: 'https://shop.kiwimu.com/',
   },
   {
@@ -73,6 +96,7 @@ const SITE_CONFIGS = [
     envKey: 'PASSPORT_KIWIMU_COM',
     label: 'Passport',
     hostname: 'passport.kiwimu.com',
+    supabaseSite: 'passport',
     defaultSearchConsoleSiteUrl: 'sc-domain:passport.kiwimu.com',
   },
   {
@@ -80,6 +104,7 @@ const SITE_CONFIGS = [
     envKey: 'GACHA_KIWIMU_COM',
     label: 'Gacha',
     hostname: 'gacha.kiwimu.com',
+    supabaseSite: 'gacha',
     defaultSearchConsoleSiteUrl: 'sc-domain:gacha.kiwimu.com',
   },
   {
@@ -87,6 +112,7 @@ const SITE_CONFIGS = [
     envKey: 'MAP_KIWIMU_COM',
     label: 'Map',
     hostname: 'map.kiwimu.com',
+    supabaseSite: 'map',
     defaultSearchConsoleSiteUrl: 'sc-domain:map.kiwimu.com',
   },
 ] as const;
@@ -94,10 +120,11 @@ const SITE_CONFIGS = [
 export async function getGoogleSiteAnalytics(range: AnalyticsRange): Promise<SiteAnalyticsResponse> {
   const { startDate, endDate } = getDateRange(range);
   const ga4PropertyId = process.env.GA4_PROPERTY_ID || process.env.GOOGLE_GA4_PROPERTY_ID || DEFAULT_GA4_PROPERTY_ID;
-  const sites = SITE_CONFIGS.map((site) => ({
+  const sites: SiteAnalyticsRow[] = SITE_CONFIGS.map((site) => ({
     key: site.key,
     label: site.label,
     hostname: site.hostname,
+    supabaseSite: site.supabaseSite,
     searchConsoleSiteUrl: getSearchConsoleSiteUrl(site.envKey, site.defaultSearchConsoleSiteUrl),
     ga4: {
       activeUsers: 0,
@@ -110,6 +137,12 @@ export async function getGoogleSiteAnalytics(range: AnalyticsRange): Promise<Sit
       impressions: 0,
       ctr: 0,
       position: 0,
+    },
+    supabase: {
+      eventCount: 0,
+      trackedUsers: 0,
+      latestEventAt: null,
+      topEvents: [],
     },
   }));
 
@@ -133,6 +166,15 @@ export async function getGoogleSiteAnalytics(range: AnalyticsRange): Promise<Sit
     await fillSearchConsoleMetrics(sites, startDate, endDate, searchConsoleConfig);
   }
 
+  try {
+    await fillSupabaseEventMetrics(sites, startDate, endDate);
+  } catch (error) {
+    errors.push(`Supabase user_events failed: ${toSafeErrorMessage(error)}`);
+    for (const site of sites) {
+      site.supabase.error = toSafeErrorMessage(error);
+    }
+  }
+
   return {
     range,
     startDate,
@@ -145,6 +187,54 @@ export async function getGoogleSiteAnalytics(range: AnalyticsRange): Promise<Sit
     sites,
     errors,
   };
+}
+
+async function fillSupabaseEventMetrics(
+  sites: SiteAnalyticsRow[],
+  startDate: string,
+  endDate: string,
+) {
+  const admin = createAdminClient();
+  const start = `${startDate}T00:00:00.000Z`;
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+  end.setUTCDate(end.getUTCDate() + 1);
+
+  const { data, error } = await admin
+    .rpc('get_site_event_rollup', {
+      p_start: start,
+      p_end: end.toISOString(),
+    });
+
+  if (error) throw error;
+
+  const rollupRows = (data || []) as SiteEventRollupRow[];
+  const bySite = new Map<string, SiteEventRollupRow[]>();
+  for (const row of rollupRows) {
+    const site = String(row.site || '');
+    const rows = bySite.get(site) || [];
+    rows.push(row);
+    bySite.set(site, rows);
+  }
+
+  for (const site of sites) {
+    const rows = bySite.get(site.supabaseSite) || [];
+    const sortedRows = [...rows].sort((a, b) => readMetric(b.total) - readMetric(a.total));
+
+    site.supabase = {
+      eventCount: rows.reduce((sum, row) => sum + readMetric(row.total), 0),
+      trackedUsers: rows.reduce((sum, row) => Math.max(sum, readMetric(row.site_tracked_users)), 0),
+      latestEventAt: rows.reduce<string | null>((latest, row) => {
+        const value = typeof row.latest_at === 'string' ? row.latest_at : null;
+        if (!value) return latest;
+        if (!latest || value > latest) return value;
+        return latest;
+      }, null),
+      topEvents: sortedRows.slice(0, 4).map((row) => ({
+        eventType: String(row.event_type || 'unknown'),
+        count: readMetric(row.total),
+      })),
+    };
+  }
 }
 
 function getDateRange(range: AnalyticsRange) {
@@ -258,7 +348,10 @@ function readServiceAccountCredentials(): ServiceAccountCredentials | null {
 }
 
 function readSearchConsoleOAuthConfig(): SearchConsoleOAuthConfig | null {
-  const refreshToken = process.env.GOOGLE_SC_REFRESH_TOKEN;
+  const tokenPayload = readJsonFileIfExists<{
+    refresh_token?: string;
+  }>(getSearchConsoleTokenPath());
+  const refreshToken = tokenPayload?.refresh_token || process.env.GOOGLE_SC_REFRESH_TOKEN;
   if (!refreshToken) return null;
 
   const secretJson =
@@ -269,6 +362,10 @@ function readSearchConsoleOAuthConfig(): SearchConsoleOAuthConfig | null {
     ? parseJson(secretJson)
     : readJsonFileIfExists(
         process.env.GOOGLE_SC_CLIENT_SECRET_FILE ||
+        process.env.GOOGLE_STACK_CLIENT_ID_FILE ||
+        path.join(os.homedir(), '.credentials', 'kiwimu-oauth-desktop-client.json'),
+      ) ||
+      readJsonFileIfExists(
         path.join(os.homedir(), '.credentials', 'search-console-client-secret.json'),
       );
 
@@ -285,6 +382,17 @@ function readSearchConsoleOAuthConfig(): SearchConsoleOAuthConfig | null {
   if (!clientId || !clientSecret) return null;
 
   return { clientId, clientSecret, refreshToken };
+}
+
+function getSearchConsoleTokenPath() {
+  const candidates = [
+    process.env.GOOGLE_SC_TOKEN_FILE,
+    process.env.GOOGLE_STACK_TOKEN_FILE,
+    path.join(os.homedir(), '.config', 'kiwimu', 'google-stack-token.json'),
+    path.join(os.homedir(), '.credentials', 'search-console-token.json'),
+  ].filter(Boolean) as string[];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
 }
 
 function getSearchConsoleSiteUrl(envKey: string, fallback: string) {
