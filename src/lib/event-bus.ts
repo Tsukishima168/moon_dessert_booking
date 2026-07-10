@@ -12,7 +12,15 @@
 type EventPayload = Record<string, unknown>;
 type EventHandler = (payload: EventPayload) => Promise<void>;
 
-const handlers: Map<string, EventHandler[]> = new Map();
+// Next.js 會讓 instrumentation 與各 route bundle 各自載入一份本模組，
+// 模組作用域的 Map 會分裂成多份（註冊在 A、emit 查 B → 通知全滅）。
+// 掛在 globalThis 讓所有模組實例共用同一份 handler 表。
+const globalForEventBus = globalThis as unknown as {
+  __kiwimuEventHandlers?: Map<string, EventHandler[]>;
+};
+const handlers: Map<string, EventHandler[]> =
+  globalForEventBus.__kiwimuEventHandlers ?? new Map();
+globalForEventBus.__kiwimuEventHandlers = handlers;
 
 export const EventBus = {
   /**

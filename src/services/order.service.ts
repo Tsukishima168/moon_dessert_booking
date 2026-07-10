@@ -155,7 +155,8 @@ async function recalculateOrderPricing(items: OrderItem[]) {
 
   const { data: menuVariants, error: menuVariantsError } = await adminClient
     .from('menu_variants')
-    .select('id, menu_item_id, variant_name, price')
+    // DB 實際欄位是 spec（無 variant_name），用 PostgREST 別名對齊 app 層命名
+    .select('id, menu_item_id, variant_name:spec, price')
 
   if (menuVariantsError) {
     console.error('[recalculateOrderPricing] 無法讀取 menu_variants，拒絕建立訂單:', menuVariantsError.message)

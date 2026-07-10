@@ -28,6 +28,12 @@ Mail 接線（2026-07-10 補）：
 - 已知 follow-up：下單確認信是寫死 HTML 不吃後台模板；`src/handlers/email.handler.ts` 是未註冊死代碼；三個 Resend client 未共用；後台 `notification_settings.order_created` 目前只開 Discord、email 關著。
 - 待 Penso 定案：營業時間矛盾——layout JSON-LD 寫「週二～六 10:00–19:00」，後台 settings 存「僅週日休 10:00–18:00」，信任頁沿用前者；哪個為真需一句話拍板後全站統一。
 
+訂單通知鏈路 E2E 實測（2026-07-10 深夜輪）——**挖出三個 main 上既有的 P0 bug 並修復**：
+1. `order.service.ts` 查 `menu_variants.variant_name`，實際欄位是 `spec` → **下單一律 500**（現行 production 部署較舊所以還能動，但 main 一部署就全站不能下單）。修法：PostgREST 別名 `variant_name:spec`。
+2. `EventBus` handlers Map 是模組作用域，Next.js instrumentation 與 route bundle 各持一份 → **order.created/status_updated 通知（Email＋Discord）從未實際觸發**。修法：handlers 掛 `globalThis`（Prisma 單例模式）。
+3. `orders` 表無 `updated_at` 欄位但兩條更新路徑都寫它 → **後台改訂單狀態一律失敗**。修法：migration `20260710000003_orders_updated_at.sql`（已套 prod）。
+實測證據（living proof）：三筆測試單（ORD-D2708421353D5F7F / ORD-C53FC34D88C0A623 / ORD-17E91949918C0FB5，皆已取消）；信件實發 kk4e18@gmail.com ×5（確認信、取貨通知、取消通知×3）＋Discord bot→channel 成功。結論：**main 目前是地雷狀態，本分支合併部署的優先級升高**。
+
 部署 Gate：
 - 成分／過敏原／保存方式需 Penso 依每品項提供真實資料；資料為空時商品頁不顯示該區塊。
 - 宅配範圍、退換貨、客製規則、隱私權與服務條款仍有【待補】；未完成前不可把本分支部署為 production 信任內容。
