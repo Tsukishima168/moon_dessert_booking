@@ -1,5 +1,42 @@
 # CURRENT.md — shop.kiwimu.com
 
+## Snapshot · 2026-07-10
+
+Status: `P0+P1+宅配標示技術層完成；production schema 已套，待真實內容補齊與分支整合/部署`
+
+拍板結果（Penso 2026-07-10）：做 P0（商品頁＋欄位）＋P1（信任頁＋footer）＋P2 僅宅配標示；blog／節慶 landing／通路但書本輪不做。
+
+本輪完成：
+- `/product/[idOrSlug]` 商品詳情頁、Product JSON-LD、購物車操作、固定但書、列表「查看詳情」與宅配標示。
+- `menu_items` 新增 12 個 nullable 內容欄位；admin 可編輯、清空並驗證 slug／日期／URL／預購天數。
+- `/faq`、`/shipping`、`/refund`、`/location`、`/terms`、`/privacy` 與全站共用 Footer；sitemap/robots 同步。
+- 修正 root Suspense 導致的商品 soft-404；不存在商品現回真正 HTTP 404 + noindex。
+- Supabase migration 歷史的 8 位舊版本撞名已正規化為唯一版本；`20260710000001_product_content_fields.sql` 已套 production 並以 anon select 驗回 12 欄。
+
+驗證：
+- `npx tsc --noEmit --incremental false --pretty false` ✅
+- `npm run lint` ✅ 0 error（11 個既有 warning）
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` ✅（51 routes）
+- `npm run verify:analytics-seo -- --profile=local-build` ✅ 11/11
+- production-mode local smoke：6 個信任頁、首頁、登入、商品頁、sitemap 皆 200；未知商品 404；桌面/行動瀏覽器無水平溢出、console 0 error/warning。
+- 最終 diff 未另派 fresh-context agent 獨立簽收；以上為 Codex 機械與瀏覽器驗證。
+
+部署 Gate：
+- 成分／過敏原／保存方式需 Penso 依每品項提供真實資料；資料為空時商品頁不顯示該區塊。
+- 宅配範圍、退換貨、客製規則、隱私權與服務條款仍有【待補】；未完成前不可把本分支部署為 production 信任內容。
+- 本輪未部署 Vercel、未切 LINE Pay 公開狀態。
+
+---
+
+（前輪）Status: `研究輪完成 — 內容/IA 升級藍圖已落檔，後續範圍已拍板並實作`
+
+目標：參考 ponpie.tw 的內容結構與全站架構（非視覺風格），保持月島甜點既有設計邏輯，產出 shop 升級藍圖。
+產出：`CONTENT_ARCHITECTURE_PLAN_2026-07-10.md`（差距總表＋P0-P3 分期＋5 個決策點＋機器可查驗收）。
+研究結論摘要：ponpie = CyberBiz 企業版；shop 差距集中在內容層——無獨立商品詳情頁、成分/保存/配送/預購欄位全缺、FAQ/運送/退換貨/門市頁全缺、footer 僅首頁內嵌。ponpie 過敏原非結構化是其弱項＝shop 超車機會。
+拍板：blog／節慶 landing／通路價差但書不做；P0+P1+宅配標示已進入上方 2026-07-10 交付狀態。
+
+---
+
 ## Snapshot · 2026-06-05
 
 Status: `Shop 數據與 SEO 量測已收斂；production 仍待部署最新 build`

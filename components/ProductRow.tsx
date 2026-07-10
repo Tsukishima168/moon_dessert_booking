@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Plus, Minus, ShoppingCart } from 'lucide-react';
-import { MenuItemWithVariants } from '@/lib/supabase';
+import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
+import { getDeliveryTypeLabel } from '@/lib/delivery-type';
 
 interface ProductRowProps {
     item: MenuItemWithVariants;
@@ -60,6 +62,11 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
 
     // 序號：01 / 02 / 03 樣式
     const serialNo = String(index + 1).padStart(2, '0');
+
+    // 配送標示（P2-lite）
+    const deliveryLabel = getDeliveryTypeLabel(item.delivery_type);
+    const isPickupOnly = item.delivery_type === 'pickup_only';
+    const productHref = `/product/${item.slug || item.id}`;
 
     if (isSoldOut) {
         return (
@@ -121,12 +128,28 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                             {item.category}
                         </span>
                     )}
+                    {deliveryLabel && (
+                        <span
+                            className={`text-[9px] tracking-widest px-1.5 py-0.5 border shrink-0 hidden lg:inline ${isPickupOnly
+                                    ? 'border-moon-gold text-moon-gold'
+                                    : 'border-moon-border/60 text-moon-muted'
+                                }`}
+                        >
+                            {deliveryLabel}
+                        </span>
+                    )}
                 </div>
                 {item.description && (
                     <p className="text-xs text-moon-muted/70 leading-relaxed line-clamp-1 lg:line-clamp-2">
                         {item.description}
                     </p>
                 )}
+                <Link
+                    href={productHref}
+                    className="text-[10px] text-moon-muted/60 hover:text-moon-accent tracking-wider mt-1 inline-block transition-colors"
+                >
+                    查看詳情 →
+                </Link>
             </div>
 
             {/* 右側：規格選擇 + 價格 + 操作（桌面橫排） */}

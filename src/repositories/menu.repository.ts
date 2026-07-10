@@ -1,6 +1,22 @@
 import { createAdminClient } from '@/lib/supabase-admin'
 
-export interface MenuItemRow {
+// 電商內容欄位（P0-2，全部 optional：DB 尚未套用 migration 時容忍缺欄）
+export interface MenuItemContentFields {
+  tagline?: string | null
+  size_info?: string | null
+  ingredients?: string[] | null
+  allergens?: string[] | null
+  storage_info?: string | null
+  delivery_type?: 'pickup_only' | 'delivery_ok' | 'both' | null
+  lead_time_days?: number | null
+  gallery_urls?: string[] | null
+  included_items?: string | null
+  available_from?: string | null
+  available_until?: string | null
+  slug?: string | null
+}
+
+export interface MenuItemRow extends MenuItemContentFields {
   id: string
   name: string
   category_id: string | null
@@ -14,7 +30,7 @@ export interface MenuItemRow {
   [key: string]: unknown
 }
 
-export interface InsertMenuItemPayload {
+export interface InsertMenuItemPayload extends MenuItemContentFields {
   name: string
   category_id: string | null
   description: string | null
@@ -24,7 +40,7 @@ export interface InsertMenuItemPayload {
   sort_order: number
 }
 
-export interface UpdateMenuItemPayload {
+export interface UpdateMenuItemPayload extends MenuItemContentFields {
   name?: string
   category_id?: string | null
   description?: string | null

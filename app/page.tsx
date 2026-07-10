@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 import { useSearchParams } from 'next/navigation';
 import ProductListItem from '@/components/ProductListItem';
@@ -29,7 +29,7 @@ const getInitialUrlSearch = (searchParams: ReturnType<typeof useSearchParams>) =
   return (window as ShopWindow).__SHOP_INITIAL_SEARCH__ || window.location.search;
 };
 
-export default function HomePage() {
+function HomePageContent() {
   const searchParams = useSearchParams();
   const initialSearch = getInitialUrlSearch(searchParams);
   const initialParams = new URLSearchParams(initialSearch);
@@ -550,58 +550,23 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-moon-border mt-0 sm:mt-4 lg:mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center">
-          {/* IP LOGO */}
-          <div className="mb-6 sm:mb-8 flex justify-center">
-            <Image
-              src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1768736617/mbti_%E5%B7%A5%E4%BD%9C%E5%8D%80%E5%9F%9F_1_zpt5jq.webp"
-              alt="Kiwimu"
-              width={120}
-              height={120}
-              className="h-20 sm:h-24 w-auto opacity-80 hover:opacity-100 transition-opacity"
-            />
-          </div>
-
-          {/* 導航連結 */}
-          <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            <Link
-              href="/about"
-              className="inline-flex items-center gap-2 text-xs sm:text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors"
-            >
-              <span>品牌故事 →</span>
-            </Link>
-            <a
-              href="https://map.kiwimu.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-xs sm:text-sm tracking-widest text-moon-muted hover:text-moon-accent transition-colors"
-            >
-              <span>探索月島展覽地圖 →</span>
-            </a>
-          </div>
-
-          {/* 分隔線 */}
-          <div className="w-12 sm:w-16 h-px bg-moon-border mx-auto mb-6 sm:mb-8"></div>
-
-          {/* 品牌標誌 */}
-          <div className="mb-4 flex justify-center">
-            <Image
-              src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png"
-              alt="月島甜點"
-              width={150}
-              height={50}
-              className="theme-logo h-8 w-auto opacity-60"
-            />
-          </div>
-
-          {/* 版權資訊 */}
-          <p className="brand-eyebrow mb-2">© 2024 MOON MOON DESSERT</p>
-          <p className="brand-subtitle text-moon-muted/60">安南區本原街・果菜市場周邊療癒系甜點</p>
-        </div>
-      </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-moon-black flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin text-moon-accent mx-auto mb-4 w-12 h-12 border-2 border-moon-accent border-t-transparent rounded-full" />
+            <p className="text-sm text-moon-muted tracking-widest">LOADING...</p>
+          </div>
+        </div>
+      }
+    >
+      <HomePageContent />
+    </Suspense>
   );
 }

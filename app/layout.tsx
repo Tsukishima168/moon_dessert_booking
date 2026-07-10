@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { Suspense } from 'react';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import CartSidebar from '@/components/CartSidebar';
 import MobileCartBar from '@/components/MobileCartBar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
@@ -259,16 +259,8 @@ export default function RootLayout({
         <FacebookPixel />
 
         <Navbar />
-        <Suspense fallback={
-          <div className="min-h-screen bg-moon-black flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin text-moon-accent mx-auto mb-4 w-12 h-12 border-2 border-moon-accent border-t-transparent rounded-full"></div>
-              <p className="text-sm text-moon-muted tracking-widest">LOADING...</p>
-            </div>
-          </div>
-        }>
-          <main>{children}</main>
-        </Suspense>
+        <main>{children}</main>
+        <Footer />
         <CartSidebar />
         <MobileCartBar />
       </body>

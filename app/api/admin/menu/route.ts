@@ -18,11 +18,23 @@ const isInvalidCategoryError = (error: unknown) =>
   error !== null &&
   'code' in error &&
   (error as { code?: unknown }).code === '23503' &&
-  String((error as { message?: unknown }).message ?? '').includes('menu_items_category_id_fkey')
+    String((error as { message?: unknown }).message ?? '').includes('menu_items_category_id_fkey')
+
+const getDatabaseErrorCode = (error: unknown) =>
+  typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : ''
 
 const menuWriteError = (error: unknown, fallback: string) => {
   if (isInvalidCategoryError(error)) {
     return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
+  }
+  const code = getDatabaseErrorCode(error)
+  if (code === '23505') {
+    return NextResponse.json({ error: '商品網址代稱 slug 已被使用' }, { status: 409 })
+  }
+  if (code === '23514' || code === '22007' || code === '22P02') {
+    return NextResponse.json({ error: '商品內容欄位格式不正確' }, { status: 400 })
   }
   return NextResponse.json({ error: fallback }, { status: 500 })
 }

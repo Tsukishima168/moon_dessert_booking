@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
-import { MenuItemWithVariants } from '@/lib/supabase';
+import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
+import { getDeliveryTypeLabel } from '@/lib/delivery-type';
 
 interface ProductListItemProps {
   item: MenuItemWithVariants;
@@ -51,6 +53,11 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
     }, 1100);
   };
 
+  // 配送標示（P2-lite）
+  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type);
+  const isPickupOnly = item.delivery_type === 'pickup_only';
+  const productHref = `/product/${item.slug || item.id}`;
+
   // 是否為純展示（例如飲料）
   const isDisplayOnly =
     displayOnly ||
@@ -90,6 +97,16 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           </div>
 
           <div className="flex items-center gap-2">
+            {deliveryLabel && (
+              <span
+                className={`text-[9px] tracking-widest px-1.5 py-0.5 border hidden sm:inline ${isPickupOnly
+                    ? 'border-moon-gold text-moon-gold'
+                    : 'border-moon-border/60 text-moon-muted'
+                  }`}
+              >
+                {deliveryLabel}
+              </span>
+            )}
             {item.recommended && (
               <span className="text-xs bg-moon-accent text-moon-black px-2 py-0.5 tracking-wider hidden sm:inline">
                 推薦
@@ -133,6 +150,14 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
               {item.description}
             </p>
           )}
+
+          {/* 查看詳情 — 導向獨立商品頁 */}
+          <Link
+            href={productHref}
+            className="text-[11px] text-moon-muted/70 hover:text-moon-accent tracking-wider mb-3 inline-block transition-colors"
+          >
+            查看詳情 →
+          </Link>
 
           {/* 僅門市供應提示（例如飲料） */}
           {isDisplayOnly && (
