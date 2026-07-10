@@ -34,6 +34,12 @@ Mail 接線（2026-07-10 補）：
 3. `orders` 表無 `updated_at` 欄位但兩條更新路徑都寫它 → **後台改訂單狀態一律失敗**。修法：migration `20260710000003_orders_updated_at.sql`（已套 prod）。
 實測證據（living proof）：三筆測試單（ORD-D2708421353D5F7F / ORD-C53FC34D88C0A623 / ORD-17E91949918C0FB5，皆已取消）；信件實發 kk4e18@gmail.com ×5（確認信、取貨通知、取消通知×3）＋Discord bot→channel 成功。結論：**main 目前是地雷狀態，本分支合併部署的優先級升高**。
 
+第二輪 E2E（2026-07-10，紅隊過關後）：
+- 熱修紅隊 PASS 零必修；唯一 optional（dev HMR 重複註冊 → 重複發信）已封：註冊守衛掛 globalThis（`9d70671`）。
+- **宅配輪 PASS**：ORD-19D0A61C36427DF2——運費伺服器重算正確（299＋100=399）、臺南市中西區地址入庫、確認信送達、已取消。
+- **優惠碼輪 PASS**：ORD-810549C7CE675F8E——CLAUDETEST10（9 折）套用、伺服器重算 original 299／discount 30／final 269／promo_code 記錄正確、確認信送達、訂單已取消、測試碼已刪除。
+- 尚待真人測試（無法自動化）：LINE Pay internal_test E2E、Google OAuth 會員流程、手機/LINE 內建瀏覽器結帳。n8n webhook 未掛在 EventRegistry（目前 active handlers 只有 email＋discord），是否要接由 Penso 決定。
+
 部署 Gate：
 - 成分／過敏原／保存方式需 Penso 依每品項提供真實資料；資料為空時商品頁不顯示該區塊。
 - 宅配範圍、退換貨、客製規則、隱私權與服務條款仍有【待補】；未完成前不可把本分支部署為 production 信任內容。
