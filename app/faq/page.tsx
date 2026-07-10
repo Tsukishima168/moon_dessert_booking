@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: '常見問題｜月島甜點',
@@ -59,7 +60,7 @@ const faqSchema = {
       name: '自取地點與時間是？',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: '自取地點為台南市安南區本原街一段 97 巷（月島甜點店）。營業日為週二至週六 10:00–19:00；實際可選日期與時段以結帳頁當下顯示為準。',
+        text: '自取地點為台南市安南區本原街一段 97 巷（月島甜點店）。週一公休・營業時間 10:00–18:00；實際可選日期與時段以結帳頁當下顯示為準。',
       },
     },
     {
@@ -102,7 +103,7 @@ const FAQ_GROUPS: { title: string; items: FaqItem[] }[] = [
     items: [
       {
         q: '自取地點與時間是？',
-        a: '自取地點為台南市安南區本原街一段 97 巷（月島甜點店）。營業日為週二至週六 10:00–19:00；實際可選日期與時段以結帳頁當下顯示為準。',
+        a: '自取地點為台南市安南區本原街一段 97 巷（月島甜點店）。週一公休・營業時間 10:00–18:00；實際可選日期與時段以結帳頁當下顯示為準。',
       },
       {
         q: '宅配範圍與運費怎麼算？',
@@ -151,7 +152,7 @@ export default function FaqPage() {
     <div className="min-h-screen bg-moon-black">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }}
       />
 
       {/* Hero */}

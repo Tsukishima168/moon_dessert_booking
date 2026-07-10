@@ -45,7 +45,7 @@ export default function ShippingPage() {
               自取地址：台南市安南區本原街一段 97 巷（月島甜點店，果菜市場周邊）。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              營業日：週二至週六 10:00–19:00。結帳時可從當時開放的日期與時段中選擇取貨時間（例如
+              週一公休・營業時間 10:00–18:00。結帳時可從當時開放的日期與時段中選擇取貨時間（例如
               12:00–13:00 至 17:00–18:00 之間，每小時一個時段）。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">

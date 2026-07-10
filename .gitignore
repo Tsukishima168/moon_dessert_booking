@@ -26,6 +26,9 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+# 備份檔不吃上面的 .env*.local 規則（結尾非 .local），需獨立忽略
+.env*.bak*
+*.bak-*
 
 # vercel
 .vercel

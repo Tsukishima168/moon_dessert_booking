@@ -11,7 +11,7 @@ import {
   normalizeMenuItemAvailabilityResult,
   type MenuItemAvailabilitySettings,
 } from '@/src/lib/menu-availability'
-import { getDeliverySettings, getOrderRules } from '@/src/services/settings.service'
+import { getDeliverySettings, getOrderRules, getBusinessHours } from '@/src/services/settings.service'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -234,12 +234,42 @@ async function recalculateOrderPricing(items: OrderItem[]) {
   return { canonicalItems, subtotal }
 }
 
+function getWeekdayFromDateString(dateStr: string): number {
+  // dateStr 是台灣日期字串（YYYY-MM-DD）。用 UTC 建構避免依伺服器本機時區偏移算錯星期。
+  return new Date(`${dateStr}T00:00:00Z`).getUTCDay()
+}
+
+/**
+ * 公休日擋板：取貨/配送日若落在 business_hours.closed_days（星期，0=Sunday）
+ * 或 special_closures（特定日期字串）→ 拒絕訂單。
+ * 設定讀不到時 fail-open（不擋，維持原行為），避免因讀取失敗誤擋全部訂單。
+ */
+async function assertNotClosedDay(pickupDate: string): Promise<void> {
+  let businessHours
+  try {
+    businessHours = await getBusinessHours()
+  } catch (error) {
+    console.error('[assertNotClosedDay] getBusinessHours 失敗，fail-open 略過公休檢查:', error)
+    return
+  }
+
+  const weekday = getWeekdayFromDateString(pickupDate)
+  const isClosed =
+    businessHours.closed_days.includes(weekday) ||
+    businessHours.special_closures.includes(pickupDate)
+
+  if (isClosed) {
+    throw new OrderValidationError('該日為公休日，請選擇其他取貨日期')
+  }
+}
+
 async function validateOrderAvailability(
   pickupTime: string,
   normalizedDeliveryMethod: 'pickup' | 'delivery',
   items: CanonicalOrderItem[]
 ): Promise<'pickup' | 'delivery'> {
   const pickupDate = extractPickupDate(pickupTime)
+  await assertNotClosedDay(pickupDate)
   const adminClient = createAdminClient()
 
   const { data: reservationData, error: reservationError } = await adminClient.rpc(

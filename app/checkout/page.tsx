@@ -121,6 +121,24 @@ function parseMinOrderAmount(raw: unknown): number {
   const o = isRecord(raw) ? raw : {};
   return typeof o.minimum_order_amount === 'number' ? o.minimum_order_amount : 0;
 }
+// closed_days: 0=Sunday...6=Saturday（對齊 settings.service.ts BusinessHours）。
+// 讀不到或格式不對時回退既有寫死值 [1]（週一公休），維持接線前行為不變。
+const DEFAULT_CLOSED_DAYS: number[] = [1];
+const WEEKDAY_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+function parseClosedDays(raw: unknown): number[] {
+  const o = isRecord(raw) ? raw : {};
+  const value = o.closed_days;
+  if (!Array.isArray(value)) return DEFAULT_CLOSED_DAYS;
+  const days = value.filter(
+    (n): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 6
+  );
+  return days.length > 0 ? days : DEFAULT_CLOSED_DAYS;
+}
+function describeClosedDays(days: number[], suffix: string): string {
+  const unique = Array.from(new Set(days)).sort((a, b) => a - b);
+  if (unique.length === 0) return '';
+  return `${unique.map((d) => `週${WEEKDAY_ZH[d]}`).join('、')}${suffix}`;
+}
 
 export default function CheckoutPage() {
   const {
@@ -147,6 +165,7 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [reservationRules, setReservationRules] = useState<any>(null);
+  const [closedDays, setClosedDays] = useState<number[]>(DEFAULT_CLOSED_DAYS);
   const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig | null>(null);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
   const [minOrderAmount, setMinOrderAmount] = useState(0);
@@ -358,6 +377,7 @@ export default function CheckoutPage() {
           const settings = await response.json();
           const parsedPaymentConfig = parsePaymentConfig(settings.payment_settings);
           setReservationRules(settings.reservation_rules);
+          setClosedDays(parseClosedDays(settings.business_hours));
           setDeliveryConfig(parseDeliveryConfig(settings.delivery_settings));
           setPaymentConfig(parsedPaymentConfig);
           setMinOrderAmount(parseMinOrderAmount(settings.order_rules));
@@ -426,8 +446,9 @@ export default function CheckoutPage() {
       const day = d.getDay();
       let disabled = false;
       let reason = '';
-      if (deliveryMethod === 'pickup' && day === 1) { disabled = true; reason = '週一公休'; }
-      if (deliveryMethod === 'delivery' && (day === 0 || day === 1)) { disabled = true; reason = '不配送'; }
+      if (deliveryMethod === 'pickup' && closedDays.includes(day)) { disabled = true; reason = '公休'; }
+      // 宅配另有週日不配送的獨立限制（與門市公休 closed_days 疊加，非 business_hours 設定項目）
+      if (deliveryMethod === 'delivery' && (day === 0 || closedDays.includes(day))) { disabled = true; reason = '不配送'; }
       const [, mm, dd] = dateStr.split('-');
       dates.push({ date: dateStr, label: `${mm}/${dd}`, dayName: dayNames[day], disabled, reason });
     }
@@ -439,7 +460,7 @@ export default function CheckoutPage() {
         setValue('pickup_date', '');
       }
     }
-  }, [reservationRules, deliveryMethod, setValue]);
+  }, [reservationRules, deliveryMethod, closedDays, setValue]);
 
   const totalPrice = getTotalPrice();
 
@@ -469,9 +490,9 @@ export default function CheckoutPage() {
 
     // 1. 星期限制
     if (method === 'pickup') {
-      if (day === 1) { settle({ valid: false, reason: '週一公休無法自取' }); return; }
+      if (closedDays.includes(day)) { settle({ valid: false, reason: '該日為公休日，請選擇其他取貨日期' }); return; }
     } else {
-      if (day === 1 || day === 0) { settle({ valid: false, reason: '宅配週日與週一無法到貨' }); return; }
+      if (day === 0 || closedDays.includes(day)) { settle({ valid: false, reason: '宅配該日無法到貨，請選擇其他日期' }); return; }
     }
 
     // 2. 產能與 API 驗證
@@ -493,7 +514,7 @@ export default function CheckoutPage() {
       console.error('驗證日期錯誤:', error);
       settle({ valid: false, reason: '目前無法驗證日期容量，請稍後再試' });
     }
-  }, []);
+  }, [closedDays]);
 
   useEffect(() => {
     if (watchedPickupDate) {
@@ -1155,7 +1176,9 @@ export default function CheckoutPage() {
                   {deliveryMethod === 'pickup' ? '取貨日期' : '期望到貨日期'} <span className="text-moon-accent">*</span>
                 </label>
                 <p className="text-[10px] text-moon-muted">
-                  {deliveryMethod === 'pickup' ? '週一公休' : '週日、週一不配送'} • 需提前 {Math.max(0, Number(reservationRules?.min_advance_days ?? 3))} 天預訂
+                  {deliveryMethod === 'pickup'
+                    ? describeClosedDays(closedDays, '公休')
+                    : describeClosedDays(Array.from(new Set([...closedDays, 0])), '不配送')} • 需提前 {Math.max(0, Number(reservationRules?.min_advance_days ?? 3))} 天預訂
                 </p>
 
                 {/* 隱藏 input 用於 react-hook-form 驗證 */}

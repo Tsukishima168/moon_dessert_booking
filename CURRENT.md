@@ -50,6 +50,24 @@ Mail 接線（2026-07-10 補）：
 - **RWD PASS**：375px 下商品頁/faq/shipping/location 皆無水平溢出；多規格選擇（四吋/六吋/八吋異價）正常。
 - 測試殘留：零（測試單全取消、測試碼與測試橫幅已刪）。
 
+第四輪（2026-07-10）：壓測、公休日拍板落地、安全掃描
+- **產能上限 PASS**：同日連下 6 單 → 第 6 單被拒「當日已達產能上限 (5/5)」；取消 5 單後再下成立（取消正確釋放名額）。
+- **公休日定案＝週一公休、10:00–18:00（Penso 拍板）**，五層一次對齊並實測：
+  - 後台 `business_hours.closed_days=[1]`（唯一真相來源）
+  - `order.service.ts` 新增 `assertNotClosedDay()` 伺服器擋板（UTC 取星期避時區偏移；設定讀不到 fail-open）
+  - layout JSON-LD → 除週一外全列、closes 18:00
+  - location/shipping/faq 文案統一
+  - checkout 日期選擇器與文案改為吃 settings，非 hardcode
+  - **E2E 實證**：週一 7/20 被拒「該日為公休日，請選擇其他取貨日期」；週日 7/19、週二 7/21 成立（皆已取消）
+- **安全掃描（security-reviewer）PASS，1 必修 2 應修全數處理**：
+  - 🔴 必修：`.env.local.bak-20260710`（本 session 早先為改 mail 設定所建）含近 30 組正式金鑰，`.gitignore` 的 `.env*.local` 抓不到 `.bak` 結尾。已刪檔；確認從未進 git 歷史（`git log --all -- <path>` = 0）；`.gitignore` 補 `.env*.bak*` 與 `*.bak-*` 並實測 `git check-ignore` 生效。
+  - 🟡 gallery_urls 只在前端驗 https → 移進 `menu.service.ts` 的 `pickContentFields`；實測 `javascript:` 與 `http://` 被拒、合法 https 放行（測試殘留已清）。
+  - 🟡 faq/layout 的 JSON-LD 用裸 `JSON.stringify` → 抽 `lib/json-ld.ts` 共用 `serializeJsonLd()`（`<` 轉義），三處統一。
+  - 掃過乾淨：商品頁 slug/id 走參數化查詢無注入；新欄位皆純文字 JSX 渲染無 stored XSS；admin 端點全過 ensureAdmin；robots/sitemap 未外洩帶參數頁；diff secrets 0 命中。
+- **跨站合約 PASS**：`/api/menu/categories` 本地與 production 回應結構一致，map.kiwimu.com 不受影響。
+- **會員邊界 PASS**：未登入打 `/api/user/profile`、`/api/user/orders`、`/api/auth/me` 全 401。
+- 驗證：tsc 0 errors／lint 0 errors（11 既有 warnings）／build 成功／`verify:analytics-seo --profile=local-build` 11 passed 0 failed。
+
 部署 Gate：
 - 成分／過敏原／保存方式需 Penso 依每品項提供真實資料；資料為空時商品頁不顯示該區塊。
 - 宅配範圍、退換貨、客製規則、隱私權與服務條款仍有【待補】；未完成前不可把本分支部署為 production 信任內容。

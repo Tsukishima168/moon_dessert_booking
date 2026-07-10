@@ -83,9 +83,34 @@ const CONTENT_FIELD_KEYS: Array<keyof MenuItemContentFields> = [
   'slug',
 ]
 
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * gallery_urls 只准 https。前端表單也擋，但驗證不能只在 client：
+ * 帶 admin session 直接打 API 就能塞 javascript:/data:/內網 URL。
+ */
+function assertValidGalleryUrls(urls: unknown): void {
+  if (urls === undefined || urls === null) return
+  if (!Array.isArray(urls)) {
+    throw new Error('gallery_urls 必須是陣列')
+  }
+  const invalid = urls.filter((url) => typeof url !== 'string' || !isHttpsUrl(url))
+  if (invalid.length > 0) {
+    throw new Error(`圖片網址必須是 https://：${invalid.join(', ')}`)
+  }
+}
+
 function pickContentFields(
   input: MenuItemContentFields
 ): MenuItemContentFields {
+  assertValidGalleryUrls(input.gallery_urls)
+
   const result: MenuItemContentFields = {}
   for (const key of CONTENT_FIELD_KEYS) {
     if (input[key] !== undefined) {

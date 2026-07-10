@@ -6,11 +6,11 @@ import SectionHeading from '@/components/ui/SectionHeading';
 export const metadata: Metadata = {
   title: '門市資訊｜月島甜點',
   description:
-    '月島甜點門市資訊：台南市安南區本原街一段 97 巷，果菜市場周邊。營業時間週二至週六 10:00–19:00，週一公休。',
+    '月島甜點門市資訊：台南市安南區本原街一段 97 巷，果菜市場周邊。週一公休，營業時間 10:00–18:00。',
   alternates: { canonical: '/location' },
   openGraph: {
     title: '門市資訊｜月島甜點 | MOON MOON 月島甜點',
-    description: '台南市安南區本原街一段 97 巷，果菜市場周邊。週二至週六 10:00–19:00，週一公休。',
+    description: '台南市安南區本原街一段 97 巷，果菜市場周邊。週一公休，營業時間 10:00–18:00。',
     url: 'https://shop.kiwimu.com/location',
     type: 'article',
   },
@@ -47,7 +47,7 @@ export default function LocationPage() {
               台南市安南區本原街一段 97 巷（709 台南市，果菜市場周邊）
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              營業日：週二至週六 10:00–19:00
+              週一公休・營業時間 10:00–18:00
               <br />
               實際可自取日期與時段：以結帳頁當下顯示為準
             </p>

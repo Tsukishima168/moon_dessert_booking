@@ -7,6 +7,7 @@ import CartSidebar from '@/components/CartSidebar';
 import MobileCartBar from '@/components/MobileCartBar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import FacebookPixel from '@/components/FacebookPixel';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -60,9 +61,9 @@ const structuredData = {
       areaServed: ['台南市安南區', '本原街', '果菜市場周邊', '台灣'],
       openingHoursSpecification: {
         '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        dayOfWeek: ['Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
         opens: '10:00',
-        closes: '19:00',
+        closes: '18:00',
       },
       priceRange: '$$',
       servesCuisine: 'Dessert',
@@ -248,7 +249,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(structuredData),
+            __html: serializeJsonLd(structuredData),
           }}
         />
       </head>
