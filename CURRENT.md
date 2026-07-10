@@ -40,6 +40,16 @@ Mail 接線（2026-07-10 補）：
 - **優惠碼輪 PASS**：ORD-810549C7CE675F8E——CLAUDETEST10（9 折）套用、伺服器重算 original 299／discount 30／final 269／promo_code 記錄正確、確認信送達、訂單已取消、測試碼已刪除。
 - 尚待真人測試（無法自動化）：LINE Pay internal_test E2E、Google OAuth 會員流程、手機/LINE 內建瀏覽器結帳。n8n webhook 未掛在 EventRegistry（目前 active handlers 只有 email＋discord），是否要接由 Penso 決定。
 
+第三輪測試（2026-07-10，安全＋營運規則＋Banner＋RWD）：
+- **價格竄改防禦 PASS**：POST 假價 $1，DB 入庫為伺服器重算 $299（original/final/total 全對）。
+- **RLS 探測 PASS**：anon key 讀 orders 回空陣列，7/4 加固有效；admin API 無 token 全 401（orders/settings/menu PUT）。
+- **下架商品 PASS**：以 is_available=false 品項下單被拒。
+- **前置天數 PASS**：<3 天被拒。
+- **⚠️ 公休日三層矛盾（新發現，待 Penso 拍板哪天休再修）**：結帳文案寫「週一公休」；後台 settings 存「休週日」；伺服器實測週一（7/13）與週日（7/19）訂單都成立——公休規則在 server 端完全沒有擋板，UI 選擇器也全列。修法需等營業時間定案後三層一次對齊（JSON-LD/信任頁/checkout 文案/date picker/server 驗證）。
+- **Banner 鏈路 PASS**：admin 建 announcement → 首頁 hero 區渲染（可關閉、帶連結）→ 刪除歸零。註：顯示位置在 hero 內，非 ponpie 式頁頂細條，要移最頂是另一小改。
+- **RWD PASS**：375px 下商品頁/faq/shipping/location 皆無水平溢出；多規格選擇（四吋/六吋/八吋異價）正常。
+- 測試殘留：零（測試單全取消、測試碼與測試橫幅已刪）。
+
 部署 Gate：
 - 成分／過敏原／保存方式需 Penso 依每品項提供真實資料；資料為空時商品頁不顯示該區塊。
 - 宅配範圍、退換貨、客製規則、隱私權與服務條款仍有【待補】；未完成前不可把本分支部署為 production 信任內容。
