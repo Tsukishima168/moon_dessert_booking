@@ -77,6 +77,12 @@ Mail 接線（2026-07-10 補）：
   - 修法（需獨立一輪＋fresh-context 審＋全訂單回歸）：做原子 RPC `insert_order_with_capacity_check`——`pg_advisory_xact_lock(hashtext('cap_'||date))` → 鎖內重查產能 → `jsonb_populate_record` 插入 → 單一交易返回；repository 改呼叫此 RPC 取代裸 `.insert()`。**不在本測試輪熱補關鍵路徑**，待 Penso 排期。
 - 測試殘留：本輪 12 筆測試單全數 cancelled（ID 精確查核）、測試優惠碼已刪、無殘留。
 
+第六輪（2026-07-10）：前後台完整 UI 實跑（瀏覽器驅動，非純 API）
+- **前台 PASS**：首頁 29 商品＋6 分類區＋本季精選全渲染；搜尋過濾（打「抹茶」→ 只剩抹茶品項、伯爵/檸檬消失）；商品頁 3 規格切換＋加入購物車價格連動（六吋 $899 正確）；購物車加入→改量（×2 小計 $1798）→免運進度條（再買 $101 享免運 → 過千轉免運）→垃圾桶移除→空車；主題深/淺切換（data-theme 生效）。前台 session 零 console error。
+- **後台 PASS**：18 個 API 端點全 200；13 個模組（orders/menu/banners/promo-codes/campaigns/customer-analytics/site-analytics/settings/email-templates/discord-settings/marketing-automation/push-templates/menu-availability）全部正常渲染、零 error boundary、零 console error；orders 顯示 43 筆＋狀態分頁；promo-codes 無測試碼殘留。
+- **設定閉環驗證**：settings 後台公休日 UI 正確高亮「週一」（bg-moon-accent）、營業 10:00–18:00 → 對應前面測過的結帳擋板與伺服器拒單，整條 API→DB→UI→結帳→server 鏈路閉環。
+- 本輪零程式碼變更，純 fresh 實跑驗證。
+
 部署 Gate：
 - 成分／過敏原／保存方式需 Penso 依每品項提供真實資料；資料為空時商品頁不顯示該區塊。
 - 宅配範圍、退換貨、客製規則、隱私權與服務條款仍有【待補】；未完成前不可把本分支部署為 production 信任內容。
