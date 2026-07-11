@@ -68,6 +68,15 @@ Mail 接線（2026-07-10 補）：
 - **會員邊界 PASS**：未登入打 `/api/user/profile`、`/api/user/orders`、`/api/auth/me` 全 401。
 - 驗證：tsc 0 errors／lint 0 errors（11 既有 warnings）／build 成功／`verify:analytics-seo --profile=local-build` 11 passed 0 failed。
 
+第五輪（2026-07-10）：定價正確性 ＋ 併發壓測
+- **多品項混合購物車 PASS**：布丁120×2＋巴斯克四吋299×1 → 伺服器重算 539（正確）。
+- **免運門檻邊界 PASS**：宅配 subtotal 1050 ≥ 門檻 1000 → delivery_fee 0、final 1050；subtotal 120 < 門檻 → delivery_fee 100、final 220（DB 欄位實查）。
+- **優惠碼低消擋板 PASS**：CLAUDEMIN500（滿500折50）→ $299 單被拒「訂單未達最低消費 $500」；$539 單折 50＝489（伺服器重算）。測試碼已刪。
+- **🟠 併發競態 BUG（P1，新發現，未修）**：8 筆同日訂單併發 → **全部成立、衝破 5 上限**（預期只准 5）。根因：`check_daily_capacity` RPC 只讀當日筆數，與後續 `insertOrder` 是兩個獨立交易，中間無鎖 → 典型 TOCTOU；併發請求都在「尚無人插入」時通過檢查。位置：`src/services/order.service.ts:293-309`（檢查）＋ `src/repositories/order.repository.ts:84-96`（插入）。
+  - 影響評估：月島每日上限 5，只有「同一取貨日、多筆訂單在檢查↔插入的數十~數百 ms 窗內」才觸發 → 真實低頻（不像先前三個 P0 是全站壞）。屬正確性債，過度承接時需人工取消致歉，不阻斷部署。
+  - 修法（需獨立一輪＋fresh-context 審＋全訂單回歸）：做原子 RPC `insert_order_with_capacity_check`——`pg_advisory_xact_lock(hashtext('cap_'||date))` → 鎖內重查產能 → `jsonb_populate_record` 插入 → 單一交易返回；repository 改呼叫此 RPC 取代裸 `.insert()`。**不在本測試輪熱補關鍵路徑**，待 Penso 排期。
+- 測試殘留：本輪 12 筆測試單全數 cancelled（ID 精確查核）、測試優惠碼已刪、無殘留。
+
 部署 Gate：
 - 成分／過敏原／保存方式需 Penso 依每品項提供真實資料；資料為空時商品頁不顯示該區塊。
 - 宅配範圍、退換貨、客製規則、隱私權與服務條款仍有【待補】；未完成前不可把本分支部署為 production 信任內容。
