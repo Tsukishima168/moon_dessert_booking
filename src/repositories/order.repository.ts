@@ -83,15 +83,14 @@ export interface InsertOrderPayload {
  */
 export async function insertOrder(payload: InsertOrderPayload): Promise<AdminOrder> {
   const adminClient = createAdminClient()
-  const { data, error } = await adminClient
-    .from('orders')
-    .insert(payload)
-    .select('*')
-    .single()
+  const { data, error } = await adminClient.rpc('insert_order_with_capacity_check', {
+    order_payload: payload,
+  }).maybeSingle()
   if (error) {
-    console.error('Supabase insert error:', error)
+    console.error('Supabase atomic order insert error:', error)
     throw error
   }
+  if (!data) throw new Error('訂單建立後沒有收到資料')
   return data as AdminOrder
 }
 

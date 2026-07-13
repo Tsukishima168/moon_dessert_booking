@@ -612,6 +612,16 @@ export async function createOrder(
     if (promoUsageReservation) {
       await rollbackPromoCodeUsage(promoUsageReservation)
     }
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'P0001'
+    ) {
+      throw new OrderValidationError(
+        error instanceof Error ? error.message : '當日已達產能上限，請選擇其他日期'
+      )
+    }
     throw error
   }
 
