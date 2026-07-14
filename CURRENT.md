@@ -8,6 +8,7 @@ Status: `Shop 為共用 Supabase migration 唯一發布入口；待正式 migrat
 - `20260713000000_fix_mbti_claim_rpc_ambiguity.sql` 修正 `consume_mbti_claim` 的 PostgreSQL 42702 欄位歧義。
 - `20260713000001_atomic_order_capacity_check.sql` 新增原子產能檢查與訂單建立 RPC，僅授權 `service_role`。
 - `20260714000000_fix_atomic_order_payment_date_type.sql` 修正遠端 lint 發現的 `payment_date` timestamptz 型別不符（42804）。
+- `20260714000001_restrict_atomic_order_rpc_permissions.sql` 明確撤銷 `PUBLIC`／`anon`／`authenticated`，訂單 RPC 僅保留 `service_role` 執行權。
 - 發布順序固定為：核對遠端 history → `db push --dry-run` → 正式 `db push` → 權限／函式驗證 → 合併 Shop PR → production smoke。
 
 ## Snapshot · 2026-07-10
