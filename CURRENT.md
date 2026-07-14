@@ -1,5 +1,14 @@
 # CURRENT.md — shop.kiwimu.com
 
+## Snapshot · 2026-07-14
+
+Status: `Shop 為共用 Supabase migration 唯一發布入口；待正式 migration 與部署驗證`
+
+- 共用 project `xlqwfaailjyvsycjnzkz` 的可執行 migration 統一由本 repo 發布，Map 不再獨立執行 `supabase db push`。
+- `20260713000000_fix_mbti_claim_rpc_ambiguity.sql` 修正 `consume_mbti_claim` 的 PostgreSQL 42702 欄位歧義。
+- `20260713000001_atomic_order_capacity_check.sql` 新增原子產能檢查與訂單建立 RPC，僅授權 `service_role`。
+- 發布順序固定為：核對遠端 history → `db push --dry-run` → 正式 `db push` → 權限／函式驗證 → 合併 Shop PR → production smoke。
+
 ## Snapshot · 2026-07-10
 
 Status: `P0+P1+宅配標示技術層完成；production schema 已套，待真實內容補齊與分支整合/部署`
