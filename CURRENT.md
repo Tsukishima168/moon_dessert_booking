@@ -2,7 +2,7 @@
 
 ## Snapshot · 2026-07-14
 
-Status: `Shop 為共用 Supabase migration 唯一發布入口；待正式 migration 與部署驗證`
+Status: `共用 Supabase migration 已正式套用並驗證；待 Shop 合併與 production deployment`
 
 - 共用 project `xlqwfaailjyvsycjnzkz` 的可執行 migration 統一由本 repo 發布，Map 不再獨立執行 `supabase db push`。
 - `20260713000000_fix_mbti_claim_rpc_ambiguity.sql` 修正 `consume_mbti_claim` 的 PostgreSQL 42702 欄位歧義。
@@ -10,6 +10,7 @@ Status: `Shop 為共用 Supabase migration 唯一發布入口；待正式 migrat
 - `20260714000000_fix_atomic_order_payment_date_type.sql` 修正遠端 lint 發現的 `payment_date` timestamptz 型別不符（42804）。
 - `20260714000001_restrict_atomic_order_rpc_permissions.sql` 明確撤銷 `PUBLIC`／`anon`／`authenticated`，訂單 RPC 僅保留 `service_role` 執行權。
 - 發布順序固定為：核對遠端 history → `db push --dry-run` → 正式 `db push` → 權限／函式驗證 → 合併 Shop PR → production smoke。
+- 2026-07-14 正式驗證：local／remote migration history 對齊；`db lint` 零 schema error；MBTI RPC 匿名呼叫 200 且無 42702；訂單 RPC 匿名呼叫 401／42501，僅 `service_role` 可進入函式；探測使用空 payload 並於 NOT NULL constraint 中止，未建立訂單。
 
 ## Snapshot · 2026-07-10
 
