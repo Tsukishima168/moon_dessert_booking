@@ -2,7 +2,7 @@
 
 ## Snapshot · 2026-07-14
 
-Status: `共用 Supabase migration 已正式套用並驗證；待 Shop 合併與 production deployment`
+Status: `共用 Supabase migration、Shop PR #15 與 production deployment 已完成驗證`
 
 - 共用 project `xlqwfaailjyvsycjnzkz` 的可執行 migration 統一由本 repo 發布，Map 不再獨立執行 `supabase db push`。
 - `20260713000000_fix_mbti_claim_rpc_ambiguity.sql` 修正 `consume_mbti_claim` 的 PostgreSQL 42702 欄位歧義。
@@ -11,6 +11,10 @@ Status: `共用 Supabase migration 已正式套用並驗證；待 Shop 合併與
 - `20260714000001_restrict_atomic_order_rpc_permissions.sql` 明確撤銷 `PUBLIC`／`anon`／`authenticated`，訂單 RPC 僅保留 `service_role` 執行權。
 - 發布順序固定為：核對遠端 history → `db push --dry-run` → 正式 `db push` → 權限／函式驗證 → 合併 Shop PR → production smoke。
 - 2026-07-14 正式驗證：local／remote migration history 對齊；`db lint` 零 schema error；MBTI RPC 匿名呼叫 200 且無 42702；訂單 RPC 匿名呼叫 401／42501，僅 `service_role` 可進入函式；探測使用空 payload 並於 NOT NULL constraint 中止，未建立訂單。
+- 2026-07-14 PR #15 已 squash merge 為 `e8195fd`，Vercel production deployment success。
+- production smoke：首頁、checkout、商品頁、FAQ、shipping、refund、location、terms、privacy、robots、sitemap、menu API 全 200；analytics／SEO 15/15；桌面與 375px 行動版無水平溢出，Shop 頁面無 runtime console error（checkout 僅有未登入 `/api/auth/me` 的預期 401）。
+- 無寫入訂單探測：對 `/api/order` 傳空 payload 回 400「缺少必要欄位」，探測前後訂單筆數一致，未建立訂單。
+- 五站首頁 canary：Kiwimu、Shop、Passport、Gacha、Map 全 200、DOM 正常且無水平溢出；其餘站僅保留既有 Tailwind／LIFF／iframe warning，無 runtime error。
 
 ## Snapshot · 2026-07-10
 
