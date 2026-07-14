@@ -10,6 +10,13 @@ export default function robots(): MetadataRoute.Robots {
                 allow: [
                     '/',
                     '/about',
+                    '/faq',
+                    '/shipping',
+                    '/refund',
+                    '/location',
+                    '/terms',
+                    '/privacy',
+                    '/product/',
                     '/llms.txt',
                 ],
                 disallow: [

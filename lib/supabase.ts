@@ -51,6 +51,19 @@ export interface MenuItem {
   image_url: string;
   is_available: boolean;
   sort_order?: number;
+  // 電商內容欄位（P0-2，全部 optional：DB 尚未套用 migration 時容忍缺欄）
+  tagline?: string;
+  size_info?: string;
+  ingredients?: string[];
+  allergens?: string[];
+  storage_info?: string;
+  delivery_type?: 'pickup_only' | 'delivery_ok' | 'both';
+  lead_time_days?: number;
+  gallery_urls?: string[];
+  included_items?: string;
+  available_from?: string;
+  available_until?: string;
+  slug?: string;
 }
 
 export interface MenuVariant {
@@ -318,6 +331,19 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
           image_url: item.image_url || item.image || '',
           is_available: item.is_available !== false,
           sort_order: item.sort_order ?? 0,
+          // 電商內容欄位（P0-2）：DB 尚未套用 migration 時欄位不存在，容忍為 undefined
+          tagline: item.tagline ?? undefined,
+          size_info: item.size_info ?? undefined,
+          ingredients: item.ingredients ?? undefined,
+          allergens: item.allergens ?? undefined,
+          storage_info: item.storage_info ?? undefined,
+          delivery_type: item.delivery_type ?? undefined,
+          lead_time_days: item.lead_time_days ?? undefined,
+          gallery_urls: item.gallery_urls ?? undefined,
+          included_items: item.included_items ?? undefined,
+          available_from: item.available_from ?? undefined,
+          available_until: item.available_until ?? undefined,
+          slug: item.slug ?? undefined,
           variants: itemVariants.map((v) => ({
             id: v.id.toString(),
             menu_item_id: v.menu_item_id.toString(),
@@ -337,6 +363,18 @@ export async function getMenuItems(mbtiType?: string): Promise<MenuItemWithVaria
     console.error('讀取菜單資料錯誤:', error);
     throw new Error('無法讀取菜單資料');
   }
+}
+
+// 依 slug 或 id 取得單一商品（P0-1 商品詳情頁用）：先按 slug 比對，查無再按 id 比對。
+// 沿用 getMenuItems() 既有容錯/組裝邏輯（含 variants、seasonal 過濾、欄位缺失容忍），避免另開一條查詢路徑。
+export async function getMenuItemBySlugOrId(
+  idOrSlug: string
+): Promise<MenuItemWithVariants | null> {
+  const items = await getMenuItems();
+  const bySlug = items.find((item) => item.slug && item.slug === idOrSlug);
+  if (bySlug) return bySlug;
+  const byId = items.find((item) => item.id === idOrSlug);
+  return byId ?? null;
 }
 
 export async function getGroupedMenuCategories() {

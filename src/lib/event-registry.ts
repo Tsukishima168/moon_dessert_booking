@@ -41,15 +41,18 @@ import { handleOrderCreatedUserEvent } from '@/src/modules/user-events/order-cre
 // import { handleMbtiEvaluated } from '@/src/modules/experience/recommendation.handler';
 // import { handleProfileCreated } from '@/src/modules/marketing/welcome.handler';
 
-let isRegistered = false;
+// 與 event-bus 的 handlers Map 同樣掛 globalThis：
+// dev HMR 重評估本模組時，模組作用域旗標會歸零但 handlers 仍在，
+// 造成重複註冊 → 重複發信。旗標放 globalThis 使守衛跨 HMR 生效。
+const globalForRegistry = globalThis as unknown as { __kiwimuEventsRegistered?: boolean };
 
 /**
  * 集中初始化所有事件監聽器。
  * 保護機制：只執行一次，重複呼叫無副作用。
  */
 export function registerAllEventHandlers(): void {
-  if (isRegistered) return;
-  isRegistered = true;
+  if (globalForRegistry.__kiwimuEventsRegistered) return;
+  globalForRegistry.__kiwimuEventsRegistered = true;
 
   // ─── Commerce Core ──────────────────────────────────────────────
   EventBus.on('order.created', handleOrderCreated);   // → 加積分

@@ -10,6 +10,7 @@ import {
   type MenuItemRow,
   type MenuVariantRow,
   type UpdateMenuItemPayload,
+  type MenuItemContentFields,
 } from '@/src/repositories/menu.repository'
 
 export interface MenuVariantPublic {
@@ -31,7 +32,7 @@ export interface MenuItemPublic extends MenuItemRow {
   updated_at: string
 }
 
-export interface CreateMenuItemInput {
+export interface CreateMenuItemInput extends MenuItemContentFields {
   name: string
   category?: string
   category_id?: string
@@ -46,7 +47,7 @@ export interface CreateMenuItemInput {
   sort_order?: number
 }
 
-export interface UpdateMenuItemInput {
+export interface UpdateMenuItemInput extends MenuItemContentFields {
   id: string
   name?: string
   category?: string
@@ -64,6 +65,59 @@ export interface UpdateMenuItemInput {
   mbti_type?: string | null
   updated_at?: string
   [key: string]: unknown
+}
+
+// 電商內容欄位清單（P0-2）：create/update 共用，逐一 pass-through
+const CONTENT_FIELD_KEYS: Array<keyof MenuItemContentFields> = [
+  'tagline',
+  'size_info',
+  'ingredients',
+  'allergens',
+  'storage_info',
+  'delivery_type',
+  'lead_time_days',
+  'gallery_urls',
+  'included_items',
+  'available_from',
+  'available_until',
+  'slug',
+]
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * gallery_urls 只准 https。前端表單也擋，但驗證不能只在 client：
+ * 帶 admin session 直接打 API 就能塞 javascript:/data:/內網 URL。
+ */
+function assertValidGalleryUrls(urls: unknown): void {
+  if (urls === undefined || urls === null) return
+  if (!Array.isArray(urls)) {
+    throw new Error('gallery_urls 必須是陣列')
+  }
+  const invalid = urls.filter((url) => typeof url !== 'string' || !isHttpsUrl(url))
+  if (invalid.length > 0) {
+    throw new Error(`圖片網址必須是 https://：${invalid.join(', ')}`)
+  }
+}
+
+function pickContentFields(
+  input: MenuItemContentFields
+): MenuItemContentFields {
+  assertValidGalleryUrls(input.gallery_urls)
+
+  const result: MenuItemContentFields = {}
+  for (const key of CONTENT_FIELD_KEYS) {
+    if (input[key] !== undefined) {
+      ;(result as Record<string, unknown>)[key] = input[key]
+    }
+  }
+  return result
 }
 
 interface NormalizedVariantInput {
@@ -263,6 +317,7 @@ export async function createMenuItem(
     image: input.image ?? input.image_url ?? null,
     is_available: input.is_available ?? input.is_active ?? true,
     sort_order: input.sort_order ?? 0,
+    ...pickContentFields(input),
   })
 
   try {
@@ -309,6 +364,7 @@ export async function editMenuItem(
   }
   if (input.mbti_type !== undefined) payload.mbti_type = input.mbti_type ?? null
   if (normalizedVariants) payload.prices = toPriceList(normalizedVariants)
+  Object.assign(payload, pickContentFields(input))
 
   const item = Object.keys(payload).length > 0
     ? await updateMenuItem(input.id, payload)

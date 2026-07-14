@@ -18,45 +18,7 @@ export const metadata: Metadata = {
   },
 };
 
-// FAQPage 結構化資料 — 供 AI 搜尋引擎與 Google rich result 引用（公開品牌資訊）
-const faqSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: '月島甜點在哪裡？',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: '月島甜點位於台南市安南區本原街一段 97 巷，果菜市場周邊，提供本原街自取或宅配到府。',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: '什麼是 Kiwimu MBTI 甜點？',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: '月島結合 Kiwimu MBTI，從你當下的情緒與人格狀態推薦適合的甜點；也可以直接瀏覽本季品項預訂。',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Kiwimu 是什麼？',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Kiwimu 是月島甜點的品牌核心，一團從鮮奶油誕生、會融化又重組的奶霜生物，代表「被看見」的情緒入口。',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: '怎麼訂購月島甜點？',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: '在 shop.kiwimu.com 選擇甜點與規格、加入購物車、前往結帳，依當季可預訂日期選擇本原街自取或宅配到府。',
-      },
-    },
-  ],
-};
+// FAQPage 結構化資料已移至 /faq（app/faq/page.tsx），避免同一組 JSON-LD 在兩個 URL 重複出現。
 
 const TRIANGLE = [
   { label: 'KIWIMU', desc: '核心入口。安靜、被看見，所有故事的起點與收束。' },
@@ -67,11 +29,6 @@ const TRIANGLE = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-moon-black">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-
       {/* Hero */}
       <section className="border-b border-moon-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 brand-section text-center">

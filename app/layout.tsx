@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { Suspense } from 'react';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import CartSidebar from '@/components/CartSidebar';
 import MobileCartBar from '@/components/MobileCartBar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import FacebookPixel from '@/components/FacebookPixel';
+import { serializeJsonLd } from '@/lib/json-ld';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -60,9 +61,9 @@ const structuredData = {
       areaServed: ['台南市安南區', '本原街', '果菜市場周邊', '台灣'],
       openingHoursSpecification: {
         '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        dayOfWeek: ['Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
         opens: '10:00',
-        closes: '19:00',
+        closes: '18:00',
       },
       priceRange: '$$',
       servesCuisine: 'Dessert',
@@ -248,7 +249,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(structuredData),
+            __html: serializeJsonLd(structuredData),
           }}
         />
       </head>
@@ -259,16 +260,8 @@ export default function RootLayout({
         <FacebookPixel />
 
         <Navbar />
-        <Suspense fallback={
-          <div className="min-h-screen bg-moon-black flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin text-moon-accent mx-auto mb-4 w-12 h-12 border-2 border-moon-accent border-t-transparent rounded-full"></div>
-              <p className="text-sm text-moon-muted tracking-widest">LOADING...</p>
-            </div>
-          </div>
-        }>
-          <main>{children}</main>
-        </Suspense>
+        <main>{children}</main>
+        <Footer />
         <CartSidebar />
         <MobileCartBar />
       </body>
