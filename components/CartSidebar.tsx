@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
@@ -26,10 +26,84 @@ export default function CartSidebar() {
 
   // 與 Navbar 一樣，用 hasHydrated 避免 SSR 與 CSR 初始內容不一致
   const [hasHydrated, setHasHydrated] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setHasHydrated(true);
   }, []);
+
+  useEffect(() => {
+    const drawer = drawerRef.current;
+
+    if (!drawer) return;
+
+    if (!isOpen) {
+      drawer.setAttribute('inert', '');
+      return;
+    }
+
+    drawer.removeAttribute('inert');
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const previousBodyOverflow = document.body.style.overflow;
+    const focusableSelector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+    const animationFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeCart();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusableElements = Array.from(
+        drawer.querySelectorAll<HTMLElement>(focusableSelector),
+      ).filter((element) => element.offsetParent !== null);
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        drawer.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+
+      if (previouslyFocused?.isConnected) {
+        window.requestAnimationFrame(() => previouslyFocused.focus());
+      }
+    };
+  }, [closeCart, isOpen]);
 
   // 免運門檻（讀公開業務設定，串接後台「配送與取貨」）
   const [freeShipThreshold, setFreeShipThreshold] = useState(0);
@@ -68,6 +142,13 @@ export default function CartSidebar() {
 
       {/* 側邊欄 */}
       <div
+        ref={drawerRef}
+        id="shop-cart-sidebar"
+        role="dialog"
+        aria-modal={isOpen ? true : undefined}
+        aria-hidden={!isOpen}
+        aria-label="購物車"
+        tabIndex={-1}
         className={`
           fixed top-0 right-0 h-full w-full sm:max-w-md bg-moon-black border-l border-moon-border shadow-2xl z-50
           transform transition-transform duration-500 ease-out
@@ -86,8 +167,11 @@ export default function CartSidebar() {
               </p>
             </div>
             <button
+              ref={closeButtonRef}
+              type="button"
               onClick={closeCart}
-              className="p-2 hover:bg-moon-border transition-colors"
+              className="flex min-h-11 min-w-11 items-center justify-center p-2 transition-colors hover:bg-moon-border"
+              aria-label="關閉購物車"
             >
               <X size={20} className="text-moon-text sm:w-6 sm:h-6" />
             </button>

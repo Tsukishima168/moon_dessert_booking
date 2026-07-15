@@ -208,6 +208,8 @@ function HomePageContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 lg:py-20">
           {/* 上方：Logo + 來源標籤 */}
           <div className="flex flex-col items-center text-center">
+            <p className="ku-site-kicker mb-5 sm:mb-7">05 / Dessert commerce</p>
+
             <div className="mb-5 sm:mb-7 flex justify-center">
               <Image
                 src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png"
@@ -266,7 +268,7 @@ function HomePageContent() {
                     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }
                 }}
-                className="w-full sm:w-auto sm:min-w-[280px] bg-moon-accent text-moon-black px-8 py-4 text-xs sm:text-sm tracking-[0.3em] hover:bg-moon-text transition-colors"
+                className="ku-primary-action w-full px-8 py-4 text-xs tracking-[0.3em] sm:w-auto sm:min-w-[280px] sm:text-sm"
               >
                 直接預訂本季甜點
               </button>
