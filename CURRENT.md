@@ -1,5 +1,17 @@
 # CURRENT.md — shop.kiwimu.com
 
+## Snapshot · 2026-07-15
+
+Status: `五站共用視覺語言已完成本機整合與瀏覽器驗證，尚未 commit／push／deploy`
+
+- Public pages now mount the shared Kiwimu Universe rail; admin routes intentionally remain outside the public rail.
+- Homepage adds the `05 / Dessert commerce` role label and shared lime primary-action treatment while preserving Shop's dark commerce identity.
+- Verified `npx tsc --noEmit --incremental false --pretty false`, lint (0 errors, 11 existing warnings), 51-route production build, analytics/SEO local profile 11/11, homepage, `/checkout`, and rail exclusion on `/admin`.
+- Desktop and 390px browser QA passed with no page-level horizontal overflow; the cart drawer covers the rail, exposes a labelled 44px close target, and restores the page after closing.
+- Cart accessibility regression passed: closed state is inert/hidden, open state transfers and traps focus, Escape closes the dialog, focus returns to the opener, and body scrolling is restored.
+- `/checkout` kept the public rail without submitting an order; `/admin` correctly excluded the rail. Local checkout only reported the expected unauthenticated 401 and LIFF custom-domain warning.
+- No checkout submission, order creation, payment, production deployment, or Supabase write was performed in this visual-system pass.
+
 ## Snapshot · 2026-07-14
 
 Status: `共用 Supabase migration、Shop PR #15 與 production deployment 已完成驗證`

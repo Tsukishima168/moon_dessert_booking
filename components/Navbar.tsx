@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, ShoppingCart, User } from 'lucide-react';
 
+import KiwimuUniverseRail from '@/components/KiwimuUniverseRail';
 import ThemeToggle from '@/components/ThemeToggle';
 import { clearServerSession, getResolvedUser } from '@/lib/client-auth';
 import { supabase } from '@/lib/supabase';
@@ -16,7 +17,7 @@ import { useCartStore } from '@/store/cartStore';
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { getTotalItems, toggleCart } = useCartStore();
+  const { getTotalItems, isOpen: isCartOpen, toggleCart } = useCartStore();
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -118,9 +119,11 @@ export default function Navbar() {
   };
 
   return (
-    <nav
-      className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-sm ${isAdminRoute ? 'admin-shell' : ''}`}
-    >
+    <>
+      {!isAdminRoute ? <KiwimuUniverseRail currentSite="shop" /> : null}
+      <nav
+        className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-sm ${isAdminRoute ? 'admin-shell' : ''}`}
+      >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between sm:h-20">
           <Link href="/" className="flex items-center group">
@@ -210,7 +213,15 @@ export default function Navbar() {
             )}
 
             {!isAdminRoute ? (
-              <button onClick={toggleCart} className="relative group">
+              <button
+                type="button"
+                onClick={toggleCart}
+                className="relative group"
+                aria-label={`開啟購物車，共 ${totalItems} 件商品`}
+                aria-expanded={isCartOpen}
+                aria-controls="shop-cart-sidebar"
+                aria-haspopup="dialog"
+              >
                 <div className="rounded-none border border-moon-border bg-moon-gray p-3 transition-all hover:bg-moon-border sm:p-4">
                   <ShoppingCart size={18} className="text-moon-text sm:h-5 sm:w-5" />
                 </div>
@@ -230,6 +241,7 @@ export default function Navbar() {
           </div>
         ) : null}
       </div>
-    </nav>
+      </nav>
+    </>
   );
 }
