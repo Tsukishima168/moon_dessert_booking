@@ -157,6 +157,10 @@ DECLARE
   v_token_id TEXT;
   v_secret TEXT;
   v_credential TEXT;
+  v_replay public.economy_operation_replays%ROWTYPE;
+  v_scope_key TEXT;
+  v_fingerprint TEXT;
+  v_response_data JSONB;
 BEGIN
   p_request_id := coalesce(p_request_id, gen_random_uuid());
 
@@ -173,6 +177,35 @@ BEGIN
      OR btrim(coalesce(p_location_id, '')) = ''
      OR (cardinality(v_staff.location_ids) > 0 AND NOT p_location_id = ANY(v_staff.location_ids)) THEN
     RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
+  END IF;
+
+  v_scope_key := 'user:' || v_staff.user_id::text;
+  v_fingerprint := encode(extensions.digest(
+    'subject=' || coalesce(p_subject_user_id::text, '') ||
+    '|location=' || btrim(p_location_id),
+    'sha256'
+  ), 'hex');
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    v_scope_key || '|store_visit.proof.issue|' || p_request_id::text,
+    0
+  ));
+
+  DELETE FROM public.economy_operation_replays
+  WHERE expires_at <= now();
+
+  SELECT * INTO v_replay
+  FROM public.economy_operation_replays
+  WHERE scope_key = v_scope_key
+    AND operation_key = 'store_visit.proof.issue'
+    AND request_id = p_request_id;
+
+  IF FOUND THEN
+    IF v_replay.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'request_reuse_mismatch'));
+    END IF;
+    RETURN economy_private.response(TRUE, 'OK', p_request_id, v_replay.response_data);
   END IF;
 
   v_token_id := 'VIS-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 16));
@@ -214,13 +247,25 @@ BEGIN
     jsonb_build_object('location_id', v_proof.location_id, 'subject_bound', p_subject_user_id IS NOT NULL)
   );
 
-  RETURN economy_private.response(TRUE, 'OK', p_request_id,
-    jsonb_build_object(
-      'proof_id', v_proof.id,
-      'credential', v_credential,
-      'expires_at', v_proof.expires_at,
-      'location_id', v_proof.location_id
-    ));
+  v_response_data := jsonb_build_object(
+    'proof_id', v_proof.id,
+    'credential', v_credential,
+    'expires_at', v_proof.expires_at,
+    'location_id', v_proof.location_id
+  );
+
+  INSERT INTO public.economy_operation_replays (
+    scope_key, operation_key, request_id, request_fingerprint, response_data, expires_at
+  ) VALUES (
+    v_scope_key,
+    'store_visit.proof.issue',
+    p_request_id,
+    v_fingerprint,
+    v_response_data,
+    v_proof.expires_at
+  );
+
+  RETURN economy_private.response(TRUE, 'OK', p_request_id, v_response_data);
 END
 $function$;
 

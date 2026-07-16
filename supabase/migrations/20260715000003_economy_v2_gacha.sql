@@ -1,5 +1,29 @@
 -- Server-authoritative Gacha and reward-wheel outcomes.
 
+-- Canonical prize catalog. Game configs and rollout flags remain disabled, so
+-- these rows are inert until an explicit staged rollout is approved.
+INSERT INTO public.economy_gacha_prizes
+  (game_mode, prize_code, label, weight, points_delta, metadata, is_active)
+VALUES
+  ('daily_gacha', 'bronze', '銅色幸運', 45, 5, '{"tier":"bronze","fortune_id":1}'::jsonb, TRUE),
+  ('daily_gacha', 'silver', '銀色幸運', 30, 10, '{"tier":"silver","fortune_id":2}'::jsonb, TRUE),
+  ('daily_gacha', 'gold', '金色幸運', 15, 25, '{"tier":"gold","fortune_id":3}'::jsonb, TRUE),
+  ('daily_gacha', 'rainbow', '彩虹幸運', 5, 50, '{"tier":"rainbow","fortune_id":4}'::jsonb, TRUE),
+  ('daily_gacha', 'lucky', '月月大吉', 3, 100, '{"tier":"lucky","fortune_id":9}'::jsonb, TRUE),
+  ('daily_gacha', 'jackpot', '月月頭獎', 2, 200, '{"tier":"jackpot","fortune_id":10}'::jsonb, TRUE),
+  ('reward_wheel', 'points_5', '5 點', 300, 5, '{"tier":"common"}'::jsonb, TRUE),
+  ('reward_wheel', 'points_10', '10 點', 220, 10, '{"tier":"common"}'::jsonb, TRUE),
+  ('reward_wheel', 'points_20', '20 點', 100, 20, '{"tier":"uncommon"}'::jsonb, TRUE),
+  ('reward_wheel', 'points_25', '25 點', 150, 25, '{"tier":"uncommon"}'::jsonb, TRUE),
+  ('reward_wheel', 'points_50', '50 點', 60, 50, '{"tier":"rare"}'::jsonb, TRUE),
+  ('reward_wheel', 'points_100', '100 點', 25, 100, '{"tier":"legendary"}'::jsonb, TRUE)
+ON CONFLICT (game_mode, prize_code) DO UPDATE
+SET label = EXCLUDED.label,
+    weight = EXCLUDED.weight,
+    points_delta = EXCLUDED.points_delta,
+    metadata = EXCLUDED.metadata,
+    is_active = EXCLUDED.is_active;
+
 CREATE OR REPLACE FUNCTION economy_private.play_game(
   p_game_mode TEXT,
   p_request_id UUID
@@ -62,12 +86,31 @@ BEGIN
   WHERE idempotency_key = v_idempotency_key;
 
   IF FOUND THEN
+    SELECT balance INTO v_balance
+    FROM public.point_accounts
+    WHERE user_id = v_user_id;
+
     RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
       jsonb_build_object(
         'play_id', v_existing.id,
         'outcome', v_existing.outcome,
         'cost_points', v_existing.cost_points,
-        'reward_points', v_existing.reward_points
+        'reward_points', v_existing.reward_points,
+        'balance', coalesce(v_balance, 0),
+        'event', coalesce((
+          SELECT jsonb_build_object(
+            'event_id', e.id,
+            'status', e.status,
+            'awarded_points', e.awarded_points,
+            'balance', coalesce(v_balance, 0)
+          )
+          FROM public.economy_events e
+          WHERE e.actor_user_id = v_user_id
+            AND e.source_site = 'gacha'
+            AND e.reference_id = v_existing.id::text
+          ORDER BY e.created_at
+          LIMIT 1
+        ), '{}'::jsonb)
       ));
   END IF;
 

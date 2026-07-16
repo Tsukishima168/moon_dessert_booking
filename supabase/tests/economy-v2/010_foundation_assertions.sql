@@ -3,11 +3,13 @@
 INSERT INTO auth.users (id, email) VALUES
   ('11111111-1111-1111-1111-111111111111', 'member@example.test'),
   ('22222222-2222-2222-2222-222222222222', 'staff@example.test'),
-  ('55555555-5555-5555-5555-555555555555', 'pending-claim@example.test');
+  ('55555555-5555-5555-5555-555555555555', 'pending-claim@example.test'),
+  ('66666666-6666-6666-6666-666666666666', 'multi-redeem@example.test');
 INSERT INTO public.profiles (id) VALUES
   ('11111111-1111-1111-1111-111111111111'),
   ('22222222-2222-2222-2222-222222222222'),
-  ('55555555-5555-5555-5555-555555555555');
+  ('55555555-5555-5555-5555-555555555555'),
+  ('66666666-6666-6666-6666-666666666666');
 INSERT INTO public.staff_members (user_id, role, location_ids)
 VALUES ('22222222-2222-2222-2222-222222222222', 'staff', ARRAY['annan-store']);
 INSERT INTO public.orders (order_id, user_id, total_price, final_price, status)
@@ -135,9 +137,36 @@ BEGIN
 END
 $event_identity_collision$;
 
+DO $gacha_catalog_default_off$
+DECLARE
+  v_seeded_prizes INTEGER;
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.economy_game_configs WHERE is_enabled)
+     OR (SELECT cost_points FROM public.economy_game_configs WHERE game_mode = 'daily_gacha') <> 0
+     OR (SELECT cost_points FROM public.economy_game_configs WHERE game_mode = 'reward_wheel') <> 30 THEN
+    RAISE EXCEPTION 'canonical Gacha configs are not populated and default-off';
+  END IF;
+
+  SELECT count(*) INTO v_seeded_prizes
+  FROM public.economy_gacha_prizes
+  WHERE is_active;
+  IF v_seeded_prizes <> 12 THEN
+    RAISE EXCEPTION 'canonical Gacha prize catalog expected 12 active rows, got %', v_seeded_prizes;
+  END IF;
+END
+$gacha_catalog_default_off$;
+
+UPDATE public.economy_gacha_prizes
+SET is_active = FALSE
+WHERE game_mode = 'daily_gacha';
+
 INSERT INTO public.economy_gacha_prizes
   (game_mode, prize_code, label, weight, points_delta, is_active)
-VALUES ('daily_gacha', 'TEST-5', '測試 5 點', 1, 5, TRUE);
+VALUES ('daily_gacha', 'TEST-5', '測試 5 點', 1, 5, TRUE)
+ON CONFLICT (game_mode, prize_code) DO UPDATE
+SET weight = EXCLUDED.weight,
+    points_delta = EXCLUDED.points_delta,
+    is_active = TRUE;
 UPDATE public.economy_game_configs SET is_enabled = TRUE WHERE game_mode = 'daily_gacha';
 
 DO $gacha$
@@ -153,8 +182,182 @@ BEGIN
   IF (v_first ->> 'code') <> 'OK' OR (v_second ->> 'code') <> 'ALREADY_PROCESSED' THEN
     RAISE EXCEPTION 'gacha UTC-day atomic/idempotent test failed: %, %', v_first, v_second;
   END IF;
+  IF v_first #>> '{data,balance}' IS NULL
+     OR v_second #>> '{data,balance}' IS NULL
+     OR v_first #>> '{data,balance}' <> v_second #>> '{data,balance}'
+     OR v_second #> '{data,event}' = '{}'::jsonb THEN
+    RAISE EXCEPTION 'gacha replay omitted canonical balance/event data: %, %', v_first, v_second;
+  END IF;
 END
 $gacha$;
+
+DO $mbti_attempt_contract$
+DECLARE
+  v_bound_attempt_id UUID := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1';
+  v_bound_completion_id UUID := 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1';
+  v_bound_issue_request UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee11';
+  v_bound_expires_at TIMESTAMPTZ := now() + interval '2 hours';
+  v_issue JSONB;
+  v_issue_replay JSONB;
+  v_issue_mismatch JSONB;
+  v_not_ready JSONB;
+  v_forged JSONB;
+  v_wrong_actor JSONB;
+  v_complete JSONB;
+  v_complete_replay JSONB;
+  v_reused JSONB;
+  v_proof TEXT;
+  v_replay_request UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee12';
+  v_anon_attempt_id UUID := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2';
+  v_anon_completion_id UUID := 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2';
+  v_anon_expires_at TIMESTAMPTZ := now() + interval '2 hours';
+  v_pending_expires_at TIMESTAMPTZ := now() + interval '7 days';
+  v_anon_issue JSONB;
+  v_anon_complete JSONB;
+  v_anon_replay JSONB;
+  v_claim JSONB;
+BEGIN
+  PERFORM set_config('request.jwt.claim.role', 'service_role', false);
+
+  v_issue := public.economy_issue_mbti_attempt(
+    v_bound_attempt_id,
+    'v2-tw-40',
+    '11111111-1111-1111-1111-111111111111',
+    v_bound_expires_at,
+    v_bound_issue_request
+  );
+  v_issue_replay := public.economy_issue_mbti_attempt(
+    v_bound_attempt_id,
+    'v2-tw-40',
+    '11111111-1111-1111-1111-111111111111',
+    v_bound_expires_at,
+    v_bound_issue_request
+  );
+  v_issue_mismatch := public.economy_issue_mbti_attempt(
+    v_bound_attempt_id,
+    'v1-40',
+    '11111111-1111-1111-1111-111111111111',
+    v_bound_expires_at,
+    v_bound_issue_request
+  );
+
+  IF (v_issue ->> 'code') <> 'OK'
+     OR (v_issue_replay ->> 'code') <> 'OK'
+     OR v_issue #>> '{data,attempt_proof}' <> v_issue_replay #>> '{data,attempt_proof}'
+     OR (v_issue_mismatch ->> 'code') <> 'NOT_ELIGIBLE' THEN
+    RAISE EXCEPTION 'MBTI attempt issuance is not request-idempotent: %, %, %',
+      v_issue, v_issue_replay, v_issue_mismatch;
+  END IF;
+
+  v_proof := v_issue #>> '{data,attempt_proof}';
+  v_not_ready := public.economy_complete_mbti_attempt(
+    v_proof,
+    v_bound_completion_id,
+    'v2-tw-40',
+    'INTJ',
+    'A',
+    repeat('a', 64),
+    '11111111-1111-1111-1111-111111111111',
+    now() + interval '7 days',
+    gen_random_uuid()
+  );
+  IF (v_not_ready ->> 'code') <> 'NOT_ELIGIBLE'
+     OR v_not_ready #>> '{data,reason}' <> 'attempt_not_ready' THEN
+    RAISE EXCEPTION 'MBTI not-before proof gate failed: %', v_not_ready;
+  END IF;
+
+  UPDATE public.economy_mbti_attempts
+  SET not_before = now() - interval '1 second'
+  WHERE attempt_id = v_bound_attempt_id;
+
+  v_forged := public.economy_complete_mbti_attempt(
+    v_proof || '0', v_bound_completion_id, 'v2-tw-40', 'INTJ', 'A', repeat('a', 64),
+    '11111111-1111-1111-1111-111111111111', now() + interval '7 days', gen_random_uuid()
+  );
+  v_wrong_actor := public.economy_complete_mbti_attempt(
+    v_proof, v_bound_completion_id, 'v2-tw-40', 'INTJ', 'A', repeat('a', 64),
+    '22222222-2222-2222-2222-222222222222', now() + interval '7 days', gen_random_uuid()
+  );
+  IF (v_forged ->> 'code') <> 'INVALID_PROOF'
+     OR (v_wrong_actor ->> 'code') <> 'INVALID_PROOF' THEN
+    RAISE EXCEPTION 'MBTI forged/bound proof gate failed: %, %', v_forged, v_wrong_actor;
+  END IF;
+
+  v_complete := public.economy_complete_mbti_attempt(
+    v_proof, v_bound_completion_id, 'v2-tw-40', 'INTJ', 'A', repeat('a', 64),
+    '11111111-1111-1111-1111-111111111111', now() + interval '7 days', gen_random_uuid()
+  );
+  v_complete_replay := public.economy_complete_mbti_attempt(
+    v_proof, v_bound_completion_id, 'v2-tw-40', 'INTJ', 'A', repeat('a', 64),
+    '11111111-1111-1111-1111-111111111111', now() + interval '7 days', v_replay_request
+  );
+  v_reused := public.economy_complete_mbti_attempt(
+    v_proof, gen_random_uuid(), 'v2-tw-40', 'INTJ', 'A', repeat('a', 64),
+    '11111111-1111-1111-1111-111111111111', now() + interval '7 days', gen_random_uuid()
+  );
+  IF (v_complete ->> 'code') <> 'OK'
+     OR (v_complete_replay ->> 'code') <> 'OK'
+     OR (v_complete_replay ->> 'request_id')::uuid <> v_replay_request
+     OR v_complete #> '{data}' <> v_complete_replay #> '{data}'
+     OR (v_reused ->> 'code') <> 'ALREADY_PROCESSED' THEN
+    RAISE EXCEPTION 'MBTI completion/replay contract failed: %, %, %',
+      v_complete, v_complete_replay, v_reused;
+  END IF;
+
+  v_anon_issue := public.economy_issue_mbti_attempt(
+    v_anon_attempt_id,
+    'v2-tw-40',
+    NULL,
+    v_anon_expires_at,
+    gen_random_uuid()
+  );
+  UPDATE public.economy_mbti_attempts
+  SET not_before = now() - interval '1 second'
+  WHERE attempt_id = v_anon_attempt_id;
+
+  v_anon_complete := public.economy_complete_mbti_attempt(
+    v_anon_issue #>> '{data,attempt_proof}',
+    v_anon_completion_id,
+    'v2-tw-40',
+    'ENFP',
+    'T',
+    repeat('b', 64),
+    NULL,
+    v_pending_expires_at,
+    gen_random_uuid()
+  );
+  v_anon_replay := public.economy_complete_mbti_attempt(
+    v_anon_issue #>> '{data,attempt_proof}',
+    v_anon_completion_id,
+    'v2-tw-40',
+    'ENFP',
+    'T',
+    repeat('b', 64),
+    NULL,
+    v_pending_expires_at,
+    gen_random_uuid()
+  );
+  IF (v_anon_issue ->> 'code') <> 'OK'
+     OR (v_anon_complete ->> 'code') <> 'AUTH_REQUIRED'
+     OR (v_anon_replay ->> 'code') <> 'AUTH_REQUIRED'
+     OR v_anon_complete #>> '{data,claim_id}' <> v_anon_replay #>> '{data,claim_id}' THEN
+    RAISE EXCEPTION 'anonymous MBTI pending claim contract failed: %, %, %',
+      v_anon_issue, v_anon_complete, v_anon_replay;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', false);
+  PERFORM set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+  v_claim := public.economy_claim_pending(
+    (v_anon_complete #>> '{data,claim_id}')::uuid,
+    gen_random_uuid()
+  );
+  IF (v_claim ->> 'code') <> 'OK' THEN
+    RAISE EXCEPTION 'generated MBTI pending claim failed: %', v_claim;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+END
+$mbti_attempt_contract$;
 
 DO $journey_events$
 DECLARE
@@ -197,22 +400,14 @@ BEGIN
   END IF;
 
   PERFORM set_config('request.jwt.claim.role', 'service_role', false);
-  FOREACH v_result IN ARRAY ARRAY[
-    public.economy_submit_event(jsonb_build_object(
-      'event_id', gen_random_uuid(), 'event_type', 'mbti.completed', 'occurred_at', now(),
-      'source_site', 'kiwimu', 'actor_user_id', '11111111-1111-1111-1111-111111111111',
-      'reference_id', 'mbti-result-1', 'evidence', '{}'::jsonb, 'schema_version', 1
-    ), gen_random_uuid()),
-    public.economy_submit_event(jsonb_build_object(
-      'event_id', gen_random_uuid(), 'event_type', 'order.completed', 'occurred_at', now(),
-      'source_site', 'shop', 'actor_user_id', '11111111-1111-1111-1111-111111111111',
-      'reference_id', 'ORDER-TEST-1', 'evidence', '{}'::jsonb, 'schema_version', 1
-    ), gen_random_uuid())
-  ] LOOP
-    IF (v_result ->> 'code') <> 'OK' THEN
-      RAISE EXCEPTION 'journey event failed: %', v_result;
-    END IF;
-  END LOOP;
+  v_result := public.economy_submit_event(jsonb_build_object(
+    'event_id', gen_random_uuid(), 'event_type', 'order.completed', 'occurred_at', now(),
+    'source_site', 'shop', 'actor_user_id', '11111111-1111-1111-1111-111111111111',
+    'reference_id', 'ORDER-TEST-1', 'evidence', '{}'::jsonb, 'schema_version', 1
+  ), gen_random_uuid());
+  IF (v_result ->> 'code') <> 'OK' THEN
+    RAISE EXCEPTION 'journey event failed: %', v_result;
+  END IF;
 
   v_result := public.economy_submit_event(jsonb_build_object(
     'event_id', gen_random_uuid(), 'event_type', 'order.completed', 'occurred_at', now(),
@@ -372,20 +567,38 @@ $pending_claims$;
 DO $visit_proof$
 DECLARE
   v_issue JSONB;
+  v_issue_replay JSONB;
+  v_issue_mismatch JSONB;
   v_claim JSONB;
+  v_claim_replay JSONB;
   v_proof TEXT;
+  v_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1';
 BEGIN
   PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
-  v_issue := public.issue_store_visit_proof(NULL, 'annan-store', gen_random_uuid());
+  v_issue := public.issue_store_visit_proof(NULL, 'annan-store', v_request_id);
+  v_issue_replay := public.issue_store_visit_proof(NULL, 'annan-store', v_request_id);
+  v_issue_mismatch := public.issue_store_visit_proof(
+    '11111111-1111-1111-1111-111111111111',
+    'annan-store',
+    v_request_id
+  );
   IF (v_issue ->> 'code') <> 'OK' THEN
     RAISE EXCEPTION 'visit proof issue failed: %', v_issue;
+  END IF;
+  IF (v_issue_replay ->> 'code') <> 'OK'
+     OR v_issue #>> '{data,credential}' <> v_issue_replay #>> '{data,credential}'
+     OR v_issue #>> '{data,proof_id}' <> v_issue_replay #>> '{data,proof_id}'
+     OR (v_issue_mismatch ->> 'code') <> 'NOT_ELIGIBLE' THEN
+    RAISE EXCEPTION 'visit proof issuance is not request-idempotent: %, %, %',
+      v_issue, v_issue_replay, v_issue_mismatch;
   END IF;
 
   v_proof := v_issue #>> '{data,credential}';
   PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
   v_claim := public.claim_store_visit_proof(v_proof, gen_random_uuid());
-  IF (v_claim ->> 'code') <> 'OK' THEN
-    RAISE EXCEPTION 'visit proof claim failed: %', v_claim;
+  v_claim_replay := public.claim_store_visit_proof(v_proof, gen_random_uuid());
+  IF (v_claim ->> 'code') <> 'OK' OR (v_claim_replay ->> 'code') <> 'ALREADY_PROCESSED' THEN
+    RAISE EXCEPTION 'visit proof claim/replay failed: %, %', v_claim, v_claim_replay;
   END IF;
 END
 $visit_proof$;
@@ -399,17 +612,42 @@ VALUES ('foundation-reward', 1);
 DO $redemption$
 DECLARE
   v_redeem JSONB;
+  v_redeem_replay JSONB;
+  v_rotate JSONB;
+  v_rotate_replay JSONB;
   v_fulfill JSONB;
   v_repeat JSONB;
   v_credential TEXT;
+  v_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2';
+  v_rotate_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3';
 BEGIN
   PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
-  v_redeem := public.redeem_reward_item('foundation-reward', gen_random_uuid());
+  v_redeem := public.redeem_reward_item('foundation-reward', v_request_id);
+  v_redeem_replay := public.redeem_reward_item('foundation-reward', v_request_id);
   IF (v_redeem ->> 'code') <> 'OK' THEN
     RAISE EXCEPTION 'redemption failed: %', v_redeem;
   END IF;
+  IF (v_redeem_replay ->> 'code') <> 'OK'
+     OR v_redeem #>> '{data,credential}' <> v_redeem_replay #>> '{data,credential}' THEN
+    RAISE EXCEPTION 'redemption request replay changed credential: %, %', v_redeem, v_redeem_replay;
+  END IF;
 
-  v_credential := v_redeem #>> '{data,credential}';
+  v_rotate := public.rotate_reward_redemption_proof(
+    (v_redeem #>> '{data,redemption_id}')::uuid,
+    v_rotate_request_id
+  );
+  v_rotate_replay := public.rotate_reward_redemption_proof(
+    (v_redeem #>> '{data,redemption_id}')::uuid,
+    v_rotate_request_id
+  );
+  IF (v_rotate ->> 'code') <> 'OK'
+     OR (v_rotate_replay ->> 'code') <> 'OK'
+     OR v_rotate #>> '{data,credential}' <> v_rotate_replay #>> '{data,credential}'
+     OR v_rotate #>> '{data,credential}' = v_redeem #>> '{data,credential}' THEN
+    RAISE EXCEPTION 'redemption proof rotation is not request-idempotent: %, %', v_rotate, v_rotate_replay;
+  END IF;
+
+  v_credential := v_rotate #>> '{data,credential}';
   PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
   v_fulfill := public.fulfill_reward_redemption(v_credential, gen_random_uuid());
   v_repeat := public.fulfill_reward_redemption(v_credential, gen_random_uuid());
@@ -418,6 +656,53 @@ BEGIN
   END IF;
 END
 $redemption$;
+
+INSERT INTO public.reward_items
+  (reward_id, name, points_cost, category, stock_mode, redemption_period_seconds, max_per_period)
+VALUES ('multi-reward', 'Multi Reward', 10, 'dessert', 'unlimited', 3600, 2);
+
+DO $multi_redemption$
+DECLARE
+  v_first JSONB;
+  v_first_replay JSONB;
+  v_second JSONB;
+  v_third JSONB;
+  v_first_request UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee4';
+BEGIN
+  PERFORM set_config('request.jwt.claim.role', 'service_role', false);
+  PERFORM economy_private.apply_ledger_entry(
+    '66666666-6666-6666-6666-666666666666',
+    30,
+    'grant',
+    'passport',
+    'test.grant',
+    'multi-redemption-grant',
+    NULL,
+    NULL,
+    'multi-redemption-grant',
+    gen_random_uuid(),
+    '{}'::jsonb
+  );
+
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', false);
+  PERFORM set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+  v_first := public.redeem_reward_item('multi-reward', v_first_request);
+  v_first_replay := public.redeem_reward_item('multi-reward', v_first_request);
+  v_second := public.redeem_reward_item('multi-reward', gen_random_uuid());
+  v_third := public.redeem_reward_item('multi-reward', gen_random_uuid());
+
+  IF (v_first ->> 'code') <> 'OK'
+     OR (v_first_replay ->> 'code') <> 'OK'
+     OR v_first #>> '{data,credential}' <> v_first_replay #>> '{data,credential}'
+     OR (v_second ->> 'code') <> 'OK'
+     OR (v_third ->> 'code') <> 'LIMIT_REACHED' THEN
+    RAISE EXCEPTION 'max_per_period > 1 redemption failed: %, %, %, %',
+      v_first, v_first_replay, v_second, v_third;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+END
+$multi_redemption$;
 
 SELECT set_config('request.jwt.claim.role', 'service_role', false);
 SELECT set_config('request.jwt.claim.sub', '', false);
@@ -584,6 +869,25 @@ BEGIN
   IF has_table_privilege('authenticated', 'public.point_accounts', 'SELECT') THEN
     RAISE EXCEPTION 'authenticated bypasses read rollout with direct point_accounts SELECT';
   END IF;
+  IF NOT has_table_privilege('authenticated', 'public.reward_items', 'SELECT')
+     OR NOT has_table_privilege('anon', 'public.reward_items', 'SELECT') THEN
+    RAISE EXCEPTION 'reward catalog read grants are missing';
+  END IF;
+  IF has_table_privilege('anon', 'public.reward_redemptions', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.reward_items', 'INSERT,UPDATE,DELETE')
+     OR has_table_privilege('authenticated', 'public.reward_redemptions', 'INSERT,UPDATE,DELETE') THEN
+    RAISE EXCEPTION 'reward table write/read boundary is broader than canonical';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname IN ('reward_items', 'reward_redemptions')
+      AND NOT c.relrowsecurity
+  ) THEN
+    RAISE EXCEPTION 'reward table RLS is not enabled';
+  END IF;
   IF has_schema_privilege('authenticated', 'economy_private', 'USAGE') THEN
     RAISE EXCEPTION 'authenticated has USAGE on economy_private';
   END IF;
@@ -599,6 +903,38 @@ BEGIN
     'EXECUTE'
   ) THEN
     RAISE EXCEPTION 'authenticated can execute partial reverse_point_reference';
+  END IF;
+  IF has_function_privilege(
+       'authenticated',
+       'public.economy_issue_mbti_attempt(uuid,text,uuid,timestamp with time zone,uuid)',
+       'EXECUTE'
+     )
+     OR has_function_privilege(
+       'anon',
+       'public.economy_complete_mbti_attempt(text,uuid,text,text,text,text,uuid,timestamp with time zone,uuid)',
+       'EXECUTE'
+     )
+     OR NOT has_function_privilege(
+       'service_role',
+       'public.economy_complete_mbti_attempt(text,uuid,text,text,text,text,uuid,timestamp with time zone,uuid)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'MBTI proof RPC grants are not service-role-only';
+  END IF;
+  IF NOT has_function_privilege(
+       'anon',
+       'public.consume_mbti_claim(text)',
+       'EXECUTE'
+     )
+     OR EXISTS (
+       SELECT 1
+       FROM information_schema.routine_privileges
+       WHERE specific_schema = 'public'
+         AND routine_name = 'consume_mbti_claim'
+         AND grantee = 'PUBLIC'
+         AND privilege_type = 'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'legacy MBTI bridge grant is not explicitly scoped';
   END IF;
 
   BEGIN
@@ -622,7 +958,9 @@ BEGIN
       )
       AND p.proname IN (
         'reject_mutation', 'rollout_enabled', 'apply_ledger_entry', 'submit_event',
-        'economy_submit_event', 'economy_claim_pending', 'reverse_point_reference',
+        'consume_mbti_claim',
+        'economy_submit_event', 'economy_claim_pending', 'economy_issue_mbti_attempt',
+        'economy_complete_mbti_attempt', 'reverse_point_reference',
         'play_game', 'play_daily_gacha', 'spin_reward_wheel', 'redeem_reward_item',
         'rotate_reward_redemption_proof', 'fulfill_reward_redemption',
         'award_event_achievements', 'economy_get_wallet', 'issue_store_visit_proof',

@@ -13,6 +13,7 @@ BEGIN
   FROM unnest(ARRAY[
     'auth.users',
     'public.orders',
+    'public.mbti_claims',
     'public.point_transactions',
     'public.profiles',
     'public.reward_items',

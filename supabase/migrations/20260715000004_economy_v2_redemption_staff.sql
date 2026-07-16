@@ -18,12 +18,17 @@ DECLARE
   v_idempotency_key TEXT;
   v_period_start TIMESTAMPTZ;
   v_period_count INTEGER;
+  v_period_sequence INTEGER;
   v_token_id TEXT;
   v_secret TEXT;
   v_proof TEXT;
   v_proof_hash TEXT;
   v_expires_at TIMESTAMPTZ;
   v_stock public.reward_stock_buckets%ROWTYPE;
+  v_replay public.economy_operation_replays%ROWTYPE;
+  v_scope_key TEXT;
+  v_fingerprint TEXT;
+  v_response_data JSONB;
 BEGIN
   p_request_id := coalesce(p_request_id, gen_random_uuid());
 
@@ -33,6 +38,34 @@ BEGIN
 
   IF NOT economy_private.rollout_enabled('passport', 'redeem', v_user_id) THEN
     RETURN economy_private.response(FALSE, 'ROLLOUT_DISABLED', p_request_id);
+  END IF;
+
+  v_scope_key := 'user:' || v_user_id::text;
+  v_fingerprint := encode(extensions.digest(
+    'reward_id=' || btrim(coalesce(p_reward_id, '')),
+    'sha256'
+  ), 'hex');
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    v_scope_key || '|reward.redeem|' || p_request_id::text,
+    0
+  ));
+
+  DELETE FROM public.economy_operation_replays
+  WHERE expires_at <= now();
+
+  SELECT * INTO v_replay
+  FROM public.economy_operation_replays
+  WHERE scope_key = v_scope_key
+    AND operation_key = 'reward.redeem'
+    AND request_id = p_request_id;
+
+  IF FOUND THEN
+    IF v_replay.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'request_reuse_mismatch'));
+    END IF;
+    RETURN economy_private.response(TRUE, 'OK', p_request_id, v_replay.response_data);
   END IF;
 
   SELECT * INTO v_item
@@ -50,17 +83,14 @@ BEGIN
     floor(extract(epoch FROM now()) / v_item.redemption_period_seconds)
     * v_item.redemption_period_seconds
   );
-  v_idempotency_key := encode(extensions.digest(
-    v_user_id::text || '|redeem|' || v_item.reward_id || '|' ||
-    floor(extract(epoch FROM now()) / v_item.redemption_period_seconds)::bigint::text,
-    'sha256'
-  ), 'hex');
 
   PERFORM pg_advisory_xact_lock(hashtextextended(v_user_id::text, 0));
 
   SELECT * INTO v_existing
   FROM public.reward_redemptions
-  WHERE idempotency_key = v_idempotency_key;
+  WHERE user_id = v_user_id
+    AND reward_id = v_item.reward_id
+    AND request_id = p_request_id;
 
   IF FOUND THEN
     RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
@@ -73,17 +103,28 @@ BEGIN
       ));
   END IF;
 
-  SELECT count(*) INTO v_period_count
+  SELECT
+    count(*) FILTER (WHERE status IN ('issued', 'fulfilled')),
+    count(*)
+  INTO v_period_count, v_period_sequence
   FROM public.reward_redemptions
   WHERE user_id = v_user_id
     AND reward_id = v_item.reward_id
     AND issued_at >= v_period_start
-    AND issued_at < v_period_start + make_interval(secs => v_item.redemption_period_seconds)
-    AND status IN ('issued', 'fulfilled');
+    AND issued_at < v_period_start + make_interval(secs => v_item.redemption_period_seconds);
 
   IF v_period_count >= v_item.max_per_period THEN
     RETURN economy_private.response(FALSE, 'LIMIT_REACHED', p_request_id);
   END IF;
+
+  -- The server assigns the next period slot. The request UUID only identifies a
+  -- retry and never chooses the economic outcome.
+  v_idempotency_key := encode(extensions.digest(
+    v_user_id::text || '|redeem|' || v_item.reward_id || '|' ||
+    floor(extract(epoch FROM now()) / v_item.redemption_period_seconds)::bigint::text || '|' ||
+    (v_period_sequence + 1)::text,
+    'sha256'
+  ), 'hex');
 
   INSERT INTO public.point_accounts (user_id)
   VALUES (v_user_id)
@@ -187,17 +228,29 @@ BEGIN
     )
   );
 
-  RETURN economy_private.response(TRUE, 'OK', p_request_id,
-    jsonb_build_object(
-      'redemption_id', v_redemption.id,
-      'reward_id', v_redemption.reward_id,
-      'reward_name', v_redemption.reward_name,
-      'points_cost', v_redemption.points_cost,
-      'status', v_redemption.status,
-      'credential', v_proof,
-      'expires_at', v_redemption.expires_at,
-      'balance', v_balance - v_item.points_cost
-    ));
+  v_response_data := jsonb_build_object(
+    'redemption_id', v_redemption.id,
+    'reward_id', v_redemption.reward_id,
+    'reward_name', v_redemption.reward_name,
+    'points_cost', v_redemption.points_cost,
+    'status', v_redemption.status,
+    'credential', v_proof,
+    'expires_at', v_redemption.expires_at,
+    'balance', v_balance - v_item.points_cost
+  );
+
+  INSERT INTO public.economy_operation_replays (
+    scope_key, operation_key, request_id, request_fingerprint, response_data, expires_at
+  ) VALUES (
+    v_scope_key,
+    'reward.redeem',
+    p_request_id,
+    v_fingerprint,
+    v_response_data,
+    least(v_redemption.expires_at, now() + interval '10 minutes')
+  );
+
+  RETURN economy_private.response(TRUE, 'OK', p_request_id, v_response_data);
 END
 $function$;
 
@@ -215,11 +268,43 @@ DECLARE
   v_redemption public.reward_redemptions%ROWTYPE;
   v_secret TEXT;
   v_proof TEXT;
+  v_replay public.economy_operation_replays%ROWTYPE;
+  v_scope_key TEXT;
+  v_fingerprint TEXT;
+  v_response_data JSONB;
 BEGIN
   p_request_id := coalesce(p_request_id, gen_random_uuid());
 
   IF v_user_id IS NULL THEN
     RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
+  END IF;
+
+  v_scope_key := 'user:' || v_user_id::text;
+  v_fingerprint := encode(extensions.digest(
+    'redemption_id=' || coalesce(p_redemption_id::text, ''),
+    'sha256'
+  ), 'hex');
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    v_scope_key || '|reward.proof.rotate|' || p_request_id::text,
+    0
+  ));
+
+  DELETE FROM public.economy_operation_replays
+  WHERE expires_at <= now();
+
+  SELECT * INTO v_replay
+  FROM public.economy_operation_replays
+  WHERE scope_key = v_scope_key
+    AND operation_key = 'reward.proof.rotate'
+    AND request_id = p_request_id;
+
+  IF FOUND THEN
+    IF v_replay.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'request_reuse_mismatch'));
+    END IF;
+    RETURN economy_private.response(TRUE, 'OK', p_request_id, v_replay.response_data);
   END IF;
 
   SELECT * INTO v_redemption
@@ -246,12 +331,24 @@ BEGIN
       request_id = p_request_id
   WHERE id = v_redemption.id;
 
-  RETURN economy_private.response(TRUE, 'OK', p_request_id,
-    jsonb_build_object(
-      'redemption_id', v_redemption.id,
-      'credential', v_proof,
-      'expires_at', v_redemption.expires_at
-    ));
+  v_response_data := jsonb_build_object(
+    'redemption_id', v_redemption.id,
+    'credential', v_proof,
+    'expires_at', v_redemption.expires_at
+  );
+
+  INSERT INTO public.economy_operation_replays (
+    scope_key, operation_key, request_id, request_fingerprint, response_data, expires_at
+  ) VALUES (
+    v_scope_key,
+    'reward.proof.rotate',
+    p_request_id,
+    v_fingerprint,
+    v_response_data,
+    least(v_redemption.expires_at, now() + interval '10 minutes')
+  );
+
+  RETURN economy_private.response(TRUE, 'OK', p_request_id, v_response_data);
 END
 $function$;
 

@@ -538,6 +538,335 @@ AS $function$
   );
 $function$;
 
+CREATE OR REPLACE FUNCTION public.economy_issue_mbti_attempt(
+  p_attempt_id UUID,
+  p_quiz_version TEXT,
+  p_subject_user_id UUID,
+  p_expires_at TIMESTAMPTZ,
+  p_request_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+DECLARE
+  v_config public.economy_rollout_config%ROWTYPE;
+  v_secret TEXT;
+  v_proof TEXT;
+  v_not_before TIMESTAMPTZ := now() + interval '10 seconds';
+  v_response_data JSONB;
+  v_replay public.economy_operation_replays%ROWTYPE;
+  v_fingerprint TEXT;
+BEGIN
+  p_request_id := coalesce(p_request_id, gen_random_uuid());
+  p_quiz_version := btrim(coalesce(p_quiz_version, ''));
+
+  IF NOT economy_private.is_service_role() THEN
+    RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
+  END IF;
+
+  IF p_attempt_id IS NULL
+     OR p_quiz_version NOT IN ('v1-40', 'v2-tw-40')
+     OR p_expires_at IS NULL
+     OR p_expires_at <= v_not_before + interval '30 seconds'
+     OR p_expires_at > now() + interval '4 hours'
+     OR (p_subject_user_id IS NOT NULL AND NOT EXISTS (
+       SELECT 1 FROM auth.users WHERE id = p_subject_user_id
+     )) THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'invalid_attempt_contract'));
+  END IF;
+
+  SELECT * INTO v_config
+  FROM public.economy_rollout_config
+  WHERE source_site = 'kiwimu';
+
+  IF NOT FOUND
+     OR NOT v_config.write_enabled
+     OR (
+       p_subject_user_id IS NULL
+       AND v_config.rollout_percentage < 100
+     )
+     OR (
+       p_subject_user_id IS NOT NULL
+       AND NOT economy_private.rollout_enabled('kiwimu', 'write', p_subject_user_id)
+     ) THEN
+    RETURN economy_private.response(FALSE, 'ROLLOUT_DISABLED', p_request_id);
+  END IF;
+
+  v_fingerprint := encode(extensions.digest(
+    p_attempt_id::text || '|' || p_quiz_version || '|' ||
+    coalesce(p_subject_user_id::text, '') || '|' || p_expires_at::text,
+    'sha256'
+  ), 'hex');
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    'service:kiwimu|mbti.attempt.issue|' || p_request_id::text,
+    0
+  ));
+
+  DELETE FROM public.economy_operation_replays
+  WHERE expires_at <= now();
+
+  SELECT * INTO v_replay
+  FROM public.economy_operation_replays
+  WHERE scope_key = 'service:kiwimu'
+    AND operation_key = 'mbti.attempt.issue'
+    AND request_id = p_request_id;
+
+  IF FOUND THEN
+    IF v_replay.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'request_reuse_mismatch'));
+    END IF;
+    RETURN economy_private.response(TRUE, 'OK', p_request_id, v_replay.response_data);
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.economy_mbti_attempts WHERE attempt_id = p_attempt_id) THEN
+    RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id);
+  END IF;
+
+  v_secret := encode(extensions.gen_random_bytes(32), 'hex');
+  v_proof := p_attempt_id::text || '.' || v_secret;
+  v_response_data := jsonb_build_object(
+    'attempt_proof', v_proof,
+    'not_before', v_not_before,
+    'expires_at', p_expires_at
+  );
+
+  INSERT INTO public.economy_mbti_attempts (
+    attempt_id,
+    quiz_version,
+    subject_user_id,
+    proof_hash,
+    not_before,
+    expires_at,
+    issue_request_id
+  ) VALUES (
+    p_attempt_id,
+    p_quiz_version,
+    p_subject_user_id,
+    encode(extensions.digest(v_proof, 'sha256'), 'hex'),
+    v_not_before,
+    p_expires_at,
+    p_request_id
+  );
+
+  INSERT INTO public.economy_operation_replays (
+    scope_key, operation_key, request_id, request_fingerprint, response_data, expires_at
+  ) VALUES (
+    'service:kiwimu',
+    'mbti.attempt.issue',
+    p_request_id,
+    v_fingerprint,
+    v_response_data,
+    p_expires_at
+  );
+
+  RETURN economy_private.response(TRUE, 'OK', p_request_id, v_response_data);
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.economy_complete_mbti_attempt(
+  p_attempt_proof TEXT,
+  p_completion_id UUID,
+  p_quiz_version TEXT,
+  p_result_type TEXT,
+  p_variant TEXT,
+  p_answers_sha256 TEXT,
+  p_actor_user_id UUID,
+  p_pending_expires_at TIMESTAMPTZ,
+  p_request_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+DECLARE
+  v_attempt_id UUID;
+  v_attempt public.economy_mbti_attempts%ROWTYPE;
+  v_config public.economy_rollout_config%ROWTYPE;
+  v_proof_hash TEXT;
+  v_event_payload JSONB;
+  v_result JSONB;
+  v_claim_id UUID;
+  v_claim_expires_at TIMESTAMPTZ;
+BEGIN
+  p_request_id := coalesce(p_request_id, gen_random_uuid());
+  p_attempt_proof := btrim(coalesce(p_attempt_proof, ''));
+  p_quiz_version := btrim(coalesce(p_quiz_version, ''));
+  p_result_type := upper(btrim(coalesce(p_result_type, '')));
+  p_variant := upper(btrim(coalesce(p_variant, '')));
+  p_answers_sha256 := lower(btrim(coalesce(p_answers_sha256, '')));
+
+  IF NOT economy_private.is_service_role() THEN
+    RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
+  END IF;
+
+  BEGIN
+    v_attempt_id := split_part(p_attempt_proof, '.', 1)::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RETURN economy_private.response(FALSE, 'INVALID_PROOF', p_request_id);
+  END;
+
+  IF p_completion_id IS NULL
+     OR position('.' IN p_attempt_proof) = 0
+     OR length(split_part(p_attempt_proof, '.', 2)) <> 64
+     OR split_part(p_attempt_proof, '.', 2) !~ '^[0-9a-fA-F]{64}$'
+     OR p_quiz_version NOT IN ('v1-40', 'v2-tw-40')
+     OR p_result_type !~ '^[EI][SN][TF][JP]$'
+     OR p_variant !~ '^[AT]$'
+     OR p_answers_sha256 !~ '^[0-9a-f]{64}$' THEN
+    RETURN economy_private.response(FALSE, 'INVALID_PROOF', p_request_id);
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    'mbti-completion|' || p_completion_id::text,
+    0
+  ));
+
+  v_proof_hash := encode(extensions.digest(p_attempt_proof, 'sha256'), 'hex');
+  SELECT * INTO v_attempt
+  FROM public.economy_mbti_attempts
+  WHERE attempt_id = v_attempt_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_attempt.proof_hash IS DISTINCT FROM v_proof_hash THEN
+    RETURN economy_private.response(FALSE, 'INVALID_PROOF', p_request_id);
+  END IF;
+
+  IF v_attempt.consumed_at IS NOT NULL THEN
+    IF v_attempt.completion_id = p_completion_id THEN
+      RETURN economy_private.response(
+        coalesce((v_attempt.completion_response ->> 'ok')::boolean, FALSE),
+        v_attempt.completion_response ->> 'code',
+        p_request_id,
+        coalesce(v_attempt.completion_response -> 'data', '{}'::jsonb)
+      );
+    END IF;
+    RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id);
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.economy_mbti_attempts
+    WHERE completion_id = p_completion_id
+      AND attempt_id <> v_attempt_id
+  ) THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'completion_identity_conflict'));
+  END IF;
+
+  IF v_attempt.expires_at <= now() THEN
+    RETURN economy_private.response(FALSE, 'EXPIRED', p_request_id);
+  ELSIF v_attempt.not_before > now() THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'attempt_not_ready', 'not_before', v_attempt.not_before));
+  ELSIF v_attempt.quiz_version <> p_quiz_version THEN
+    RETURN economy_private.response(FALSE, 'INVALID_PROOF', p_request_id);
+  ELSIF v_attempt.subject_user_id IS NOT NULL
+        AND v_attempt.subject_user_id IS DISTINCT FROM p_actor_user_id THEN
+    RETURN economy_private.response(FALSE, 'INVALID_PROOF', p_request_id);
+  ELSIF p_actor_user_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM auth.users WHERE id = p_actor_user_id) THEN
+    RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
+  END IF;
+
+  SELECT * INTO v_config
+  FROM public.economy_rollout_config
+  WHERE source_site = 'kiwimu';
+
+  IF NOT FOUND
+     OR NOT v_config.write_enabled
+     OR (p_actor_user_id IS NULL AND v_config.rollout_percentage < 100)
+     OR (
+       p_actor_user_id IS NOT NULL
+       AND NOT economy_private.rollout_enabled('kiwimu', 'write', p_actor_user_id)
+     ) THEN
+    RETURN economy_private.response(FALSE, 'ROLLOUT_DISABLED', p_request_id);
+  END IF;
+
+  v_event_payload := jsonb_build_object(
+    'event_id', p_completion_id,
+    'event_type', 'mbti.completed',
+    'occurred_at', now(),
+    'source_site', 'kiwimu',
+    'reference_id', 'mbti:' || p_completion_id::text,
+    'evidence', jsonb_build_object(
+      'attempt_id', v_attempt.attempt_id,
+      'quiz_version', p_quiz_version,
+      'result_type', p_result_type,
+      'variant', p_variant,
+      'answers_sha256', p_answers_sha256
+    ),
+    'schema_version', 1
+  );
+
+  IF p_actor_user_id IS NULL THEN
+    IF p_pending_expires_at IS NULL
+       OR p_pending_expires_at <= now() + interval '5 minutes'
+       OR p_pending_expires_at > now() + interval '8 days' THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'invalid_pending_expiry'));
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.economy_event_policies
+      WHERE source_site = 'kiwimu'
+        AND event_type = 'mbti.completed'
+        AND is_active
+        AND eligibility @> '{"pending_claim_allowed":true}'::jsonb
+        AND active_from <= now()
+        AND (active_until IS NULL OR active_until > now())
+    ) THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'pending_claim_not_allowed'));
+    END IF;
+
+    v_claim_id := gen_random_uuid();
+    v_claim_expires_at := p_pending_expires_at;
+    INSERT INTO public.pending_activity_claims (
+      id,
+      source_site,
+      event_payload,
+      evidence_hash,
+      expires_at
+    ) VALUES (
+      v_claim_id,
+      'kiwimu',
+      v_event_payload,
+      encode(extensions.digest(
+        p_completion_id::text || '|' || p_answers_sha256,
+        'sha256'
+      ), 'hex'),
+      v_claim_expires_at
+    );
+
+    v_result := economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id,
+      jsonb_build_object('claim_id', v_claim_id, 'expires_at', v_claim_expires_at));
+  ELSE
+    v_event_payload := jsonb_set(
+      v_event_payload,
+      '{actor_user_id}',
+      to_jsonb(p_actor_user_id::text),
+      TRUE
+    );
+    v_result := economy_private.submit_event(v_event_payload, p_request_id, FALSE);
+  END IF;
+
+  UPDATE public.economy_mbti_attempts
+  SET consumed_at = now(),
+      completion_id = p_completion_id,
+      completion_response = v_result
+  WHERE attempt_id = v_attempt.attempt_id;
+
+  RETURN v_result;
+END
+$function$;
+
 CREATE OR REPLACE FUNCTION public.economy_claim_pending(
   p_claim_id UUID,
   p_request_id UUID DEFAULT gen_random_uuid()
@@ -878,6 +1207,18 @@ GRANT EXECUTE ON FUNCTION public.economy_submit_event(JSONB, UUID) TO authentica
 
 REVOKE ALL ON FUNCTION public.economy_claim_pending(UUID, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.economy_claim_pending(UUID, UUID) TO authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.economy_issue_mbti_attempt(UUID, TEXT, UUID, TIMESTAMPTZ, UUID)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.economy_issue_mbti_attempt(UUID, TEXT, UUID, TIMESTAMPTZ, UUID)
+  TO service_role;
+
+REVOKE ALL ON FUNCTION public.economy_complete_mbti_attempt(
+  TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID, TIMESTAMPTZ, UUID
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.economy_complete_mbti_attempt(
+  TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID, TIMESTAMPTZ, UUID
+) TO service_role;
 
 REVOKE ALL ON FUNCTION public.reverse_point_reference(TEXT, TEXT, TEXT, UUID)
   FROM PUBLIC, anon, authenticated;

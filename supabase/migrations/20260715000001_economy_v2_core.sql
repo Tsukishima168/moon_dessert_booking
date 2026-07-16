@@ -177,9 +177,14 @@ CREATE TABLE public.economy_game_configs (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-INSERT INTO public.economy_game_configs (game_mode)
-VALUES ('daily_gacha'), ('reward_wheel')
-ON CONFLICT (game_mode) DO NOTHING;
+INSERT INTO public.economy_game_configs (game_mode, is_enabled, cost_points)
+VALUES
+  ('daily_gacha', FALSE, 0),
+  ('reward_wheel', FALSE, 30)
+ON CONFLICT (game_mode) DO UPDATE
+SET is_enabled = FALSE,
+    cost_points = EXCLUDED.cost_points,
+    updated_at = now();
 
 CREATE TABLE public.economy_gacha_prizes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -272,6 +277,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS reward_redemptions_idempotency_idx
 CREATE UNIQUE INDEX IF NOT EXISTS reward_redemptions_code_hash_idx
   ON public.reward_redemptions (redemption_code_hash)
   WHERE redemption_code_hash IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS reward_redemptions_request_idx
+  ON public.reward_redemptions (user_id, reward_id, request_id)
+  WHERE request_id IS NOT NULL;
 
 CREATE TABLE public.staff_members (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -307,6 +315,50 @@ CREATE TABLE public.store_visit_proofs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CHECK (expires_at > created_at)
 );
+
+-- Short-lived response cache for proof-bearing operations. It is never exposed
+-- directly to clients and lets a retried request return the same credential
+-- instead of rotating or minting a second proof.
+CREATE TABLE public.economy_operation_replays (
+  scope_key TEXT NOT NULL CHECK (length(btrim(scope_key)) > 0),
+  operation_key TEXT NOT NULL CHECK (length(btrim(operation_key)) > 0),
+  request_id UUID NOT NULL,
+  request_fingerprint TEXT NOT NULL CHECK (length(request_fingerprint) = 64),
+  response_data JSONB NOT NULL CHECK (
+    jsonb_typeof(response_data) = 'object'
+    AND octet_length(response_data::text) <= 16384
+  ),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (scope_key, operation_key, request_id),
+  CHECK (expires_at > created_at)
+);
+
+CREATE INDEX economy_operation_replays_expiry_idx
+  ON public.economy_operation_replays (expires_at);
+
+CREATE TABLE public.economy_mbti_attempts (
+  attempt_id UUID PRIMARY KEY,
+  quiz_version TEXT NOT NULL CHECK (quiz_version IN ('v1-40', 'v2-tw-40')),
+  subject_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  proof_hash TEXT NOT NULL UNIQUE CHECK (length(proof_hash) = 64),
+  not_before TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  issue_request_id UUID NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  completion_id UUID UNIQUE,
+  completion_response JSONB CHECK (
+    completion_response IS NULL OR jsonb_typeof(completion_response) = 'object'
+  ),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (expires_at > not_before),
+  CHECK ((consumed_at IS NULL) = (completion_id IS NULL)),
+  CHECK ((completion_id IS NULL) = (completion_response IS NULL))
+);
+
+CREATE INDEX economy_mbti_attempts_expiry_idx
+  ON public.economy_mbti_attempts (expires_at)
+  WHERE consumed_at IS NULL;
 
 CREATE TABLE public.economy_achievement_rules (
   achievement_key TEXT NOT NULL,
@@ -400,9 +452,35 @@ ALTER TABLE public.reward_stock_buckets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff_audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.store_visit_proofs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.economy_operation_replays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.economy_mbti_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.economy_achievement_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_stamps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reward_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reward_redemptions ENABLE ROW LEVEL SECURITY;
+
+-- Existing reward tables predate Economy v2. Replace every legacy policy so
+-- an earlier permissive policy cannot survive adoption.
+DO $reward_rls_policies$
+DECLARE
+  v_policy RECORD;
+BEGIN
+  FOR v_policy IN
+    SELECT schemaname, tablename, policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('reward_items', 'reward_redemptions')
+  LOOP
+    EXECUTE format(
+      'DROP POLICY %I ON %I.%I',
+      v_policy.policyname,
+      v_policy.schemaname,
+      v_policy.tablename
+    );
+  END LOOP;
+END
+$reward_rls_policies$;
 
 CREATE POLICY point_accounts_select_own ON public.point_accounts
   FOR SELECT TO authenticated USING ((SELECT auth.uid()) = user_id);
@@ -422,6 +500,15 @@ CREATE POLICY user_achievements_select_own ON public.user_achievements
   FOR SELECT TO authenticated USING ((SELECT auth.uid()) = user_id);
 CREATE POLICY user_stamps_select_own ON public.user_stamps
   FOR SELECT TO authenticated USING ((SELECT auth.uid()) = user_id);
+CREATE POLICY reward_items_select_active ON public.reward_items
+  FOR SELECT TO anon, authenticated
+  USING (
+    is_active
+    AND (available_from IS NULL OR available_from <= now())
+    AND (available_until IS NULL OR available_until > now())
+  );
+CREATE POLICY reward_redemptions_select_own ON public.reward_redemptions
+  FOR SELECT TO authenticated USING ((SELECT auth.uid()) = user_id);
 
 REVOKE ALL ON TABLE
   public.economy_rollout_config,
@@ -438,14 +525,20 @@ REVOKE ALL ON TABLE
   public.staff_members,
   public.staff_audit_log,
   public.store_visit_proofs,
+  public.economy_operation_replays,
+  public.economy_mbti_attempts,
   public.economy_achievement_rules,
   public.user_achievements,
-  public.user_stamps
+  public.user_stamps,
+  public.reward_items,
+  public.reward_redemptions
 FROM PUBLIC, anon, authenticated;
 
 GRANT SELECT ON public.economy_achievement_rules, public.user_achievements,
   public.user_stamps TO authenticated;
 GRANT SELECT ON public.economy_achievement_rules TO anon;
+GRANT SELECT ON public.reward_items TO anon, authenticated;
+GRANT SELECT ON public.reward_redemptions TO authenticated;
 
 GRANT ALL ON TABLE
   public.economy_rollout_config,
@@ -462,9 +555,13 @@ GRANT ALL ON TABLE
   public.staff_members,
   public.staff_audit_log,
   public.store_visit_proofs,
+  public.economy_operation_replays,
+  public.economy_mbti_attempts,
   public.economy_achievement_rules,
   public.user_achievements,
-  public.user_stamps
+  public.user_stamps,
+  public.reward_items,
+  public.reward_redemptions
 TO service_role;
 
 GRANT USAGE, SELECT ON SEQUENCE public.staff_audit_log_id_seq TO service_role;
@@ -475,3 +572,63 @@ COMMENT ON TABLE public.economy_rollout_config IS
   'Server-owned per-source rollout flags. All capabilities default off.';
 COMMENT ON TABLE public.economy_event_policies IS
   'Versioned server-side point policy. Client payloads never choose reward_points.';
+COMMENT ON TABLE public.economy_operation_replays IS
+  'Service-only short-lived cache for idempotent proof-bearing responses.';
+
+DO $reward_security_postcondition$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname IN ('reward_items', 'reward_redemptions')
+      AND NOT c.relrowsecurity
+  ) THEN
+    RAISE EXCEPTION 'Economy v2 reward tables must have RLS enabled';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.reward_items', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+     OR has_table_privilege('authenticated', 'public.reward_items', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+     OR has_table_privilege('anon', 'public.reward_redemptions', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+     OR has_table_privilege('authenticated', 'public.reward_redemptions', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') THEN
+    RAISE EXCEPTION 'Economy v2 reward table grants are broader than the canonical read boundary';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('reward_items', 'reward_redemptions')
+      AND policyname NOT IN ('reward_items_select_active', 'reward_redemptions_select_own')
+  ) THEN
+    RAISE EXCEPTION 'Economy v2 reward tables retain an unexpected RLS policy';
+  END IF;
+END
+$reward_security_postcondition$;
+
+-- Keep the legacy claim bridge available during the staged rollout, but remove
+-- the implicit PUBLIC grant and the mutable public-schema search path. It will
+-- be retired only after every client has moved to Economy v2 proofs.
+CREATE OR REPLACE FUNCTION public.consume_mbti_claim(p_code TEXT)
+RETURNS TABLE(mbti_type TEXT, variant TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+BEGIN
+  IF p_code IS NULL OR length(btrim(p_code)) = 0 OR octet_length(p_code) > 256 THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  UPDATE public.mbti_claims AS claims
+  SET used_at = now()
+  WHERE claims.code = btrim(p_code)
+    AND claims.used_at IS NULL
+  RETURNING claims.mbti_type, claims.variant;
+END
+$function$;
+
+REVOKE ALL ON FUNCTION public.consume_mbti_claim(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.consume_mbti_claim(TEXT) TO anon, authenticated;

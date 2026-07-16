@@ -73,6 +73,13 @@ CREATE TABLE public.orders (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE public.mbti_claims (
+  code TEXT PRIMARY KEY,
+  mbti_type TEXT NOT NULL,
+  variant TEXT NOT NULL,
+  used_at TIMESTAMPTZ
+);
+
 CREATE TABLE public.reward_items (
   reward_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -103,6 +110,15 @@ CREATE TABLE public.reward_redemptions (
   fulfilled_by TEXT,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- Emulate the permissive hosted baseline that Economy v2 must canonicalize.
+GRANT ALL ON public.reward_items, public.reward_redemptions TO anon, authenticated;
+ALTER TABLE public.reward_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reward_redemptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY legacy_reward_items_all ON public.reward_items
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY legacy_reward_redemptions_all ON public.reward_redemptions
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 CREATE TABLE public.shop_orders (id UUID PRIMARY KEY DEFAULT gen_random_uuid());
 CREATE TABLE public.shop_order_items (id UUID PRIMARY KEY DEFAULT gen_random_uuid());
