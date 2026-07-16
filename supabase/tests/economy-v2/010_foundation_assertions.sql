@@ -601,13 +601,56 @@ DECLARE
   v_issue JSONB;
   v_issue_replay JSONB;
   v_issue_mismatch JSONB;
+  v_issue_rollout_blocked JSONB;
+  v_issue_disabled_replay JSONB;
+  v_issue_after_claim JSONB;
+  v_expiring_issue JSONB;
+  v_expired_issue_replay JSONB;
   v_claim JSONB;
   v_claim_replay JSONB;
   v_proof TEXT;
   v_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1';
+  v_blocked_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee0';
+  v_expired_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2';
 BEGIN
   PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+  UPDATE public.economy_rollout_config
+  SET write_enabled = FALSE
+  WHERE source_site = 'map';
+  v_issue_rollout_blocked := public.issue_store_visit_proof(
+    NULL,
+    'annan-store',
+    v_blocked_request_id
+  );
+  IF (v_issue_rollout_blocked ->> 'code') <> 'ROLLOUT_DISABLED'
+     OR EXISTS (
+       SELECT 1 FROM public.store_visit_proofs WHERE request_id = v_blocked_request_id
+     ) THEN
+    RAISE EXCEPTION 'visit proof issuance bypassed the rollout gate: %',
+      v_issue_rollout_blocked;
+  END IF;
+  UPDATE public.economy_rollout_config
+  SET write_enabled = TRUE
+  WHERE source_site = 'map';
+
   v_issue := public.issue_store_visit_proof(NULL, 'annan-store', v_request_id);
+  UPDATE public.economy_rollout_config
+  SET write_enabled = FALSE
+  WHERE source_site = 'map';
+  v_issue_disabled_replay := public.issue_store_visit_proof(
+    NULL,
+    'annan-store',
+    v_request_id
+  );
+  IF (v_issue_disabled_replay ->> 'code') <> 'ROLLOUT_DISABLED'
+     OR (v_issue_disabled_replay -> 'data') ? 'credential' THEN
+    RAISE EXCEPTION 'disabled rollout leaked a cached visit proof: %',
+      v_issue_disabled_replay;
+  END IF;
+  UPDATE public.economy_rollout_config
+  SET write_enabled = TRUE
+  WHERE source_site = 'map';
+
   v_issue_replay := public.issue_store_visit_proof(NULL, 'annan-store', v_request_id);
   v_issue_mismatch := public.issue_store_visit_proof(
     '11111111-1111-1111-1111-111111111111',
@@ -632,6 +675,48 @@ BEGIN
   IF (v_claim ->> 'code') <> 'OK' OR (v_claim_replay ->> 'code') <> 'ALREADY_PROCESSED' THEN
     RAISE EXCEPTION 'visit proof claim/replay failed: %, %', v_claim, v_claim_replay;
   END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+  v_issue_after_claim := public.issue_store_visit_proof(NULL, 'annan-store', v_request_id);
+  IF (v_issue_after_claim ->> 'code') <> 'ALREADY_PROCESSED'
+     OR (v_issue_after_claim -> 'data') ? 'credential' THEN
+    RAISE EXCEPTION 'used proof credential leaked through issue replay: %',
+      v_issue_after_claim;
+  END IF;
+
+  v_expiring_issue := public.issue_store_visit_proof(
+    NULL,
+    'annan-store',
+    v_expired_request_id
+  );
+  IF (v_expiring_issue ->> 'code') <> 'OK' THEN
+    RAISE EXCEPTION 'expiring visit proof setup failed: %', v_expiring_issue;
+  END IF;
+  UPDATE public.store_visit_proofs
+  SET created_at = now() - interval '10 minutes',
+      expires_at = now() - interval '5 minutes'
+  WHERE request_id = v_expired_request_id;
+  UPDATE public.economy_operation_replays
+  SET created_at = now() - interval '10 minutes',
+      expires_at = now() - interval '5 minutes'
+  WHERE request_id = v_expired_request_id
+    AND operation_key = 'store_visit.proof.issue';
+
+  v_expired_issue_replay := public.issue_store_visit_proof(
+    NULL,
+    'annan-store',
+    v_expired_request_id
+  );
+  IF (v_expired_issue_replay ->> 'code') <> 'EXPIRED'
+     OR (v_expired_issue_replay -> 'data') ? 'credential'
+     OR (
+       SELECT count(*) FROM public.store_visit_proofs
+       WHERE request_id = v_expired_request_id
+     ) <> 1 THEN
+    RAISE EXCEPTION 'expired issue request minted or leaked a replacement proof: %',
+      v_expired_issue_replay;
+  END IF;
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 END
 $visit_proof$;
 

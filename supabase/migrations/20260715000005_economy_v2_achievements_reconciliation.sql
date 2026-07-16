@@ -179,6 +179,10 @@ BEGIN
     RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
   END IF;
 
+  IF NOT economy_private.rollout_enabled('map', 'write', v_staff.user_id) THEN
+    RETURN economy_private.response(FALSE, 'ROLLOUT_DISABLED', p_request_id);
+  END IF;
+
   v_scope_key := 'user:' || v_staff.user_id::text;
   v_fingerprint := encode(extensions.digest(
     'subject=' || coalesce(p_subject_user_id::text, '') ||
@@ -205,7 +209,62 @@ BEGIN
       RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
         jsonb_build_object('reason', 'request_reuse_mismatch'));
     END IF;
-    RETURN economy_private.response(TRUE, 'OK', p_request_id, v_replay.response_data);
+
+    SELECT * INTO v_proof
+    FROM public.store_visit_proofs
+    WHERE id::text = v_replay.response_data ->> 'proof_id'
+      AND staff_user_id = v_staff.user_id
+      AND request_id = p_request_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'proof_replay_state_invalid'));
+    ELSIF v_proof.used_at IS NOT NULL THEN
+      RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
+        jsonb_build_object('proof_id', v_proof.id, 'used_at', v_proof.used_at));
+    ELSIF v_proof.expires_at <= now() THEN
+      RETURN economy_private.response(FALSE, 'EXPIRED', p_request_id);
+    END IF;
+
+    v_credential := v_replay.response_data ->> 'credential';
+    IF v_credential IS NULL
+       OR v_proof.token_hash IS DISTINCT FROM encode(
+         extensions.digest(v_credential, 'sha256'),
+         'hex'
+       ) THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'proof_replay_credential_invalid'));
+    END IF;
+
+    v_response_data := jsonb_build_object(
+      'proof_id', v_proof.id,
+      'credential', v_credential,
+      'expires_at', v_proof.expires_at,
+      'location_id', v_proof.location_id
+    );
+    RETURN economy_private.response(TRUE, 'OK', p_request_id, v_response_data);
+  END IF;
+
+  -- A replay cache expires with its credential. The durable proof row prevents
+  -- the same request UUID from minting a replacement credential afterward.
+  SELECT * INTO v_proof
+  FROM public.store_visit_proofs
+  WHERE staff_user_id = v_staff.user_id
+    AND request_id = p_request_id
+  ORDER BY created_at DESC
+  LIMIT 1
+  FOR UPDATE;
+
+  IF FOUND THEN
+    IF v_proof.used_at IS NOT NULL THEN
+      RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
+        jsonb_build_object('proof_id', v_proof.id, 'used_at', v_proof.used_at));
+    ELSIF v_proof.expires_at <= now() THEN
+      RETURN economy_private.response(FALSE, 'EXPIRED', p_request_id);
+    END IF;
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'proof_replay_unavailable'));
   END IF;
 
   v_token_id := 'VIS-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 16));
