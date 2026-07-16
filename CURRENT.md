@@ -1,5 +1,18 @@
 # CURRENT.md — shop.kiwimu.com
 
+## Snapshot · 2026-07-16
+
+Status: `Economy v2 foundation 已完成本機實作與原生 PostgreSQL 驗證；production schema 未變更，待 staging 與獨立簽收`
+
+- 五站視覺發布已完成；Shop PR #16 已合併並通過 production smoke，先前「尚未 deploy」快照已由本段取代。
+- Supabase CLI 已重新確認 linked target `xlqwfaailjyvsycjnzkz` 為 `ACTIVE_HEALTHY`；既有 35 個 local／remote migration 版本一致，`20260715000000`～`20260715000005` 僅存在本機、尚未 push。
+- Economy v2 foundation 已建立 server-authoritative ledger、rollout config、事件政策、pending claim、Gacha server RNG、原子兌換／庫存、Supabase Auth staff 核銷、短效 Map proof、徽章／印章與 reconciliation views；所有 rollout flag 預設關閉，未匯入舊餘額或庫存。
+- Shop 完成訂單回饋由資料庫直接驗證 `orders.user_id`、`status=completed` 與 `final_price`，依每完整 NT$100 一點計算，沒有舊制最低 10 點；取消／退款支援整筆及可冪等的精確部分 reversal。
+- `npm run test:economy-v2` 已通過 migration apply、100 次冪等重送、偽造點數／事件、UTC 時區繞過、RLS／grants／search path、Gacha、Map proof、兌換／重複核銷、整筆與部分 reversal、100 路扣點及 20 路最後一件庫存競態。
+- 2026-07-16 production linked dry-run 僅列出上述 6 個 migration，未包含 roles、seed 或未知版本；這是無寫入候選驗證，正式 push 前仍須再跑一次。
+- Supabase preview branch `economy-v2-staging` 因目前方案不含 Branching（HTTP 402）無法建立；本機 PostgreSQL 不取代 Supabase staging。`db lint`、真實 Supabase RLS／PostgREST 整合與 fresh-context 獨立簽收仍是 merge／正式 migration 的硬 gate。
+- 本輪未執行 production `db push`、未開 rollout flag、未改五站 client authority、未匯入 identified／anonymous／localStorage 點數，也未開始 7 日 shadow、24 小時 canary 或 14 日退役觀察。
+
 ## Snapshot · 2026-07-15
 
 Status: `五站共用視覺語言已完成本機整合與瀏覽器驗證，尚未 commit／push／deploy`
