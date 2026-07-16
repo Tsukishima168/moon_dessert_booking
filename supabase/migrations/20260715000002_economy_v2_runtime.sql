@@ -328,7 +328,8 @@ BEGIN
   END IF;
 
   IF v_policy.submission_mode = 'service_role'
-     AND NOT economy_private.is_service_role() THEN
+     AND NOT economy_private.is_service_role()
+     AND NOT p_internal THEN
     RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
   ELSIF v_policy.submission_mode = 'internal' AND NOT p_internal THEN
     RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
@@ -548,19 +549,26 @@ SET search_path = pg_catalog
 AS $function$
 DECLARE
   v_claim public.pending_activity_claims%ROWTYPE;
+  v_policy public.economy_event_policies%ROWTYPE;
   v_result JSONB;
   v_event_pk UUID;
+  v_actor UUID;
+  v_payload JSONB;
+  v_payload_source TEXT;
+  v_payload_event_type TEXT;
+  v_occurred_at TIMESTAMPTZ;
 BEGIN
   p_request_id := coalesce(p_request_id, gen_random_uuid());
+  v_actor := auth.uid();
 
-  IF auth.uid() IS NULL THEN
+  IF v_actor IS NULL THEN
     RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
   END IF;
 
   SELECT * INTO v_claim
   FROM public.pending_activity_claims
   WHERE id = p_claim_id
-    AND user_id = auth.uid()
+    AND (user_id IS NULL OR user_id = v_actor)
   FOR UPDATE;
 
   IF NOT FOUND THEN
@@ -576,13 +584,55 @@ BEGIN
     RETURN economy_private.response(FALSE, 'EXPIRED', p_request_id);
   END IF;
 
-  v_result := public.economy_submit_event(v_claim.event_payload, p_request_id);
+  BEGIN
+    v_payload_source := btrim(v_claim.event_payload ->> 'source_site');
+    v_payload_event_type := btrim(v_claim.event_payload ->> 'event_type');
+    v_occurred_at := (v_claim.event_payload ->> 'occurred_at')::timestamptz;
+  EXCEPTION WHEN invalid_text_representation OR datetime_field_overflow THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'invalid_pending_claim'));
+  END;
+
+  IF v_payload_source IS NULL
+     OR v_payload_source = ''
+     OR v_payload_source <> v_claim.source_site
+     OR v_payload_event_type IS NULL
+     OR v_payload_event_type = ''
+     OR v_occurred_at IS NULL THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'invalid_pending_claim'));
+  END IF;
+
+  SELECT * INTO v_policy
+  FROM public.economy_event_policies
+  WHERE source_site = v_payload_source
+    AND event_type = v_payload_event_type
+    AND is_active
+    AND active_from <= v_occurred_at
+    AND (active_until IS NULL OR active_until > v_occurred_at)
+    AND eligibility @> '{"pending_claim_allowed":true}'::jsonb
+  ORDER BY version DESC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'pending_claim_not_allowed'));
+  END IF;
+
+  v_payload := jsonb_set(
+    v_claim.event_payload,
+    '{actor_user_id}',
+    to_jsonb(v_actor::text),
+    TRUE
+  );
+  v_result := economy_private.submit_event(v_payload, p_request_id, TRUE);
 
   IF coalesce((v_result ->> 'ok')::boolean, FALSE)
      OR v_result ->> 'code' = 'ALREADY_PROCESSED' THEN
     v_event_pk := nullif(v_result #>> '{data,event_id}', '')::uuid;
     UPDATE public.pending_activity_claims
-    SET claimed_at = now(),
+    SET user_id = v_actor,
+        claimed_at = now(),
         claimed_event_id = v_event_pk
     WHERE id = v_claim.id;
   END IF;

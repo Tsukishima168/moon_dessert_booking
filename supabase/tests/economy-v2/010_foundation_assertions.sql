@@ -2,10 +2,12 @@
 
 INSERT INTO auth.users (id, email) VALUES
   ('11111111-1111-1111-1111-111111111111', 'member@example.test'),
-  ('22222222-2222-2222-2222-222222222222', 'staff@example.test');
+  ('22222222-2222-2222-2222-222222222222', 'staff@example.test'),
+  ('55555555-5555-5555-5555-555555555555', 'pending-claim@example.test');
 INSERT INTO public.profiles (id) VALUES
   ('11111111-1111-1111-1111-111111111111'),
-  ('22222222-2222-2222-2222-222222222222');
+  ('22222222-2222-2222-2222-222222222222'),
+  ('55555555-5555-5555-5555-555555555555');
 INSERT INTO public.staff_members (user_id, role, location_ids)
 VALUES ('22222222-2222-2222-2222-222222222222', 'staff', ARRAY['annan-store']);
 INSERT INTO public.orders (order_id, user_id, total_price, final_price, status)
@@ -234,6 +236,138 @@ BEGIN
   PERFORM set_config('request.jwt.claim.role', 'authenticated', false);
 END
 $journey_events$;
+
+DO $pending_claims$
+DECLARE
+  v_claim_id UUID := 'cccccccc-cccc-cccc-cccc-ccccccccccc1';
+  v_forbidden_id UUID := 'cccccccc-cccc-cccc-cccc-ccccccccccc2';
+  v_expired_id UUID := 'cccccccc-cccc-cccc-cccc-ccccccccccc3';
+  v_result JSONB;
+  v_event_id UUID;
+  v_balance BIGINT;
+BEGIN
+  INSERT INTO public.pending_activity_claims (
+    id, source_site, event_payload, evidence_hash, expires_at
+  ) VALUES (
+    v_claim_id,
+    'kiwimu',
+    jsonb_build_object(
+      'event_id', 'dddddddd-dddd-dddd-dddd-ddddddddddd1',
+      'event_type', 'mbti.completed',
+      'occurred_at', now(),
+      'source_site', 'kiwimu',
+      'reference_id', 'mbti-pending-claim-1',
+      'evidence', jsonb_build_object('result_hash', 'test-result-hash'),
+      'schema_version', 1
+    ),
+    'pending-evidence-unique-1',
+    now() + interval '15 minutes'
+  ), (
+    v_forbidden_id,
+    'shop',
+    jsonb_build_object(
+      'event_id', 'dddddddd-dddd-dddd-dddd-ddddddddddd2',
+      'event_type', 'order.completed',
+      'occurred_at', now(),
+      'source_site', 'shop',
+      'reference_id', 'ORDER-TEST-1',
+      'evidence', '{}'::jsonb,
+      'schema_version', 1
+    ),
+    'pending-evidence-unique-2',
+    now() + interval '15 minutes'
+  );
+
+  INSERT INTO public.pending_activity_claims (
+    id, source_site, event_payload, evidence_hash, created_at, expires_at
+  ) VALUES (
+    v_expired_id,
+    'kiwimu',
+    jsonb_build_object(
+      'event_id', 'dddddddd-dddd-dddd-dddd-ddddddddddd3',
+      'event_type', 'mbti.completed',
+      'occurred_at', now() - interval '1 day',
+      'source_site', 'kiwimu',
+      'reference_id', 'mbti-expired-claim',
+      'evidence', '{}'::jsonb,
+      'schema_version', 1
+    ),
+    'pending-evidence-unique-3',
+    now() - interval '2 days',
+    now() - interval '1 day'
+  );
+
+  BEGIN
+    INSERT INTO public.pending_activity_claims (
+      source_site, event_payload, evidence_hash, expires_at
+    ) VALUES (
+      'kiwimu', '{}'::jsonb, 'pending-evidence-unique-1', now() + interval '15 minutes'
+    );
+    RAISE EXCEPTION 'duplicate pending evidence was accepted';
+  EXCEPTION WHEN unique_violation THEN
+    NULL;
+  END;
+
+  PERFORM set_config('request.jwt.claim.sub', '55555555-5555-5555-5555-555555555555', false);
+  v_result := public.economy_claim_pending(v_claim_id, gen_random_uuid());
+  IF (v_result ->> 'code') <> 'OK' OR (v_result #>> '{data,awarded_points}')::integer <> 10 THEN
+    RAISE EXCEPTION 'anonymous pending claim failed: %', v_result;
+  END IF;
+
+  SELECT claimed_event_id INTO v_event_id
+  FROM public.pending_activity_claims
+  WHERE id = v_claim_id
+    AND user_id = '55555555-5555-5555-5555-555555555555'
+    AND claimed_at IS NOT NULL;
+  IF v_event_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.economy_events
+    WHERE id = v_event_id
+      AND actor_user_id = '55555555-5555-5555-5555-555555555555'
+      AND event_type = 'mbti.completed'
+      AND source_site = 'kiwimu'
+  ) THEN
+    RAISE EXCEPTION 'pending claim was not atomically bound to the authenticated member';
+  END IF;
+
+  SELECT balance INTO v_balance
+  FROM public.point_accounts
+  WHERE user_id = '55555555-5555-5555-5555-555555555555';
+  IF v_balance <> 10 THEN
+    RAISE EXCEPTION 'pending claim balance %, expected 10', v_balance;
+  END IF;
+
+  v_result := public.economy_claim_pending(v_claim_id, gen_random_uuid());
+  IF (v_result ->> 'code') <> 'ALREADY_PROCESSED' THEN
+    RAISE EXCEPTION 'same-member pending replay was not idempotent: %', v_result;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+  v_result := public.economy_claim_pending(v_claim_id, gen_random_uuid());
+  IF (v_result ->> 'code') <> 'NOT_ELIGIBLE' THEN
+    RAISE EXCEPTION 'cross-user pending replay leaked the claim: %', v_result;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '55555555-5555-5555-5555-555555555555', false);
+  v_result := public.economy_claim_pending(v_forbidden_id, gen_random_uuid());
+  IF (v_result ->> 'code') <> 'NOT_ELIGIBLE'
+     OR v_result #>> '{data,reason}' <> 'pending_claim_not_allowed' THEN
+    RAISE EXCEPTION 'unauthorized pending policy was accepted: %', v_result;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.pending_activity_claims
+    WHERE id = v_forbidden_id AND (user_id IS NOT NULL OR claimed_at IS NOT NULL)
+  ) THEN
+    RAISE EXCEPTION 'rejected pending claim mutated ownership';
+  END IF;
+
+  v_result := public.economy_claim_pending(v_expired_id, gen_random_uuid());
+  IF (v_result ->> 'code') <> 'EXPIRED' THEN
+    RAISE EXCEPTION 'expired pending claim was not rejected: %', v_result;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+END
+$pending_claims$;
 
 DO $visit_proof$
 DECLARE

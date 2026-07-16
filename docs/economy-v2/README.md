@@ -68,6 +68,14 @@ submit the explicitly authenticated policies, read their gated wallet, play
 enabled games, redeem enabled rewards, and use staff operations only when their
 Supabase user is active in `staff_members`.
 
+Pending activity claims are created only by trusted server routes. A claim may
+start without a user, but its globally unique evidence hash and random claim UUID
+cannot be reused. `economy_claim_pending` accepts only event policies carrying
+`pending_claim_allowed=true`, replaces any payload actor with `auth.uid()`, and
+atomically binds the first successful claim to that member. Other members cannot
+inspect or replay the bound claim. MBTI completion is the only policy enabled for
+this path in the initial release.
+
 ## Policy decisions encoded in v1
 
 - The browser never supplies an award or deduction amount.
@@ -105,6 +113,7 @@ contract, applies all six migrations, and verifies:
 - default-off rollout configuration;
 - 100 idempotent event replays;
 - forged client amounts, privileged events, and backdated period attacks;
+- anonymous pending-claim binding, replay, cross-user, expiry, and policy gates;
 - lifetime activation and caller-timezone Gacha bypass resistance;
 - append-only tables, RLS, grants, and safe security-definer search paths;
 - server-derived Shop rewards and no minimum ten-point award;

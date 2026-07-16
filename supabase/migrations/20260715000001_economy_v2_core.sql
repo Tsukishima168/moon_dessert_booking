@@ -102,7 +102,8 @@ VALUES
   ('passport.activation', 1, 'passport', 'passport.activated', 'authenticated', 0, 0, 1,
     '{"limit_scope":"lifetime"}'::jsonb),
   ('passport.daily_checkin', 1, 'passport', 'passport.daily_checkin', 'authenticated', 1, 86400, 1, '{}'),
-  ('kiwimu.mbti_weekly', 1, 'kiwimu', 'mbti.completed', 'service_role', 0, 604800, 1, '{}'),
+  ('kiwimu.mbti_weekly', 1, 'kiwimu', 'mbti.completed', 'service_role', 0, 604800, 1,
+    '{"pending_claim_allowed":true}'::jsonb),
   ('gacha.daily_play', 1, 'gacha', 'gacha.played', 'internal', 0, 86400, 1, '{}'),
   ('gacha.reward_wheel', 1, 'gacha', 'gacha.wheel_spun', 'internal', 0, 86400, 1, '{}'),
   ('shop.completed_order', 1, 'shop', 'order.completed', 'service_role', 0, 0, 1,
@@ -143,15 +144,14 @@ CREATE INDEX economy_events_reference_idx
 
 CREATE TABLE public.pending_activity_claims (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   source_site TEXT NOT NULL,
   event_payload JSONB NOT NULL CHECK (jsonb_typeof(event_payload) = 'object'),
-  evidence_hash TEXT NOT NULL,
+  evidence_hash TEXT NOT NULL UNIQUE,
   expires_at TIMESTAMPTZ NOT NULL,
   claimed_at TIMESTAMPTZ,
   claimed_event_id UUID REFERENCES public.economy_events(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (user_id, evidence_hash),
   CHECK (source_site IN ('passport', 'kiwimu', 'gacha', 'shop', 'map')),
   CHECK (expires_at > created_at)
 );
