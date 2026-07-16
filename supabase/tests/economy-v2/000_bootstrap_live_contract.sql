@@ -80,6 +80,12 @@ CREATE TABLE public.mbti_claims (
   used_at TIMESTAMPTZ
 );
 
+-- Emulate the permissive hosted baseline that Economy v2 must canonicalize.
+GRANT ALL ON public.mbti_claims TO anon, authenticated;
+ALTER TABLE public.mbti_claims ENABLE ROW LEVEL SECURITY;
+CREATE POLICY legacy_mbti_claims_all ON public.mbti_claims
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
 CREATE TABLE public.reward_items (
   reward_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -108,10 +114,39 @@ CREATE TABLE public.reward_redemptions (
   expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '30 days'),
   fulfilled_at TIMESTAMPTZ,
   fulfilled_by TEXT,
-  metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  request_id UUID
 );
 
--- Emulate the permissive hosted baseline that Economy v2 must canonicalize.
+-- Emulate an earlier staging/manual Economy draft so the canonical migration
+-- must backfill the immutable field and replace the same-named legacy index.
+CREATE UNIQUE INDEX reward_redemptions_request_idx
+  ON public.reward_redemptions (user_id, reward_id, request_id)
+  WHERE request_id IS NOT NULL;
+
+INSERT INTO auth.users (id, email)
+VALUES ('77777777-7777-7777-7777-777777777777', 'legacy-draft@example.test');
+INSERT INTO public.reward_items (reward_id, name, points_cost, category)
+VALUES ('legacy-draft-reward', 'Legacy Draft Reward', 10, 'dessert');
+INSERT INTO public.reward_redemptions (
+  user_id,
+  reward_id,
+  reward_name,
+  reward_category,
+  points_cost,
+  redemption_code,
+  request_id
+) VALUES (
+  '77777777-7777-7777-7777-777777777777',
+  'legacy-draft-reward',
+  'Legacy Draft Reward',
+  'dessert',
+  10,
+  'LEGACY-DRAFT-CODE',
+  'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee77'
+);
+
+-- Emulate the permissive hosted reward baseline as well.
 GRANT ALL ON public.reward_items, public.reward_redemptions TO anon, authenticated;
 ALTER TABLE public.reward_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reward_redemptions ENABLE ROW LEVEL SECURITY;

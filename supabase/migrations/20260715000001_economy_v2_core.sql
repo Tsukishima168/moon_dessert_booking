@@ -262,7 +262,7 @@ CREATE TABLE public.reward_stock_buckets (
 );
 
 ALTER TABLE public.reward_redemptions
-  ADD COLUMN IF NOT EXISTS request_id UUID,
+  ADD COLUMN IF NOT EXISTS redeem_request_id UUID,
   ADD COLUMN IF NOT EXISTS idempotency_key TEXT,
   ADD COLUMN IF NOT EXISTS catalog_version INTEGER,
   ADD COLUMN IF NOT EXISTS stock_bucket_key TEXT,
@@ -271,15 +271,40 @@ ALTER TABLE public.reward_redemptions
   ADD COLUMN IF NOT EXISTS fulfilled_by_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS reservation_expires_at TIMESTAMPTZ;
 
+-- Recover safely if an earlier staging/manual draft added `request_id` before
+-- the immutable redeem request field was renamed. Production has not applied
+-- this migration yet, but copying the value keeps partially adopted schemas
+-- idempotent without dropping the legacy column.
+DO $reward_redemption_request_upgrade$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'reward_redemptions'
+      AND column_name = 'request_id'
+      AND data_type = 'uuid'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE public.reward_redemptions
+      SET redeem_request_id = request_id
+      WHERE redeem_request_id IS NULL
+        AND request_id IS NOT NULL
+    $sql$;
+  END IF;
+END
+$reward_redemption_request_upgrade$;
+
 CREATE UNIQUE INDEX IF NOT EXISTS reward_redemptions_idempotency_idx
   ON public.reward_redemptions (idempotency_key)
   WHERE idempotency_key IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS reward_redemptions_code_hash_idx
   ON public.reward_redemptions (redemption_code_hash)
   WHERE redemption_code_hash IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS reward_redemptions_request_idx
-  ON public.reward_redemptions (user_id, reward_id, request_id)
-  WHERE request_id IS NOT NULL;
+DROP INDEX IF EXISTS public.reward_redemptions_request_idx;
+CREATE UNIQUE INDEX reward_redemptions_request_idx
+  ON public.reward_redemptions (user_id, reward_id, redeem_request_id)
+  WHERE redeem_request_id IS NOT NULL;
 
 CREATE TABLE public.staff_members (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -459,10 +484,11 @@ ALTER TABLE public.user_achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_stamps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reward_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reward_redemptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mbti_claims ENABLE ROW LEVEL SECURITY;
 
--- Existing reward tables predate Economy v2. Replace every legacy policy so
--- an earlier permissive policy cannot survive adoption.
-DO $reward_rls_policies$
+-- Existing claim/reward tables predate Economy v2. Replace every legacy policy
+-- so an earlier permissive policy cannot survive adoption.
+DO $legacy_authority_rls_policies$
 DECLARE
   v_policy RECORD;
 BEGIN
@@ -470,7 +496,7 @@ BEGIN
     SELECT schemaname, tablename, policyname
     FROM pg_policies
     WHERE schemaname = 'public'
-      AND tablename IN ('reward_items', 'reward_redemptions')
+      AND tablename IN ('reward_items', 'reward_redemptions', 'mbti_claims')
   LOOP
     EXECUTE format(
       'DROP POLICY %I ON %I.%I',
@@ -480,7 +506,7 @@ BEGIN
     );
   END LOOP;
 END
-$reward_rls_policies$;
+$legacy_authority_rls_policies$;
 
 CREATE POLICY point_accounts_select_own ON public.point_accounts
   FOR SELECT TO authenticated USING ((SELECT auth.uid()) = user_id);
@@ -531,7 +557,8 @@ REVOKE ALL ON TABLE
   public.user_achievements,
   public.user_stamps,
   public.reward_items,
-  public.reward_redemptions
+  public.reward_redemptions,
+  public.mbti_claims
 FROM PUBLIC, anon, authenticated;
 
 GRANT SELECT ON public.economy_achievement_rules, public.user_achievements,
@@ -561,7 +588,8 @@ GRANT ALL ON TABLE
   public.user_achievements,
   public.user_stamps,
   public.reward_items,
-  public.reward_redemptions
+  public.reward_redemptions,
+  public.mbti_claims
 TO service_role;
 
 GRANT USAGE, SELECT ON SEQUENCE public.staff_audit_log_id_seq TO service_role;
@@ -575,37 +603,42 @@ COMMENT ON TABLE public.economy_event_policies IS
 COMMENT ON TABLE public.economy_operation_replays IS
   'Service-only short-lived cache for idempotent proof-bearing responses.';
 
-DO $reward_security_postcondition$
+DO $legacy_authority_security_postcondition$
 BEGIN
   IF EXISTS (
     SELECT 1
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public'
-      AND c.relname IN ('reward_items', 'reward_redemptions')
+      AND c.relname IN ('reward_items', 'reward_redemptions', 'mbti_claims')
       AND NOT c.relrowsecurity
   ) THEN
-    RAISE EXCEPTION 'Economy v2 reward tables must have RLS enabled';
+    RAISE EXCEPTION 'Economy v2 legacy authority tables must have RLS enabled';
   END IF;
 
   IF has_table_privilege('anon', 'public.reward_items', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
      OR has_table_privilege('authenticated', 'public.reward_items', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
      OR has_table_privilege('anon', 'public.reward_redemptions', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
-     OR has_table_privilege('authenticated', 'public.reward_redemptions', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') THEN
-    RAISE EXCEPTION 'Economy v2 reward table grants are broader than the canonical read boundary';
+     OR has_table_privilege('authenticated', 'public.reward_redemptions', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+     OR has_table_privilege('anon', 'public.mbti_claims', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+     OR has_table_privilege('authenticated', 'public.mbti_claims', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') THEN
+    RAISE EXCEPTION 'Economy v2 legacy authority grants are broader than the canonical boundary';
   END IF;
 
   IF EXISTS (
     SELECT 1
     FROM pg_policies
     WHERE schemaname = 'public'
-      AND tablename IN ('reward_items', 'reward_redemptions')
-      AND policyname NOT IN ('reward_items_select_active', 'reward_redemptions_select_own')
+      AND (
+        (tablename IN ('reward_items', 'reward_redemptions')
+          AND policyname NOT IN ('reward_items_select_active', 'reward_redemptions_select_own'))
+        OR tablename = 'mbti_claims'
+      )
   ) THEN
-    RAISE EXCEPTION 'Economy v2 reward tables retain an unexpected RLS policy';
+    RAISE EXCEPTION 'Economy v2 legacy authority tables retain an unexpected RLS policy';
   END IF;
 END
-$reward_security_postcondition$;
+$legacy_authority_security_postcondition$;
 
 -- Keep the legacy claim bridge available during the staged rollout, but remove
 -- the implicit PUBLIC grant and the mutable public-schema search path. It will

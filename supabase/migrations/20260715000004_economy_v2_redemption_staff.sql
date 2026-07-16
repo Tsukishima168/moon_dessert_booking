@@ -65,6 +65,37 @@ BEGIN
       RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
         jsonb_build_object('reason', 'request_reuse_mismatch'));
     END IF;
+
+    SELECT * INTO v_existing
+    FROM public.reward_redemptions
+    WHERE id = (v_replay.response_data ->> 'redemption_id')::uuid
+      AND user_id = v_user_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+        jsonb_build_object('reason', 'replay_target_missing'));
+    ELSIF v_existing.status <> 'issued' THEN
+      RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
+        jsonb_build_object(
+          'redemption_id', v_existing.id,
+          'status', v_existing.status
+        ));
+    ELSIF v_existing.expires_at <= now() THEN
+      RETURN economy_private.response(FALSE, 'EXPIRED', p_request_id,
+        jsonb_build_object('redemption_id', v_existing.id));
+    ELSIF v_existing.redemption_code_hash IS DISTINCT FROM encode(
+      extensions.digest(coalesce(v_replay.response_data ->> 'credential', ''), 'sha256'),
+      'hex'
+    ) THEN
+      RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
+        jsonb_build_object(
+          'redemption_id', v_existing.id,
+          'status', v_existing.status,
+          'reason', 'credential_superseded'
+        ));
+    END IF;
+
     RETURN economy_private.response(TRUE, 'OK', p_request_id, v_replay.response_data);
   END IF;
 
@@ -90,7 +121,7 @@ BEGIN
   FROM public.reward_redemptions
   WHERE user_id = v_user_id
     AND reward_id = v_item.reward_id
-    AND request_id = p_request_id;
+    AND redeem_request_id = p_request_id;
 
   IF FOUND THEN
     RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
@@ -174,7 +205,7 @@ BEGIN
     issued_at,
     expires_at,
     metadata,
-    request_id,
+    redeem_request_id,
     idempotency_key,
     catalog_version,
     stock_bucket_key,
@@ -293,6 +324,25 @@ BEGIN
   DELETE FROM public.economy_operation_replays
   WHERE expires_at <= now();
 
+  SELECT * INTO v_redemption
+  FROM public.reward_redemptions
+  WHERE id = p_redemption_id
+    AND user_id = v_user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id);
+  ELSIF v_redemption.status <> 'issued' THEN
+    RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
+      jsonb_build_object(
+        'redemption_id', v_redemption.id,
+        'status', v_redemption.status
+      ));
+  ELSIF v_redemption.expires_at <= now() THEN
+    RETURN economy_private.response(FALSE, 'EXPIRED', p_request_id,
+      jsonb_build_object('redemption_id', v_redemption.id));
+  END IF;
+
   SELECT * INTO v_replay
   FROM public.economy_operation_replays
   WHERE scope_key = v_scope_key
@@ -304,22 +354,20 @@ BEGIN
       RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
         jsonb_build_object('reason', 'request_reuse_mismatch'));
     END IF;
+
+    IF v_redemption.redemption_code_hash IS DISTINCT FROM encode(
+      extensions.digest(coalesce(v_replay.response_data ->> 'credential', ''), 'sha256'),
+      'hex'
+    ) THEN
+      RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
+        jsonb_build_object(
+          'redemption_id', v_redemption.id,
+          'status', v_redemption.status,
+          'reason', 'credential_superseded'
+        ));
+    END IF;
+
     RETURN economy_private.response(TRUE, 'OK', p_request_id, v_replay.response_data);
-  END IF;
-
-  SELECT * INTO v_redemption
-  FROM public.reward_redemptions
-  WHERE id = p_redemption_id
-    AND user_id = v_user_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id);
-  ELSIF v_redemption.status <> 'issued' THEN
-    RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
-      jsonb_build_object('status', v_redemption.status));
-  ELSIF v_redemption.expires_at <= now() THEN
-    RETURN economy_private.response(FALSE, 'EXPIRED', p_request_id);
   END IF;
 
   v_secret := encode(extensions.gen_random_bytes(24), 'hex');
@@ -327,8 +375,7 @@ BEGIN
 
   UPDATE public.reward_redemptions
   SET redemption_code_hash = encode(extensions.digest(v_proof, 'sha256'), 'hex'),
-      credential_last4 = right(v_secret, 4),
-      request_id = p_request_id
+      credential_last4 = right(v_secret, 4)
   WHERE id = v_redemption.id;
 
   v_response_data := jsonb_build_object(

@@ -47,6 +47,20 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
   END;
+
+  BEGIN
+    PERFORM 1 FROM public.mbti_claims;
+    RAISE EXCEPTION 'authenticated directly selected mbti_claims';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+
+  BEGIN
+    UPDATE public.mbti_claims SET used_at = now();
+    RAISE EXCEPTION 'authenticated directly updated mbti_claims';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
 END
 $authenticated_rpc$;
 
@@ -56,6 +70,9 @@ DO $anon_catalog$
 DECLARE
   v_rules INTEGER;
   v_catalog_items INTEGER;
+  v_claim_rows INTEGER;
+  v_claim_type TEXT;
+  v_replay_rows INTEGER;
 BEGIN
   SELECT count(*) INTO v_rules FROM public.economy_achievement_rules;
   IF v_rules <> 5 THEN
@@ -73,6 +90,30 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
   END;
+
+  BEGIN
+    PERFORM 1 FROM public.mbti_claims;
+    RAISE EXCEPTION 'anon directly selected mbti_claims';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+
+  BEGIN
+    UPDATE public.mbti_claims SET used_at = now();
+    RAISE EXCEPTION 'anon directly updated mbti_claims';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+
+  SELECT count(*), max(mbti_type)
+  INTO v_claim_rows, v_claim_type
+  FROM public.consume_mbti_claim('legacy-test-code');
+  SELECT count(*) INTO v_replay_rows
+  FROM public.consume_mbti_claim('legacy-test-code');
+
+  IF v_claim_rows <> 1 OR v_claim_type <> 'INTJ' OR v_replay_rows <> 0 THEN
+    RAISE EXCEPTION 'legacy MBTI bridge did not preserve one-time anon consumption';
+  END IF;
 END
 $anon_catalog$;
 

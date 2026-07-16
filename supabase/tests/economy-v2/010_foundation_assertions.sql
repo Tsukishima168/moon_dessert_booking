@@ -17,6 +17,8 @@ VALUES
   ('ORDER-TEST-1', '11111111-1111-1111-1111-111111111111', 500, 500, 'completed'),
   ('ORDER-TEST-SMALL', '11111111-1111-1111-1111-111111111111', 99, 99, 'completed'),
   ('ORDER-TEST-PENDING', '11111111-1111-1111-1111-111111111111', 500, 500, 'pending');
+INSERT INTO public.mbti_claims (code, mbti_type, variant)
+VALUES ('legacy-test-code', 'INTJ', 'A');
 
 DO $default_rollout_gate$
 BEGIN
@@ -40,6 +42,36 @@ SET read_enabled = TRUE,
 UPDATE public.economy_event_policies
 SET reward_points = 10
 WHERE policy_key = 'kiwimu.mbti_weekly';
+
+DO $legacy_redeem_request_upgrade$
+DECLARE
+  v_result JSONB;
+  v_rows INTEGER;
+  v_index_definition TEXT;
+BEGIN
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', false);
+  PERFORM set_config('request.jwt.claim.sub', '77777777-7777-7777-7777-777777777777', false);
+
+  v_result := public.redeem_reward_item(
+    'legacy-draft-reward',
+    'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee77'
+  );
+  SELECT count(*) INTO v_rows
+  FROM public.reward_redemptions
+  WHERE user_id = '77777777-7777-7777-7777-777777777777'
+    AND reward_id = 'legacy-draft-reward';
+  SELECT pg_get_indexdef(indexrelid) INTO v_index_definition
+  FROM pg_index
+  WHERE indexrelid = 'public.reward_redemptions_request_idx'::regclass;
+
+  IF (v_result ->> 'code') <> 'ALREADY_PROCESSED'
+     OR v_rows <> 1
+     OR v_index_definition NOT LIKE '%(user_id, reward_id, redeem_request_id)%' THEN
+    RAISE EXCEPTION 'legacy redeem request upgrade is unsafe: %, rows %, index %',
+      v_result, v_rows, v_index_definition;
+  END IF;
+END
+$legacy_redeem_request_upgrade$;
 
 SELECT set_config('request.jwt.claim.role', 'authenticated', false);
 SELECT set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
@@ -615,11 +647,16 @@ DECLARE
   v_redeem_replay JSONB;
   v_rotate JSONB;
   v_rotate_replay JSONB;
+  v_second_rotate JSONB;
+  v_stale_rotate_replay JSONB;
+  v_stale_redeem_replay JSONB;
+  v_post_fulfill_rotate_replay JSONB;
   v_fulfill JSONB;
   v_repeat JSONB;
   v_credential TEXT;
   v_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2';
   v_rotate_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3';
+  v_second_rotate_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee13';
 BEGIN
   PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
   v_redeem := public.redeem_reward_item('foundation-reward', v_request_id);
@@ -647,12 +684,44 @@ BEGIN
     RAISE EXCEPTION 'redemption proof rotation is not request-idempotent: %, %', v_rotate, v_rotate_replay;
   END IF;
 
-  v_credential := v_rotate #>> '{data,credential}';
+  v_stale_redeem_replay := public.redeem_reward_item('foundation-reward', v_request_id);
+  IF (v_stale_redeem_replay ->> 'code') <> 'ALREADY_PROCESSED'
+     OR v_stale_redeem_replay #> '{data,credential}' IS NOT NULL THEN
+    RAISE EXCEPTION 'redeem replay exposed a superseded credential: %', v_stale_redeem_replay;
+  END IF;
+
+  v_second_rotate := public.rotate_reward_redemption_proof(
+    (v_redeem #>> '{data,redemption_id}')::uuid,
+    v_second_rotate_request_id
+  );
+  v_stale_rotate_replay := public.rotate_reward_redemption_proof(
+    (v_redeem #>> '{data,redemption_id}')::uuid,
+    v_rotate_request_id
+  );
+  IF (v_second_rotate ->> 'code') <> 'OK'
+     OR (v_stale_rotate_replay ->> 'code') <> 'ALREADY_PROCESSED'
+     OR v_stale_rotate_replay #> '{data,credential}' IS NOT NULL THEN
+    RAISE EXCEPTION 'rotation replay exposed a superseded credential: %, %',
+      v_second_rotate, v_stale_rotate_replay;
+  END IF;
+
+  v_credential := v_second_rotate #>> '{data,credential}';
   PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
   v_fulfill := public.fulfill_reward_redemption(v_credential, gen_random_uuid());
   v_repeat := public.fulfill_reward_redemption(v_credential, gen_random_uuid());
   IF (v_fulfill ->> 'code') <> 'OK' OR (v_repeat ->> 'code') <> 'ALREADY_PROCESSED' THEN
     RAISE EXCEPTION 'fulfillment idempotency failed: %, %', v_fulfill, v_repeat;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+  v_post_fulfill_rotate_replay := public.rotate_reward_redemption_proof(
+    (v_redeem #>> '{data,redemption_id}')::uuid,
+    v_second_rotate_request_id
+  );
+  IF (v_post_fulfill_rotate_replay ->> 'code') <> 'ALREADY_PROCESSED'
+     OR v_post_fulfill_rotate_replay #> '{data,credential}' IS NOT NULL THEN
+    RAISE EXCEPTION 'fulfilled redemption replay exposed a credential: %',
+      v_post_fulfill_rotate_replay;
   END IF;
 END
 $redemption$;
@@ -667,6 +736,10 @@ DECLARE
   v_first_replay JSONB;
   v_second JSONB;
   v_third JSONB;
+  v_expired_cache_replay JSONB;
+  v_balance_before_replay BIGINT;
+  v_balance BIGINT;
+  v_redemption_count INTEGER;
   v_first_request UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee4';
 BEGIN
   PERFORM set_config('request.jwt.claim.role', 'service_role', false);
@@ -698,6 +771,32 @@ BEGIN
      OR (v_third ->> 'code') <> 'LIMIT_REACHED' THEN
     RAISE EXCEPTION 'max_per_period > 1 redemption failed: %, %, %, %',
       v_first, v_first_replay, v_second, v_third;
+  END IF;
+
+  SELECT balance INTO v_balance_before_replay
+  FROM public.point_accounts
+  WHERE user_id = '66666666-6666-6666-6666-666666666666';
+
+  DELETE FROM public.economy_operation_replays
+  WHERE scope_key = 'user:66666666-6666-6666-6666-666666666666'
+    AND operation_key = 'reward.redeem'
+    AND request_id = v_first_request;
+
+  v_expired_cache_replay := public.redeem_reward_item('multi-reward', v_first_request);
+  SELECT balance INTO v_balance
+  FROM public.point_accounts
+  WHERE user_id = '66666666-6666-6666-6666-666666666666';
+  SELECT count(*) INTO v_redemption_count
+  FROM public.reward_redemptions
+  WHERE user_id = '66666666-6666-6666-6666-666666666666'
+    AND reward_id = 'multi-reward';
+
+  IF (v_expired_cache_replay ->> 'code') <> 'ALREADY_PROCESSED'
+     OR v_expired_cache_replay #> '{data,credential}' IS NOT NULL
+     OR v_balance <> v_balance_before_replay
+     OR v_redemption_count <> 2 THEN
+    RAISE EXCEPTION 'expired replay cache allowed duplicate spend: %, balance % -> %, rows %',
+      v_expired_cache_replay, v_balance_before_replay, v_balance, v_redemption_count;
   END IF;
 
   PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
@@ -875,18 +974,20 @@ BEGIN
   END IF;
   IF has_table_privilege('anon', 'public.reward_redemptions', 'SELECT')
      OR has_table_privilege('authenticated', 'public.reward_items', 'INSERT,UPDATE,DELETE')
-     OR has_table_privilege('authenticated', 'public.reward_redemptions', 'INSERT,UPDATE,DELETE') THEN
-    RAISE EXCEPTION 'reward table write/read boundary is broader than canonical';
+     OR has_table_privilege('authenticated', 'public.reward_redemptions', 'INSERT,UPDATE,DELETE')
+     OR has_table_privilege('anon', 'public.mbti_claims', 'SELECT,INSERT,UPDATE,DELETE')
+     OR has_table_privilege('authenticated', 'public.mbti_claims', 'SELECT,INSERT,UPDATE,DELETE') THEN
+    RAISE EXCEPTION 'legacy authority table boundary is broader than canonical';
   END IF;
   IF EXISTS (
     SELECT 1
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public'
-      AND c.relname IN ('reward_items', 'reward_redemptions')
+      AND c.relname IN ('reward_items', 'reward_redemptions', 'mbti_claims')
       AND NOT c.relrowsecurity
   ) THEN
-    RAISE EXCEPTION 'reward table RLS is not enabled';
+    RAISE EXCEPTION 'legacy authority table RLS is not enabled';
   END IF;
   IF has_schema_privilege('authenticated', 'economy_private', 'USAGE') THEN
     RAISE EXCEPTION 'authenticated has USAGE on economy_private';
@@ -978,6 +1079,7 @@ BEGIN
         (tablename = 'shop_orders' AND policyname = 'Anyone can view shop orders')
         OR (tablename = 'shop_order_items' AND policyname = 'Anyone can view shop order items')
         OR (tablename = 'special_eggs' AND policyname = 'Anyone can update claimed_count')
+        OR tablename = 'mbti_claims'
       )
   ) THEN
     RAISE EXCEPTION 'canonical adoption did not remove legacy public RLS policies';
