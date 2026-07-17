@@ -1,11 +1,31 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type KiwimuUniverseSiteId = 'kiwimu' | 'shop' | 'passport' | 'gacha' | 'map';
+export type KiwimuUniverseLoginStatus = 'authenticated' | 'anonymous' | 'unknown';
+
+export interface KiwimuUniverseNavigationDetails {
+  [key: string]: string | number;
+  source_site: KiwimuUniverseSiteId;
+  target_site: KiwimuUniverseSiteId;
+  viewport: string;
+  viewport_width: number;
+  viewport_height: number;
+  viewport_category: 'mobile' | 'tablet' | 'desktop' | 'unknown';
+  login_status: KiwimuUniverseLoginStatus;
+  surface: string;
+  transport_type: 'beacon';
+}
 
 interface KiwimuUniverseRailProps {
   currentSite: KiwimuUniverseSiteId;
+  authClient?: Pick<SupabaseClient, 'auth'> | null;
+  onTrack?: (
+    eventName: 'universe_nav_click',
+    details: KiwimuUniverseNavigationDetails,
+  ) => void;
 }
 
 const UNIVERSE_SITES: ReadonlyArray<{
@@ -21,8 +41,73 @@ const UNIVERSE_SITES: ReadonlyArray<{
   { id: 'shop', label: 'Shop', descriptor: '甜點預訂', href: 'https://shop.kiwimu.com/' },
 ];
 
-export const KiwimuUniverseRail: React.FC<KiwimuUniverseRailProps> = ({ currentSite }) => {
+export function createKiwimuUniverseNavigationDetails(
+  sourceSite: KiwimuUniverseSiteId,
+  targetSite: KiwimuUniverseSiteId,
+  loginStatus: KiwimuUniverseLoginStatus,
+  surface = 'universe_rail',
+): KiwimuUniverseNavigationDetails {
+  const viewportWidth = typeof window === 'undefined' ? 0 : window.innerWidth;
+  const viewportHeight = typeof window === 'undefined' ? 0 : window.innerHeight;
+  const viewportCategory = viewportWidth === 0
+    ? 'unknown'
+    : viewportWidth <= 640
+      ? 'mobile'
+      : viewportWidth <= 1024
+        ? 'tablet'
+        : 'desktop';
+
+  return {
+    source_site: sourceSite,
+    target_site: targetSite,
+    viewport: `${viewportWidth}x${viewportHeight}`,
+    viewport_width: viewportWidth,
+    viewport_height: viewportHeight,
+    viewport_category: viewportCategory,
+    login_status: loginStatus,
+    surface,
+    transport_type: 'beacon',
+  };
+}
+
+export const KiwimuUniverseRail: React.FC<KiwimuUniverseRailProps> = ({
+  currentSite,
+  authClient,
+  onTrack,
+}) => {
   const navRef = useRef<HTMLElement>(null);
+  const loginStatusRef = useRef<KiwimuUniverseLoginStatus>('unknown');
+
+  useEffect(() => {
+    if (!authClient) {
+      loginStatusRef.current = 'unknown';
+      return undefined;
+    }
+
+    let isActive = true;
+
+    void authClient.auth.getSession()
+      .then(({ data, error }) => {
+        if (!isActive) return;
+        loginStatusRef.current = error
+          ? 'unknown'
+          : data.session?.user
+            ? 'authenticated'
+            : 'anonymous';
+      })
+      .catch(() => {
+        if (isActive) loginStatusRef.current = 'unknown';
+      });
+
+    const { data: { subscription } } = authClient.auth.onAuthStateChange((_event, session) => {
+      loginStatusRef.current = session?.user ? 'authenticated' : 'anonymous';
+    });
+
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
+  }, [authClient]);
 
   useEffect(() => {
     const centerCurrentSite = () => {
@@ -75,6 +160,20 @@ export const KiwimuUniverseRail: React.FC<KiwimuUniverseRailProps> = ({ currentS
                 href={site.href}
                 className={`ku-universe-rail__link${isCurrent ? ' is-current' : ''}`}
                 aria-current={isCurrent ? 'page' : undefined}
+                onClick={() => {
+                  try {
+                    onTrack?.(
+                      'universe_nav_click',
+                      createKiwimuUniverseNavigationDetails(
+                        currentSite,
+                        site.id,
+                        loginStatusRef.current,
+                      ),
+                    );
+                  } catch {
+                    // Analytics must never block the cross-site navigation.
+                  }
+                }}
               >
                 <span className="ku-universe-rail__index" aria-hidden="true">
                   {String(index + 1).padStart(2, '0')}
