@@ -12,7 +12,7 @@
 - Current candidate-only versions: `20260715000000` through
   `20260715000005`; all six have an empty remote column and have not been
   pushed.
-- A linked production dry-run on 2026-07-16 succeeded and listed exactly those
+- A final linked production dry-run on 2026-07-16 succeeded and listed exactly those
   six migrations, with no roles, seed, or unknown version. It performed no
   push and must be repeated immediately before any authorized production push.
 
@@ -69,28 +69,30 @@ These counts are reconciliation evidence, not an approved import. Anonymous and
 localStorage balances remain excluded. Identified records require a separate,
 reviewed reconstruction and the approved one-time upgrade-gift policy.
 
-## Staging blocker
+## Hosted staging resolution
 
-Creation of the requested persistent preview branch `economy-v2-staging` was
-attempted with no data copy. Supabase returned HTTP 402 because Branching is not
-available on the current plan. No preview branch was created and no plan change
-was made.
-
-A disposable native PostgreSQL 17 cluster now provides deterministic migration,
-role, idempotency, and concurrency tests. It is deliberately not treated as a
-replacement for Supabase staging because it does not prove hosted extensions,
-PostgREST, Auth JWT behavior, or production-equivalent `plpgsql_check` lint.
+The paid Supabase preview-branch route remained unavailable (HTTP 402), so a
+separate hosted Supabase staging project was reset from a production-compatible
+schema baseline. The six migrations passed hosted `plpgsql_check` lint,
+Auth/RLS/PostgREST, default-off, proof replay, staff fulfillment, stock expiry,
+100 deduction requests, 20 stock requests and 20 lifetime-activation requests.
+The free tier refused 43 excess direct connections at transport level; native
+PostgreSQL delivered all 100 deduction requests and the hosted invariant checks
+still passed. Staging was reset after testing and verified at zero test users,
+ledger rows, redemptions, enabled rollout rows and mismatch rows.
 
 ## Go/no-go
 
-Current decision: **NO-GO for production migration, merge, or rollout enablement**.
+Current decision: **technical GO for an explicitly authorized additive
+production migration; NO-GO for rollout enablement or legacy retirement**.
 
-Remaining mandatory evidence:
+Remaining mandatory controls:
 
-- real Supabase staging apply and lint;
-- hosted Auth/RLS/PostgREST integration tests;
-- fresh-context independent review;
-- repeat the exact production dry-run immediately before an authorized push;
+- explicit production migration/merge/deploy execution authorization;
+- repeat history/dry-run if any local or remote migration changes;
+- final PR checks and an independent/human signoff if required (the current
+  runtime cannot spawn a delegated reviewer);
+- formal reward stock buckets and staff allowlist before redeem canary;
 - seven-day shadow evidence and the later canary/observation windows.
 
 The branch is suitable for a Draft PR so CI and external review can begin. A

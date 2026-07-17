@@ -79,12 +79,33 @@ BEGIN
 END
 $function$;
 
+CREATE OR REPLACE FUNCTION economy_private.period_key(
+  p_occurred_at TIMESTAMPTZ,
+  p_period_seconds INTEGER,
+  p_period_timezone TEXT
+)
+RETURNS BIGINT
+LANGUAGE sql
+IMMUTABLE
+SET search_path = pg_catalog
+AS $function$
+  SELECT CASE
+    WHEN p_period_seconds > 0
+      THEN floor(
+        extract(epoch FROM timezone('UTC', timezone(p_period_timezone, p_occurred_at)))
+        / p_period_seconds
+      )::bigint
+    ELSE NULL
+  END;
+$function$;
+
 CREATE OR REPLACE FUNCTION economy_private.make_idempotency_key(
   p_user_id UUID,
   p_source_site TEXT,
   p_event_type TEXT,
   p_reference_id TEXT,
   p_period_seconds INTEGER,
+  p_period_timezone TEXT,
   p_occurred_at TIMESTAMPTZ
 )
 RETURNS TEXT
@@ -102,7 +123,11 @@ AS $function$
         p_reference_id,
         CASE
           WHEN p_period_seconds > 0
-            THEN floor(extract(epoch FROM p_occurred_at) / p_period_seconds)::bigint::text
+            THEN economy_private.period_key(
+              p_occurred_at,
+              p_period_seconds,
+              p_period_timezone
+            )::text
           ELSE 'reference'
         END
       ),
@@ -371,14 +396,15 @@ BEGIN
     v_event_type,
     v_reference_id,
     v_policy.period_seconds,
+    v_policy.period_timezone,
     v_effective_at
   );
 
-  v_period_key := CASE
-    WHEN v_policy.period_seconds > 0
-      THEN floor(extract(epoch FROM v_effective_at) / v_policy.period_seconds)::bigint
-    ELSE NULL
-  END;
+  v_period_key := economy_private.period_key(
+    v_effective_at,
+    v_policy.period_seconds,
+    v_policy.period_timezone
+  );
 
   PERFORM pg_advisory_xact_lock(hashtextextended(
     v_actor::text || '|' || v_policy.policy_key || '|' ||

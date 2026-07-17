@@ -29,6 +29,7 @@ DECLARE
   v_scope_key TEXT;
   v_fingerprint TEXT;
   v_response_data JSONB;
+  v_expired_reservations INTEGER := 0;
 BEGIN
   p_request_id := coalesce(p_request_id, gen_random_uuid());
 
@@ -172,11 +173,37 @@ BEGIN
   END IF;
 
   IF v_item.stock_mode = 'finite' THEN
+    -- Release abandoned reservations before evaluating availability. Locking
+    -- the redemption rows first preserves the same row order as fulfillment
+    -- (redemption -> stock bucket) and avoids a stock/redemption deadlock.
+    WITH expired AS (
+      UPDATE public.reward_redemptions
+      SET status = 'expired'
+      WHERE reward_id = v_item.reward_id
+        AND stock_bucket_key = 'default'
+        AND status = 'issued'
+        AND coalesce(reservation_expires_at, expires_at) <= now()
+      RETURNING id
+    )
+    SELECT count(*)::integer
+    INTO v_expired_reservations
+    FROM expired;
+
     SELECT * INTO v_stock
     FROM public.reward_stock_buckets
     WHERE reward_id = v_item.reward_id
       AND bucket_key = 'default'
     FOR UPDATE;
+
+    IF FOUND AND v_expired_reservations > 0 THEN
+      UPDATE public.reward_stock_buckets
+      SET quantity_reserved = greatest(quantity_reserved - v_expired_reservations, 0),
+          quantity_released = quantity_released + v_expired_reservations,
+          updated_at = now()
+      WHERE reward_id = v_item.reward_id
+        AND bucket_key = 'default'
+      RETURNING * INTO v_stock;
+    END IF;
 
     IF NOT FOUND
        OR v_stock.quantity_reserved + v_stock.quantity_fulfilled >= v_stock.quantity_total THEN
@@ -310,6 +337,10 @@ BEGIN
     RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
   END IF;
 
+  IF NOT economy_private.rollout_enabled('passport', 'redeem', v_user_id) THEN
+    RETURN economy_private.response(FALSE, 'ROLLOUT_DISABLED', p_request_id);
+  END IF;
+
   v_scope_key := 'user:' || v_user_id::text;
   v_fingerprint := encode(extensions.digest(
     'redemption_id=' || coalesce(p_redemption_id::text, ''),
@@ -429,6 +460,10 @@ BEGIN
     RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
   END IF;
 
+  IF NOT economy_private.rollout_enabled('passport', 'redeem', v_staff.user_id) THEN
+    RETURN economy_private.response(FALSE, 'ROLLOUT_DISABLED', p_request_id);
+  END IF;
+
   v_token_id := split_part(btrim(coalesce(p_redemption_code, '')), '.', 1);
   v_proof_hash := encode(extensions.digest(btrim(coalesce(p_redemption_code, '')), 'sha256'), 'hex');
 
@@ -449,6 +484,8 @@ BEGIN
     RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
       jsonb_build_object(
         'redemption_id', v_redemption.id,
+        'reward_id', v_redemption.reward_id,
+        'reward_name', v_redemption.reward_name,
         'fulfilled_by', v_redemption.fulfilled_by_user_id,
         'fulfilled_at', v_redemption.fulfilled_at
       ));
@@ -516,6 +553,125 @@ BEGIN
 END
 $function$;
 
+CREATE OR REPLACE FUNCTION public.fulfill_passport_pudding(
+  p_passport_number INTEGER,
+  p_request_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+DECLARE
+  v_staff public.staff_members%ROWTYPE;
+  v_passport public.passports%ROWTYPE;
+  v_redemption public.redemptions%ROWTYPE;
+BEGIN
+  p_request_id := coalesce(p_request_id, gen_random_uuid());
+
+  IF auth.uid() IS NULL THEN
+    RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
+  END IF;
+
+  SELECT * INTO v_staff
+  FROM public.staff_members
+  WHERE user_id = auth.uid()
+    AND is_active;
+
+  IF NOT FOUND THEN
+    RETURN economy_private.response(FALSE, 'AUTH_REQUIRED', p_request_id);
+  END IF;
+
+  IF NOT economy_private.rollout_enabled('passport', 'redeem', v_staff.user_id) THEN
+    RETURN economy_private.response(FALSE, 'ROLLOUT_DISABLED', p_request_id);
+  END IF;
+
+  IF p_passport_number IS NULL OR p_passport_number < 1 OR p_passport_number > 100 THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'invalid_passport_number'));
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    'passport-pudding|' || p_passport_number::text,
+    0
+  ));
+
+  SELECT * INTO v_passport
+  FROM public.passports
+  WHERE passport_number = p_passport_number
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'passport_not_found'));
+  ELSIF v_passport.invite_slots_used < v_passport.invite_slots_total THEN
+    RETURN economy_private.response(FALSE, 'NOT_ELIGIBLE', p_request_id,
+      jsonb_build_object('reason', 'invite_slots_not_full'));
+  END IF;
+
+  SELECT * INTO v_redemption
+  FROM public.redemptions
+  WHERE passport_id = v_passport.id
+    AND reward_type::text = 'pudding'
+  FOR UPDATE;
+
+  IF v_passport.pudding_claimed OR FOUND THEN
+    RETURN economy_private.response(FALSE, 'ALREADY_PROCESSED', p_request_id,
+      jsonb_build_object(
+        'passport_number', v_passport.passport_number,
+        'holder_name', v_passport.holder_name,
+        'fulfilled_by', CASE
+          WHEN v_redemption.verified_by ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            THEN v_redemption.verified_by::uuid
+          ELSE NULL
+        END,
+        'fulfilled_at', v_redemption.redeemed_at
+      ));
+  END IF;
+
+  INSERT INTO public.redemptions (
+    passport_id,
+    reward_type,
+    verified_by,
+    source
+  ) VALUES (
+    v_passport.id,
+    'pudding',
+    v_staff.user_id::text,
+    'passport'
+  )
+  RETURNING * INTO v_redemption;
+
+  UPDATE public.passports
+  SET pudding_claimed = TRUE
+  WHERE id = v_passport.id;
+
+  INSERT INTO public.staff_audit_log (
+    staff_user_id,
+    action,
+    target_type,
+    target_id,
+    request_id,
+    details
+  ) VALUES (
+    v_staff.user_id,
+    'passport_pudding.fulfilled',
+    'passport',
+    v_passport.id::text,
+    p_request_id,
+    jsonb_build_object('passport_number', v_passport.passport_number)
+  );
+
+  RETURN economy_private.response(TRUE, 'OK', p_request_id,
+    jsonb_build_object(
+      'passport_number', v_passport.passport_number,
+      'holder_name', v_passport.holder_name,
+      'fulfilled_by', v_staff.user_id,
+      'fulfilled_at', v_redemption.redeemed_at
+    ));
+END
+$function$;
+
 REVOKE ALL ON FUNCTION public.redeem_reward_item(TEXT, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.redeem_reward_item(TEXT, UUID) TO authenticated, service_role;
 
@@ -528,5 +684,12 @@ REVOKE ALL ON FUNCTION public.fulfill_reward_redemption(TEXT, UUID)
 GRANT EXECUTE ON FUNCTION public.fulfill_reward_redemption(TEXT, UUID)
   TO authenticated, service_role;
 
+REVOKE ALL ON FUNCTION public.fulfill_passport_pudding(INTEGER, UUID)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fulfill_passport_pudding(INTEGER, UUID)
+  TO authenticated, service_role;
+
 COMMENT ON FUNCTION public.fulfill_reward_redemption(TEXT, UUID) IS
   'Supabase-Auth staff fulfillment. Repeated fulfillment returns original actor and timestamp.';
+COMMENT ON FUNCTION public.fulfill_passport_pudding(INTEGER, UUID) IS
+  'Supabase-Auth staff fulfillment for the legacy numbered-passport pudding reward.';

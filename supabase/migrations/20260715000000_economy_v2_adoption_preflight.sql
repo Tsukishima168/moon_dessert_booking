@@ -14,8 +14,10 @@ BEGIN
     'auth.users',
     'public.orders',
     'public.mbti_claims',
+    'public.passports',
     'public.point_transactions',
     'public.profiles',
+    'public.redemptions',
     'public.reward_items',
     'public.reward_redemptions'
   ]) AS required(object_name)
@@ -102,6 +104,16 @@ BEGIN
       ('auth', 'users', 'id', 'uuid'),
       ('public', 'profiles', 'id', 'uuid'),
       ('public', 'point_transactions', 'user_id', 'uuid'),
+      ('public', 'passports', 'id', 'uuid'),
+      ('public', 'passports', 'passport_number', 'integer'),
+      ('public', 'passports', 'holder_name', 'text'),
+      ('public', 'passports', 'invite_slots_total', 'integer'),
+      ('public', 'passports', 'invite_slots_used', 'integer'),
+      ('public', 'passports', 'pudding_claimed', 'boolean'),
+      ('public', 'redemptions', 'passport_id', 'uuid'),
+      ('public', 'redemptions', 'redeemed_at', 'timestamp with time zone'),
+      ('public', 'redemptions', 'verified_by', 'text'),
+      ('public', 'redemptions', 'source', 'text'),
       ('public', 'reward_items', 'name', 'text'),
       ('public', 'reward_items', 'points_cost', 'integer'),
       ('public', 'reward_items', 'category', 'text'),
@@ -136,6 +148,19 @@ BEGIN
 
   IF EXISTS (SELECT 1 FROM public.reward_items WHERE points_cost <= 0) THEN
     RAISE EXCEPTION 'Economy v2 preflight failed; reward_items contains a non-positive points_cost';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_attribute a
+    JOIN pg_type t ON t.oid = a.atttypid
+    JOIN pg_enum e ON e.enumtypid = t.oid
+    WHERE a.attrelid = 'public.redemptions'::regclass
+      AND a.attname = 'reward_type'
+      AND NOT a.attisdropped
+      AND e.enumlabel = 'pudding'
+  ) THEN
+    RAISE EXCEPTION 'Economy v2 preflight failed; redemptions.reward_type lacks pudding';
   END IF;
 END
 $preflight$;

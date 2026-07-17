@@ -3,8 +3,10 @@
 ## Current status
 
 This directory documents the additive Economy v2 database foundation. The six
-`20260715000000`–`20260715000005` migrations are local-only until every release
-gate below passes. They have not been pushed to the linked production project.
+`20260715000000`–`20260715000005` migrations have passed native PostgreSQL,
+production-compatible hosted Supabase staging, hosted lint/Auth/RLS/PostgREST,
+and linked production dry-run. They have not been pushed to the linked
+production project and still require explicit execution authorization.
 
 All five source-site controls default to disabled:
 
@@ -56,6 +58,7 @@ are trace identifiers only; server-derived keys control economic idempotency.
 - `redeem_reward_item(text, uuid)`
 - `rotate_reward_redemption_proof(uuid, uuid)`
 - `fulfill_reward_redemption(text, uuid)`
+- `fulfill_passport_pudding(integer, uuid)`
 - `economy_get_wallet(text, integer, uuid)`
 - `issue_store_visit_proof(uuid, text, uuid)`
 - `claim_store_visit_proof(text, uuid)`
@@ -79,8 +82,8 @@ this path in the initial release.
 ## Policy decisions encoded in v1
 
 - The browser never supplies an award or deduction amount.
-- Passport activation is lifetime-idempotent; check-in is once per UTC epoch
-  day according to server policy.
+- Passport activation is lifetime-idempotent; check-in is once per
+  `Asia/Taipei` calendar day according to server policy.
 - Shop rewards are accepted only for an order whose database row belongs to the
   actor and is `completed`. Points are `floor(final_price / 100)` with no
   minimum award.
@@ -124,25 +127,27 @@ contract, applies all six migrations, and verifies:
 - 20 concurrent attempts against a lifetime-once activation policy;
 - zero account-to-ledger mismatch.
 
-Native PostgreSQL does not include `plpgsql_check`, so the script explicitly
-reports that Supabase `db lint` is deferred. This skip is not a passing lint
-result and does not replace the staging gate.
+Native PostgreSQL does not include `plpgsql_check`, so the local script reports
+that skip. The same final migrations have separately passed hosted Supabase
+`db lint --level error --fail-on error`; the native skip is not being counted
+as that hosted result.
 
 ## Required release gates
 
-Do not merge or push these migrations to production until all items pass:
+Production execution remains gated as follows:
 
-1. A real Supabase staging or preview project is available.
-2. The six migrations apply there from a production-compatible baseline.
-3. `supabase db lint --level error --fail-on error` passes there.
-4. PostgREST calls validate anon, authenticated, service-role, and staff
-   boundaries against real Supabase Auth/RLS behavior.
-5. Fresh-context independent review signs off the final diff.
-6. Linked project ref and local/remote history are rechecked immediately before
-   dry-run.
-7. Production `db push --dry-run` lists exactly these six files and no seed,
-   roles, unknown migration, or destructive SQL.
-8. Production push receives explicit execution authorization after the gates.
+1. Hosted staging availability and production-compatible apply: passed.
+2. Hosted Supabase lint: passed with zero schema errors.
+3. Auth/RLS/PostgREST anon, authenticated, service-role and staff boundaries:
+   passed.
+4. Native and hosted replay/concurrency/stock/default-off invariants: passed.
+5. Linked production ref, history, catalog compatibility and six-file dry-run:
+   passed read-only on 2026-07-16; repeat if the branch or remote history moves.
+6. Primary release review: passed after fixing timezone, replay, stock expiry,
+   staff Auth and kill-switch findings. Independent delegated signoff is not
+   available in the current runtime and must not be claimed.
+7. Production push receives explicit execution authorization after the final
+   branch/PR check.
 
 After an additive production push, write flags stay off. Shadow comparison must
 run for at least seven days with zero mismatch during the final 72 hours before

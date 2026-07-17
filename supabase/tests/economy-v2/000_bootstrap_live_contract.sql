@@ -63,6 +63,32 @@ CREATE TABLE public.point_transactions (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TYPE public.reward_type AS ENUM (
+  'pudding',
+  'discount_50',
+  'discount_100',
+  'priority_reservation'
+);
+
+CREATE TABLE public.passports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  passport_number INTEGER NOT NULL UNIQUE CHECK (passport_number BETWEEN 1 AND 100),
+  holder_name TEXT NOT NULL,
+  invite_slots_total INTEGER NOT NULL DEFAULT 3,
+  invite_slots_used INTEGER NOT NULL DEFAULT 0,
+  pudding_claimed BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE public.redemptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  passport_id UUID NOT NULL REFERENCES public.passports(id) ON DELETE CASCADE,
+  reward_type public.reward_type NOT NULL,
+  redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  verified_by TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'passport',
+  UNIQUE (passport_id, reward_type)
+);
+
 CREATE TABLE public.orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id TEXT NOT NULL UNIQUE,

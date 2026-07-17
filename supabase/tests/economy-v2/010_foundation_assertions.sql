@@ -4,14 +4,25 @@ INSERT INTO auth.users (id, email) VALUES
   ('11111111-1111-1111-1111-111111111111', 'member@example.test'),
   ('22222222-2222-2222-2222-222222222222', 'staff@example.test'),
   ('55555555-5555-5555-5555-555555555555', 'pending-claim@example.test'),
-  ('66666666-6666-6666-6666-666666666666', 'multi-redeem@example.test');
+  ('66666666-6666-6666-6666-666666666666', 'multi-redeem@example.test'),
+  ('88888888-8888-4888-8888-888888888888', 'stock-expiry-first@example.test'),
+  ('99999999-9999-4999-8999-999999999999', 'stock-expiry-second@example.test');
 INSERT INTO public.profiles (id) VALUES
   ('11111111-1111-1111-1111-111111111111'),
   ('22222222-2222-2222-2222-222222222222'),
   ('55555555-5555-5555-5555-555555555555'),
-  ('66666666-6666-6666-6666-666666666666');
+  ('66666666-6666-6666-6666-666666666666'),
+  ('88888888-8888-4888-8888-888888888888'),
+  ('99999999-9999-4999-8999-999999999999');
 INSERT INTO public.staff_members (user_id, role, location_ids)
 VALUES ('22222222-2222-2222-2222-222222222222', 'staff', ARRAY['annan-store']);
+INSERT INTO public.passports (
+  passport_number,
+  holder_name,
+  invite_slots_total,
+  invite_slots_used
+)
+VALUES (42, 'Auth Staff Passport', 3, 3);
 INSERT INTO public.orders (order_id, user_id, total_price, final_price, status)
 VALUES
   ('ORDER-TEST-1', '11111111-1111-1111-1111-111111111111', 500, 500, 'completed'),
@@ -21,6 +32,9 @@ INSERT INTO public.mbti_claims (code, mbti_type, variant)
 VALUES ('legacy-test-code', 'INTJ', 'A');
 
 DO $default_rollout_gate$
+DECLARE
+  v_member_redeem JSONB;
+  v_staff_pudding JSONB;
 BEGIN
   IF EXISTS (
     SELECT 1 FROM public.economy_rollout_config
@@ -29,6 +43,28 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Economy v2 rollout flags are not default-off';
   END IF;
+
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', false);
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+  v_member_redeem := public.redeem_reward_item('not-enabled', gen_random_uuid());
+
+  PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+  v_staff_pudding := public.fulfill_passport_pudding(42, gen_random_uuid());
+
+  IF (v_member_redeem ->> 'code') <> 'ROLLOUT_DISABLED'
+     OR (v_staff_pudding ->> 'code') <> 'ROLLOUT_DISABLED'
+     OR EXISTS (
+       SELECT 1
+       FROM public.redemptions r
+       JOIN public.passports p ON p.id = r.passport_id
+       WHERE p.passport_number = 42
+         AND r.reward_type::text = 'pudding'
+     ) THEN
+    RAISE EXCEPTION 'Default-off redeem gate allowed a mutation: %, %',
+      v_member_redeem, v_staff_pudding;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 END
 $default_rollout_gate$;
 
@@ -42,6 +78,85 @@ SET read_enabled = TRUE,
 UPDATE public.economy_event_policies
 SET reward_points = 10
 WHERE policy_key = 'kiwimu.mbti_weekly';
+
+DO $taipei_period_boundary$
+DECLARE
+  v_same_day_morning BIGINT;
+  v_same_day_evening BIGINT;
+  v_next_day BIGINT;
+BEGIN
+  IF (
+    SELECT period_timezone
+    FROM public.economy_event_policies
+    WHERE policy_key = 'passport.daily_checkin' AND version = 1
+  ) <> 'Asia/Taipei' THEN
+    RAISE EXCEPTION 'Passport daily check-in policy is not pinned to Asia/Taipei';
+  END IF;
+
+  v_same_day_morning := economy_private.period_key(
+    '2026-07-15 00:30:00+00'::timestamptz,
+    86400,
+    'Asia/Taipei'
+  );
+  v_same_day_evening := economy_private.period_key(
+    '2026-07-15 15:59:59+00'::timestamptz,
+    86400,
+    'Asia/Taipei'
+  );
+  v_next_day := economy_private.period_key(
+    '2026-07-15 16:00:00+00'::timestamptz,
+    86400,
+    'Asia/Taipei'
+  );
+
+  IF v_same_day_morning <> v_same_day_evening OR v_same_day_evening = v_next_day THEN
+    RAISE EXCEPTION 'Asia/Taipei midnight period boundary is incorrect: %, %, %',
+      v_same_day_morning, v_same_day_evening, v_next_day;
+  END IF;
+END
+$taipei_period_boundary$;
+
+DO $passport_pudding_auth_staff$
+DECLARE
+  v_denied JSONB;
+  v_fulfilled JSONB;
+  v_replay JSONB;
+  v_verified_by TEXT;
+BEGIN
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', false);
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+  v_denied := public.fulfill_passport_pudding(42, gen_random_uuid());
+
+  PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+  v_fulfilled := public.fulfill_passport_pudding(42, gen_random_uuid());
+  v_replay := public.fulfill_passport_pudding(42, gen_random_uuid());
+  SELECT verified_by INTO v_verified_by
+  FROM public.redemptions r
+  JOIN public.passports p ON p.id = r.passport_id
+  WHERE p.passport_number = 42
+    AND r.reward_type::text = 'pudding';
+
+  IF (v_denied ->> 'code') <> 'AUTH_REQUIRED'
+     OR (v_fulfilled ->> 'code') <> 'OK'
+     OR (v_replay ->> 'code') <> 'ALREADY_PROCESSED'
+     OR v_fulfilled #>> '{data,fulfilled_by}' <> '22222222-2222-2222-2222-222222222222'
+     OR v_replay #>> '{data,fulfilled_by}' <> '22222222-2222-2222-2222-222222222222'
+     OR v_verified_by <> '22222222-2222-2222-2222-222222222222' THEN
+    RAISE EXCEPTION 'Passport pudding did not enforce Auth staff: %, %, %, verified_by %',
+      v_denied, v_fulfilled, v_replay, v_verified_by;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.staff_audit_log
+    WHERE staff_user_id = '22222222-2222-2222-2222-222222222222'
+      AND action = 'passport_pudding.fulfilled'
+  ) THEN
+    RAISE EXCEPTION 'Passport pudding fulfillment omitted staff audit';
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+END
+$passport_pudding_auth_staff$;
 
 DO $legacy_redeem_request_upgrade$
 DECLARE
@@ -731,12 +846,14 @@ DECLARE
   v_redeem JSONB;
   v_redeem_replay JSONB;
   v_rotate JSONB;
+  v_disabled_rotate JSONB;
   v_rotate_replay JSONB;
   v_second_rotate JSONB;
   v_stale_rotate_replay JSONB;
   v_stale_redeem_replay JSONB;
   v_post_fulfill_rotate_replay JSONB;
   v_fulfill JSONB;
+  v_disabled_fulfill JSONB;
   v_repeat JSONB;
   v_credential TEXT;
   v_request_id UUID := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2';
@@ -752,6 +869,20 @@ BEGIN
   IF (v_redeem_replay ->> 'code') <> 'OK'
      OR v_redeem #>> '{data,credential}' <> v_redeem_replay #>> '{data,credential}' THEN
     RAISE EXCEPTION 'redemption request replay changed credential: %, %', v_redeem, v_redeem_replay;
+  END IF;
+
+  UPDATE public.economy_rollout_config
+  SET redeem_enabled = FALSE
+  WHERE source_site = 'passport';
+  v_disabled_rotate := public.rotate_reward_redemption_proof(
+    (v_redeem #>> '{data,redemption_id}')::uuid,
+    gen_random_uuid()
+  );
+  UPDATE public.economy_rollout_config
+  SET redeem_enabled = TRUE
+  WHERE source_site = 'passport';
+  IF (v_disabled_rotate ->> 'code') <> 'ROLLOUT_DISABLED' THEN
+    RAISE EXCEPTION 'disabled rollout allowed proof rotation: %', v_disabled_rotate;
   END IF;
 
   v_rotate := public.rotate_reward_redemption_proof(
@@ -792,6 +923,17 @@ BEGIN
 
   v_credential := v_second_rotate #>> '{data,credential}';
   PERFORM set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+  UPDATE public.economy_rollout_config
+  SET redeem_enabled = FALSE
+  WHERE source_site = 'passport';
+  v_disabled_fulfill := public.fulfill_reward_redemption(v_credential, gen_random_uuid());
+  UPDATE public.economy_rollout_config
+  SET redeem_enabled = TRUE
+  WHERE source_site = 'passport';
+  IF (v_disabled_fulfill ->> 'code') <> 'ROLLOUT_DISABLED' THEN
+    RAISE EXCEPTION 'disabled rollout allowed reward fulfillment: %', v_disabled_fulfill;
+  END IF;
+
   v_fulfill := public.fulfill_reward_redemption(v_credential, gen_random_uuid());
   v_repeat := public.fulfill_reward_redemption(v_credential, gen_random_uuid());
   IF (v_fulfill ->> 'code') <> 'OK' OR (v_repeat ->> 'code') <> 'ALREADY_PROCESSED' THEN
@@ -887,6 +1029,74 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 END
 $multi_redemption$;
+
+INSERT INTO public.reward_items
+  (reward_id, name, points_cost, category, stock_mode, redemption_period_seconds)
+VALUES ('expiring-stock', 'Expiring Stock Reward', 10, 'dessert', 'finite', 3600);
+INSERT INTO public.reward_stock_buckets (reward_id, quantity_total)
+VALUES ('expiring-stock', 1);
+
+DO $expired_stock_release$
+DECLARE
+  v_first JSONB;
+  v_second JSONB;
+  v_first_redemption UUID;
+  v_first_status TEXT;
+  v_redemption_count INTEGER;
+  v_reserved INTEGER;
+  v_released INTEGER;
+BEGIN
+  PERFORM set_config('request.jwt.claim.role', 'service_role', false);
+  PERFORM economy_private.apply_ledger_entry(
+    '88888888-8888-4888-8888-888888888888', 20, 'grant', 'system', 'test_seed',
+    'expiring-stock-first', NULL, NULL, 'expiring-stock-first-grant',
+    gen_random_uuid(), '{}'::jsonb
+  );
+  PERFORM economy_private.apply_ledger_entry(
+    '99999999-9999-4999-8999-999999999999', 20, 'grant', 'system', 'test_seed',
+    'expiring-stock-second', NULL, NULL, 'expiring-stock-second-grant',
+    gen_random_uuid(), '{}'::jsonb
+  );
+
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', false);
+  PERFORM set_config('request.jwt.claim.sub', '88888888-8888-4888-8888-888888888888', false);
+  v_first := public.redeem_reward_item('expiring-stock', gen_random_uuid());
+  v_first_redemption := nullif(v_first #>> '{data,redemption_id}', '')::uuid;
+  IF (v_first ->> 'code') <> 'OK' OR v_first_redemption IS NULL THEN
+    RAISE EXCEPTION 'expiring stock setup redemption failed: %', v_first;
+  END IF;
+
+  UPDATE public.reward_redemptions
+  SET expires_at = now() - interval '1 minute',
+      reservation_expires_at = now() - interval '1 minute'
+  WHERE id = v_first_redemption;
+
+  PERFORM set_config('request.jwt.claim.sub', '99999999-9999-4999-8999-999999999999', false);
+  v_second := public.redeem_reward_item('expiring-stock', gen_random_uuid());
+
+  SELECT status INTO v_first_status
+  FROM public.reward_redemptions
+  WHERE id = v_first_redemption;
+  SELECT count(*) INTO v_redemption_count
+  FROM public.reward_redemptions
+  WHERE reward_id = 'expiring-stock';
+  SELECT quantity_reserved, quantity_released
+  INTO v_reserved, v_released
+  FROM public.reward_stock_buckets
+  WHERE reward_id = 'expiring-stock' AND bucket_key = 'default';
+
+  IF (v_second ->> 'code') <> 'OK'
+     OR v_first_status <> 'expired'
+     OR v_redemption_count <> 2
+     OR v_reserved <> 1
+     OR v_released <> 1 THEN
+    RAISE EXCEPTION 'expired finite stock was not reclaimed atomically: %, status %, rows %, reserved %, released %',
+      v_second, v_first_status, v_redemption_count, v_reserved, v_released;
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+END
+$expired_stock_release$;
 
 SELECT set_config('request.jwt.claim.role', 'service_role', false);
 SELECT set_config('request.jwt.claim.sub', '', false);
@@ -1090,6 +1300,14 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'authenticated can execute partial reverse_point_reference';
   END IF;
+  IF has_function_privilege('anon', 'public.fulfill_passport_pudding(integer,uuid)', 'EXECUTE')
+     OR NOT has_function_privilege(
+       'authenticated',
+       'public.fulfill_passport_pudding(integer,uuid)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'Passport pudding fulfillment grant is not Auth staff scoped';
+  END IF;
   IF has_function_privilege(
        'authenticated',
        'public.economy_issue_mbti_attempt(uuid,text,uuid,timestamp with time zone,uuid)',
@@ -1149,6 +1367,7 @@ BEGIN
         'economy_complete_mbti_attempt', 'reverse_point_reference',
         'play_game', 'play_daily_gacha', 'spin_reward_wheel', 'redeem_reward_item',
         'rotate_reward_redemption_proof', 'fulfill_reward_redemption',
+        'fulfill_passport_pudding',
         'award_event_achievements', 'economy_get_wallet', 'issue_store_visit_proof',
         'claim_store_visit_proof'
       )
