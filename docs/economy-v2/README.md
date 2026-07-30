@@ -34,8 +34,8 @@ Shop is the only executable publisher for the shared Supabase project.
    implements event ingestion, pending claims, ledger writes, full reversal,
    and exact partial reversal.
 4. `20260715000003_economy_v2_gacha.sql`
-   moves daily limits, UTC-day idempotency, weighted RNG, cost, and reward into
-   one server transaction.
+   moves daily limits, Asia/Taipei-day idempotency, weighted RNG, cost, and
+   reward into one server transaction.
 5. `20260715000004_economy_v2_redemption_staff.sql`
    implements atomic redemption, stock reservation, credential rotation, and
    authenticated staff fulfillment.
@@ -92,7 +92,8 @@ this path in the initial release.
   their sum cannot exceed it.
 - A reversal that would make the account negative fails atomically and requires
   operational review; it never commits a partial correction.
-- Gacha keys use a fixed UTC date and ignore caller timezone and request UUID.
+- Gacha keys use a fixed Asia/Taipei date (site-wide daily boundary) and
+  ignore caller timezone and request UUID.
 - Gacha cost, selected prize, reward, play record, and event share one database
   transaction.
 - Badges and stamps award zero points. `Universe Starter` requires Passport,

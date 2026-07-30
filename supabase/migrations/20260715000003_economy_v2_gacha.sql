@@ -43,7 +43,7 @@ DECLARE
   v_idempotency_key TEXT;
   v_event_type TEXT;
   v_event_result JSONB;
-  v_utc_day DATE := (now() AT TIME ZONE 'UTC')::date;
+  v_taipei_day DATE := (now() AT TIME ZONE 'Asia/Taipei')::date;
 BEGIN
   p_request_id := coalesce(p_request_id, gen_random_uuid());
 
@@ -68,16 +68,16 @@ BEGIN
     RETURN economy_private.response(FALSE, 'ROLLOUT_DISABLED', p_request_id);
   END IF;
 
-  -- A game mode is intentionally one authoritative outcome per UTC day. The
-  -- request UUID and the caller-controlled session timezone never participate
-  -- in this key.
+  -- A game mode is intentionally one authoritative outcome per Asia/Taipei
+  -- calendar day (site-wide daily boundary convention). The request UUID and
+  -- the caller-controlled session timezone never participate in this key.
   v_idempotency_key := encode(extensions.digest(
-    v_user_id::text || '|' || p_game_mode || '|' || v_utc_day::text,
+    v_user_id::text || '|' || p_game_mode || '|' || v_taipei_day::text,
     'sha256'
   ), 'hex');
 
   PERFORM pg_advisory_xact_lock(hashtextextended(
-    v_user_id::text || '|' || p_game_mode || '|' || v_utc_day::text,
+    v_user_id::text || '|' || p_game_mode || '|' || v_taipei_day::text,
     0
   ));
 

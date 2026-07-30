@@ -79,7 +79,10 @@ CREATE TABLE public.economy_event_policies (
     CHECK (submission_mode IN ('authenticated', 'service_role', 'internal')),
   reward_points INTEGER NOT NULL DEFAULT 0 CHECK (reward_points >= 0),
   period_seconds INTEGER NOT NULL DEFAULT 0 CHECK (period_seconds >= 0),
-  period_timezone TEXT NOT NULL DEFAULT 'UTC'
+  -- Site-wide daily-boundary convention is Asia/Taipei; 'UTC' remains a valid
+  -- value only for non-periodic (period_seconds = 0) policies where the
+  -- timezone is never evaluated.
+  period_timezone TEXT NOT NULL DEFAULT 'Asia/Taipei'
     CHECK (period_timezone IN ('UTC', 'Asia/Taipei')),
   max_per_period INTEGER NOT NULL DEFAULT 1 CHECK (max_per_period > 0),
   eligibility JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(eligibility) = 'object'),
@@ -104,13 +107,13 @@ VALUES
   ('passport.activation', 1, 'passport', 'passport.activated', 'authenticated', 0, 0, 'UTC', 1,
     '{"limit_scope":"lifetime"}'::jsonb),
   ('passport.daily_checkin', 1, 'passport', 'passport.daily_checkin', 'authenticated', 1, 86400, 'Asia/Taipei', 1, '{}'),
-  ('kiwimu.mbti_weekly', 1, 'kiwimu', 'mbti.completed', 'service_role', 0, 604800, 'UTC', 1,
+  ('kiwimu.mbti_weekly', 1, 'kiwimu', 'mbti.completed', 'service_role', 0, 604800, 'Asia/Taipei', 1,
     '{"pending_claim_allowed":true}'::jsonb),
-  ('gacha.daily_play', 1, 'gacha', 'gacha.played', 'internal', 0, 86400, 'UTC', 1, '{}'),
-  ('gacha.reward_wheel', 1, 'gacha', 'gacha.wheel_spun', 'internal', 0, 86400, 'UTC', 1, '{}'),
+  ('gacha.daily_play', 1, 'gacha', 'gacha.played', 'internal', 0, 86400, 'Asia/Taipei', 1, '{}'),
+  ('gacha.reward_wheel', 1, 'gacha', 'gacha.wheel_spun', 'internal', 0, 86400, 'Asia/Taipei', 1, '{}'),
   ('shop.completed_order', 1, 'shop', 'order.completed', 'service_role', 0, 0, 'UTC', 1,
     '{"reward_formula":"shop_completed_order_floor_100"}'::jsonb),
-  ('map.staff_visit', 1, 'map', 'map.visit_confirmed', 'internal', 0, 86400, 'UTC', 1, '{}')
+  ('map.staff_visit', 1, 'map', 'map.visit_confirmed', 'internal', 0, 86400, 'Asia/Taipei', 1, '{}')
 ON CONFLICT (policy_key, version) DO NOTHING;
 
 CREATE TABLE public.economy_events (

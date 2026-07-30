@@ -327,7 +327,7 @@ BEGIN
   v_second := public.play_daily_gacha(gen_random_uuid());
   PERFORM set_config('TimeZone', 'UTC', false);
   IF (v_first ->> 'code') <> 'OK' OR (v_second ->> 'code') <> 'ALREADY_PROCESSED' THEN
-    RAISE EXCEPTION 'gacha UTC-day atomic/idempotent test failed: %, %', v_first, v_second;
+    RAISE EXCEPTION 'gacha Asia/Taipei-day atomic/idempotent test failed: %, %', v_first, v_second;
   END IF;
   IF v_first #>> '{data,balance}' IS NULL
      OR v_second #>> '{data,balance}' IS NULL
