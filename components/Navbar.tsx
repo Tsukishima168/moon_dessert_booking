@@ -10,6 +10,7 @@ import { LogOut, ShoppingCart, User } from 'lucide-react';
 import KiwimuUniverseRail from '@/components/KiwimuUniverseRail';
 import ThemeToggle from '@/components/ThemeToggle';
 import { clearServerSession, getResolvedUser } from '@/lib/client-auth';
+import { trackShopEvent } from '@/lib/shop-analytics';
 import { supabase } from '@/lib/supabase';
 import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
 import { useCartStore } from '@/store/cartStore';
@@ -120,7 +121,13 @@ export default function Navbar() {
 
   return (
     <>
-      {!isAdminRoute ? <KiwimuUniverseRail currentSite="shop" /> : null}
+      {!isAdminRoute ? (
+        <KiwimuUniverseRail
+          currentSite="shop"
+          authClient={supabase}
+          onTrack={trackShopEvent}
+        />
+      ) : null}
       <nav
         className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-sm ${isAdminRoute ? 'admin-shell' : ''}`}
       >
