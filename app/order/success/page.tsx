@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { ClearPendingOrder } from '@/components/checkout/clear-pending-order';
 import { PurchaseTracker } from '@/components/checkout/purchase-tracker';
-import { createAdminClient } from '@/lib/supabase-admin';
+import { findOrderSuccessSummary } from '@/src/repositories/order.repository';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 
 export const dynamic = 'force-dynamic';
@@ -26,15 +26,17 @@ export default async function OrderSuccessPage({
     redirect('/order/error?reason=missing_params');
   }
 
-  const adminClient = createAdminClient();
-  const { data: order, error } = await adminClient
-    .from('orders')
-    .select('order_id, status, payment_method, payment_date, final_price, items')
-    .eq('order_id', orderId)
-    .eq('checkout_site', SHOP_CHECKOUT_SITE)
-    .maybeSingle();
+  // 待決：此頁僅憑 orderId 查詢、無身分驗證（訪客結帳導頁需求），
+  // 若 orderId 可被猜測則屬 IDOR，是否加驗證屬 Penso 的產品決策，尚未裁決。
+  let order: Awaited<ReturnType<typeof findOrderSuccessSummary>> = null;
+  try {
+    order = await findOrderSuccessSummary(orderId, SHOP_CHECKOUT_SITE);
+  } catch (error) {
+    console.error('findOrderSuccessSummary error:', error);
+    order = null;
+  }
 
-  if (error || !order) {
+  if (!order) {
     redirect('/order/error?reason=order_not_found');
   }
 

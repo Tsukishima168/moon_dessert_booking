@@ -138,6 +138,36 @@ export async function updateOrder(
   return data as AdminOrder
 }
 
+// 結帳成功頁摘要型別（僅含頁面實際需要的欄位）
+export interface OrderSuccessSummary {
+  order_id: string
+  status: string
+  payment_method: string | null
+  payment_date: string | null
+  final_price: number
+  items: OrderItem[]
+}
+
+/**
+ * 依訂單 ID 查詢結帳成功頁所需的訂單摘要欄位
+ * @param orderId - 訂單 ID（格式 ORD{timestamp}）
+ * @returns OrderSuccessSummary 物件，找不到時回傳 null
+ */
+export async function findOrderSuccessSummary(
+  orderId: string,
+  checkoutSite: string = SHOP_CHECKOUT_SITE
+): Promise<OrderSuccessSummary | null> {
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient
+    .from('orders')
+    .select('order_id, status, payment_method, payment_date, final_price, items')
+    .eq('order_id', orderId)
+    .eq('checkout_site', checkoutSite)
+    .maybeSingle()
+  if (error) throw error
+  return data as OrderSuccessSummary | null
+}
+
 /**
  * 依用戶 ID 查詢該用戶所有訂單（依建立時間降序）
  * @param userId - Supabase auth user ID
