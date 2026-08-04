@@ -787,7 +787,7 @@ export default function CheckoutPage() {
         window.location.href = data.paymentUrl;
       } else if (res.status === 409) {
         alert('此訂單已付款，將為您跳轉至訂單完成頁。');
-        window.location.href = `/order/success?orderId=${orderId}`;
+        window.location.href = data.orderSuccessUrl || `/order/success?orderId=${orderId}`;
       } else {
         alert(`LINE Pay 發起失敗：${data.message}`);
       }

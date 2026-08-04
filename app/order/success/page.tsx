@@ -6,6 +6,8 @@ import { ClearPendingOrder } from '@/components/checkout/clear-pending-order';
 import { PurchaseTracker } from '@/components/checkout/purchase-tracker';
 import { findOrderSuccessSummary } from '@/src/repositories/order.repository';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
+import { verifyOrderSuccessToken } from '@/src/lib/order-success-token';
+import { createClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,20 +16,38 @@ const PAID_STATUSES = new Set(['paid', 'ready', 'completed']);
 interface OrderSuccessPageProps {
   searchParams?: Promise<{
     orderId?: string;
+    t?: string;
   }>;
+}
+
+/**
+ * token 驗不過時的最後一道授權管道：已登入使用者若正是這筆訂單的本人（user_id 相符），
+ * 仍可看到自己的訂單，滿足「既有登入使用者不能被擋」的相容性要求。
+ * 訪客訂單（user_id 為 null）或未登入一律回傳 false，交由呼叫端 fail-closed。
+ */
+async function isOwnedByCurrentSession(orderUserId: string | null): Promise<boolean> {
+  if (!orderUserId) return false;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return !!user && user.id === orderUserId;
+  } catch (error) {
+    console.error('order/success session fallback 檢查失敗:', error);
+    return false;
+  }
 }
 
 export default async function OrderSuccessPage({
   searchParams,
 }: OrderSuccessPageProps) {
-  const { orderId } = (await searchParams) ?? {};
+  const { orderId, t } = (await searchParams) ?? {};
 
   if (!orderId) {
     redirect('/order/error?reason=missing_params');
   }
 
-  // 待決：此頁僅憑 orderId 查詢、無身分驗證（訪客結帳導頁需求），
-  // 若 orderId 可被猜測則屬 IDOR，是否加驗證屬 Penso 的產品決策，尚未裁決。
   let order: Awaited<ReturnType<typeof findOrderSuccessSummary>> = null;
   try {
     order = await findOrderSuccessSummary(orderId, SHOP_CHECKOUT_SITE);
@@ -38,6 +58,16 @@ export default async function OrderSuccessPage({
 
   if (!order) {
     redirect('/order/error?reason=order_not_found');
+  }
+
+  // IDOR 修復：這頁過去僅憑可枚舉／可能外流的 orderId 查詢就直接顯示訂單內容。
+  // 現在需要「短時效簽章 token 驗證通過」或「登入使用者本人擁有此訂單」兩者之一，
+  // fail-closed：兩者都不成立就不顯示任何訂單欄位，導去友善錯誤頁。
+  const tokenResult = verifyOrderSuccessToken(orderId, t);
+  const authorized = tokenResult.valid || (await isOwnedByCurrentSession(order.user_id));
+
+  if (!authorized) {
+    redirect('/order/error?reason=link_expired');
   }
 
   if (order.payment_method !== 'line_pay' || !PAID_STATUSES.has(order.status)) {

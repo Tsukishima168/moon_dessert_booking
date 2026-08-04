@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase-admin';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 import { getPublicSiteUrl } from '@/src/lib/site-url';
 import { runOrderStatusSideEffects } from '@/src/services/order-status-side-effects.service';
+import { buildOrderSuccessPath } from '@/src/lib/order-success-token';
 
 export async function GET(request: NextRequest) {
   if (!process.env.LINEPAY_CHANNEL_ID || !process.env.LINEPAY_CHANNEL_SECRET) {
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
     // 避免重複確認
     if (['paid', 'ready', 'completed'].includes(order.status)) {
       if (order.linepay_transaction_id === transactionId) {
-        return NextResponse.redirect(`${siteUrl}/order/success?orderId=${orderId}`);
+        return NextResponse.redirect(`${siteUrl}${buildOrderSuccessPath(orderId)}`);
       }
 
       console.error('[LINE Pay confirm] 已付款訂單的 transactionId 不一致:', {
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[LINE Pay] 訂單 ${orderId} 付款確認成功，transactionId: ${transactionId}`);
 
-    return NextResponse.redirect(`${siteUrl}/order/success?orderId=${orderId}`);
+    return NextResponse.redirect(`${siteUrl}${buildOrderSuccessPath(orderId)}`);
   } catch (error) {
     console.error('[LINE Pay confirm] error:', error);
     return NextResponse.redirect(`${siteUrl}/order/error?reason=server_error`);

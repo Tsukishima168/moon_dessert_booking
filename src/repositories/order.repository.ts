@@ -139,6 +139,7 @@ export async function updateOrder(
 }
 
 // 結帳成功頁摘要型別（僅含頁面實際需要的欄位）
+// user_id 僅供伺服器端做「登入用戶擁有此訂單」的授權判斷，不可傳給前端元件渲染。
 export interface OrderSuccessSummary {
   order_id: string
   status: string
@@ -146,6 +147,7 @@ export interface OrderSuccessSummary {
   payment_date: string | null
   final_price: number
   items: OrderItem[]
+  user_id: string | null
 }
 
 /**
@@ -160,7 +162,7 @@ export async function findOrderSuccessSummary(
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('orders')
-    .select('order_id, status, payment_method, payment_date, final_price, items')
+    .select('order_id, status, payment_method, payment_date, final_price, items, user_id')
     .eq('order_id', orderId)
     .eq('checkout_site', checkoutSite)
     .maybeSingle()

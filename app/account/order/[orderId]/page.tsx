@@ -152,7 +152,7 @@ export default function OrderDetailPage() {
       }
 
       if (response.status === 409) {
-        window.location.href = `/order/success?orderId=${order.order_id}`;
+        window.location.href = result.orderSuccessUrl || `/order/success?orderId=${order.order_id}`;
         return;
       }
 
