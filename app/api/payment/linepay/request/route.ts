@@ -19,6 +19,7 @@ import { getLinePayClient, type LinePayRequestBody } from '@/lib/linepay';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
 import { getPublicSiteUrl } from '@/src/lib/site-url';
+import { buildOrderSuccessPath } from '@/src/lib/order-success-token';
 import { ensureAdmin } from '@/app/api/admin/_utils/ensureAdmin';
 import {
   canUseLinePay,
@@ -106,8 +107,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (['paid', 'ready', 'completed'].includes(order.status)) {
+      // 附上簽章過的 /order/success 導頁路徑，讓前端 409 分支不必自己組出
+      // 無 token 的 orderId 連結（那會在成功頁被 fail-closed 擋下）。
       return NextResponse.json(
-        { success: false, message: '此訂單已付款，無法重複發起 LINE Pay' },
+        {
+          success: false,
+          message: '此訂單已付款，無法重複發起 LINE Pay',
+          orderSuccessUrl: buildOrderSuccessPath(order.order_id),
+        },
         { status: 409 }
       );
     }

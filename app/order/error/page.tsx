@@ -12,6 +12,7 @@ const REASON_MAP: Record<string, string> = {
   payment_not_verified: '這筆訂單的付款尚未完成確認，請稍後再試或聯繫月島甜點。',
   transaction_mismatch: '付款交易與訂單資訊不一致，請聯繫月島甜點確認。',
   order_update_failed: '付款已完成，但系統尚未成功更新訂單，請聯繫月島甜點協助處理。',
+  link_expired: '這個訂單連結已過期或無效（與付款結果無關）。請登入會員中心查看訂單，或聯繫月島甜點確認。',
   server_error: '系統發生錯誤，請稍後再試或聯繫月島甜點。',
 };
 
