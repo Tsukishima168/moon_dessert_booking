@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "test:economy-v2": "./scripts/test-economy-v2.sh",
     "setup:discord": "bash scripts/setup-discord-env.sh",
     "export:menu": "node scripts/export-menu-to-csv.mjs",
     "verify:analytics-seo": "node scripts/verify-analytics-seo.mjs"

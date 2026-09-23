@@ -57,6 +57,35 @@ curl -sS https://shop.kiwimu.com/api/payment/linepay/status
 - `/api/settings` HTTP 200。
 - `/api/payment/linepay/status` 回傳 `configured`、`enabled`、`status`、`can_use_line_pay`。
 
+## Economy v2 release gate
+
+本機 foundation：
+
+```bash
+npm run test:economy-v2
+git diff --check
+```
+
+標準：migration／RLS／grants／search path、台北日界、100 次冪等、100 路
+扣點、20 路最後一件庫存、逾期 reservation 釋放、reversal、Auth staff
+核銷與 default-off kill switch 全部通過。
+
+Production 只讀 gate（不得省略 `--dry-run`）：
+
+```bash
+supabase migration list --linked
+supabase db lint --linked --level error --fail-on error
+supabase db push --dry-run
+```
+
+標準：linked ref 必須是 `xlqwfaailjyvsycjnzkz`；既有 local／remote history
+一致；待套清單只能是 `20260715000000`–`20260715000005` 六項；不得包含
+seed、roles、未知 migration。正式 `db push` 必須另取得當次明確授權。
+
+Additive migration 後仍維持所有 flag 關閉。開啟 redeem canary 前，逐項
+確認正式 `reward_items.stock_mode`／`reward_stock_buckets`、測試 reward 與
+`staff_members` allowlist；不得把舊 inventory 自動當成 v2 可用庫存。
+
 ## Analytics / SEO smoke
 
 本檢查不建立訂單、不觸發付款，只驗證 GA4 / Search Console / canonical / robots / JSON-LD 是否出現在可檢查的輸出中。
