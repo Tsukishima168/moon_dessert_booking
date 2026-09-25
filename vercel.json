@@ -8,5 +8,18 @@
             "path": "/api/cron/campaign-runner",
             "schedule": "0 3 * * *"
         }
+    ],
+    "redirects": [
+        {
+            "source": "/:path*",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "moon-dessert-booking.vercel.app"
+                }
+            ],
+            "destination": "https://shop.kiwimu.com/:path*",
+            "permanent": true
+        }
     ]
 }

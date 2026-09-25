@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import { trackShopEvent } from '@/lib/shop-analytics';
 
 /**
  * MobileCartBar — 行動版底部 sticky 結帳列
@@ -13,7 +14,7 @@ import { useCartStore } from '@/store/cartStore';
  */
 export default function MobileCartBar() {
   const pathname = usePathname();
-  const { getTotalItems, getFinalPrice, openCart } = useCartStore();
+  const { items, getTotalItems, getFinalPrice, promoCode, discountAmount, openCart } = useCartStore();
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
@@ -60,6 +61,21 @@ export default function MobileCartBar() {
         </button>
         <Link
           href="/checkout"
+          onClick={() => {
+            trackShopEvent('begin_checkout', {
+              currency: 'TWD',
+              value: finalPrice,
+              coupon: promoCode || undefined,
+              discount: discountAmount || undefined,
+              items: items.map((item) => ({
+                item_id: item.id,
+                item_name: item.name,
+                item_variant: item.variant_name || '單一規格',
+                price: item.price,
+                quantity: item.quantity,
+              })),
+            });
+          }}
           className="flex-1 flex items-center justify-center bg-moon-accent text-moon-black text-sm tracking-widest font-medium hover:bg-moon-text transition-colors"
         >
           前往結帳

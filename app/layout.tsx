@@ -8,6 +8,7 @@ import CartSidebar from '@/components/CartSidebar';
 import MobileCartBar from '@/components/MobileCartBar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import FacebookPixel from '@/components/FacebookPixel';
+import AttributionSync from '@/components/AttributionSync';
 import { serializeJsonLd } from '@/lib/json-ld';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -259,6 +260,8 @@ export default function RootLayout({
         <GoogleAnalytics />
         {/* Facebook Pixel */}
         <FacebookPixel />
+        {/* R4：跨站第一接觸歸因 cookie（kw_attr）寫入器 */}
+        <AttributionSync />
 
         <Navbar />
         <main>{children}</main>

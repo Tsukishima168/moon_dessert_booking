@@ -8,7 +8,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { TAIWAN_CITIES } from '@/lib/taiwan-data';
 import { supabase } from '@/lib/supabase'; // Import Supabase
-import { readShopAttribution, trackShopEvent } from '@/lib/shop-analytics';
+import { readShopAttribution, trackShopEvent, hasPurchaseBeenTracked, markPurchaseTracked } from '@/lib/shop-analytics';
 import { getResolvedUser, getServerSessionUser } from '@/lib/client-auth';
 import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
 import liff from '@line/liff';
@@ -739,23 +739,29 @@ export default function CheckoutPage() {
         setOrderSuccess(true);
         clearCart();
 
-        trackShopEvent('purchase', {
-          transaction_id: newOrderId,
-          value: confirmedFinalPrice,
-          currency: 'TWD',
-          coupon: promoCode || undefined,
-          discount: discountAmount || undefined,
-          delivery_method: data.delivery_method,
-          payment_method: 'bank_transfer',
-          shipping: data.delivery_method === 'delivery' ? deliveryFee : 0,
-          items: items.map(item => ({
-            item_name: item.name,
-            item_id: item.id,
-            price: item.price,
-            quantity: item.quantity,
-            item_variant: item.variant_name || '單一規格',
-          })),
-        }, attribution);
+        // 這筆訂單建立後，使用者在下一畫面還能改選 LINE Pay 付款並跳到
+        // /order/success（那裡的 PurchaseTracker 也會送 purchase）。
+        // 用共用的 sessionStorage key 擋掉同一個 orderId 被算兩次。
+        if (!hasPurchaseBeenTracked(newOrderId)) {
+          trackShopEvent('purchase', {
+            transaction_id: newOrderId,
+            value: confirmedFinalPrice,
+            currency: 'TWD',
+            coupon: promoCode || undefined,
+            discount: discountAmount || undefined,
+            delivery_method: data.delivery_method,
+            payment_method: 'bank_transfer',
+            shipping: data.delivery_method === 'delivery' ? deliveryFee : 0,
+            items: items.map(item => ({
+              item_name: item.name,
+              item_id: item.id,
+              price: item.price,
+              quantity: item.quantity,
+              item_variant: item.variant_name || '單一規格',
+            })),
+          }, attribution);
+          markPurchaseTracked(newOrderId);
+        }
 
       } else {
       alert(`訂單失敗：${result.message}`);

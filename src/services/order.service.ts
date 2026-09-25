@@ -12,6 +12,7 @@ import {
   type MenuItemAvailabilitySettings,
 } from '@/src/lib/menu-availability'
 import { getDeliverySettings, getOrderRules, getBusinessHours } from '@/src/services/settings.service'
+import { sanitizeOrderAttribution, clampAttributionField } from '@/src/lib/attribution'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -574,6 +575,20 @@ export async function createOrder(
 
   const orderId = `ORD-${randomBytes(8).toString('hex').toUpperCase()}`
 
+  // R4：前端送來的歸因欄位不可信任（cookie/localStorage 壞掉、或有人直接打
+  // /api/order）。一律經過長度上限（64 字）與格式驗證；mbti_type 格式不符
+  // 或缺值一律當作沒有，絕不能讓建單失敗。from_mbti_test 不採信前端傳的布林
+  // 值，改由伺服器依驗證後的 mbti_type 推導。
+  const attribution = sanitizeOrderAttribution({
+    mbti_type: input.mbti_type,
+    utm_source: input.utm_source,
+    utm_medium: input.utm_medium,
+    utm_campaign: input.utm_campaign,
+    utm_content: input.utm_content,
+    utm_term: input.utm_term,
+  })
+  const sourceFrom = clampAttributionField(input.source_from) ?? 'shop'
+
   const orderData = {
     order_id: orderId,
     customer_name: input.customer_name,
@@ -592,15 +607,15 @@ export async function createOrder(
     delivery_address: input.delivery_address ?? null,
     delivery_fee: deliveryFee,
     delivery_notes: input.delivery_notes ?? null,
-    mbti_type: input.mbti_type ?? null,
-    from_mbti_test: !!input.from_mbti_test,
+    mbti_type: attribution.mbti_type,
+    from_mbti_test: attribution.from_mbti_test,
     checkout_site: SHOP_CHECKOUT_SITE,
-    source_from: input.source_from ?? 'shop',
-    utm_source: input.utm_source ?? null,
-    utm_medium: input.utm_medium ?? null,
-    utm_campaign: input.utm_campaign ?? null,
-    utm_content: input.utm_content ?? null,
-    utm_term: input.utm_term ?? null,
+    source_from: sourceFrom,
+    utm_source: attribution.utm_source,
+    utm_medium: attribution.utm_medium,
+    utm_campaign: attribution.utm_campaign,
+    utm_content: attribution.utm_content,
+    utm_term: attribution.utm_term,
     user_id: authUserId,
     status: 'pending',
   } as const

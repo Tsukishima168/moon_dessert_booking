@@ -7,6 +7,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
 import ProductNotice from '@/components/ProductNotice';
 import ProductPageActions from '@/components/ProductPageActions';
+import ProductViewTracker from '@/components/ProductViewTracker';
 import { getMenuItemBySlugOrId } from '@/lib/supabase';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { getDeliveryTypeLabel } from '@/lib/delivery-type';
@@ -114,6 +115,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(productSchema) }}
       />
+      <ProductViewTracker itemId={item.id} itemName={item.name} price={minPrice} />
 
       {/* 商品主資訊 */}
       <section className="border-b border-moon-border">

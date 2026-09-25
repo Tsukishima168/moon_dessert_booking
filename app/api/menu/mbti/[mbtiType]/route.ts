@@ -9,12 +9,11 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// R3：站內跨站連結（shop → map，同屬 *.kiwimu.com）不用 utm_*，
+// 改用單一 from=<來源站>_<位置> 參數，讀取端請先讀 from 再 fallback utm_source。
 const buildMenuCtaUrl = (mbtiType: string) => {
   const url = new URL('https://map.kiwimu.com/menu');
-  url.searchParams.set('utm_source', 'mbti-lab');
-  url.searchParams.set('utm_medium', 'result-cta');
-  url.searchParams.set('utm_campaign', '2026-q2-unified-catalog');
-  url.searchParams.set('utm_content', 'soul-dessert-button');
+  url.searchParams.set('from', 'shop_mbti_result_cta');
   url.searchParams.set('mbti', mbtiType.toUpperCase());
   return url.toString();
 };
