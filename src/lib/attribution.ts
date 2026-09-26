@@ -56,6 +56,16 @@ export function clampAttributionField(
   return cleaned.slice(0, maxLength)
 }
 
+/** from 的格式（R4 v1.1）：只小寫英數與底線；長度上限沿用 clampAttributionField。 */
+export const FROM_PATTERN = /^[a-z0-9_]+$/
+
+/** 格式不符（大寫、空白、符號…）一律當作沒有這個值，安靜丟棄，不丟出例外。 */
+export function clampFromField(value: unknown): string | undefined {
+  const candidate = clampAttributionField(value)
+  if (!candidate || !FROM_PATTERN.test(candidate)) return undefined
+  return candidate
+}
+
 function clampTimestamp(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
@@ -78,7 +88,7 @@ export function parseKwAttrCookie(rawValue: string | null | undefined): KwAttrCo
       ts: clampTimestamp(obj.ts),
       mbti: clampAttributionField(obj.mbti, 8),
       mbti_ts: clampTimestamp(obj.mbti_ts),
-      from: clampAttributionField(obj.from),
+      from: clampFromField(obj.from),
       from_ts: clampTimestamp(obj.from_ts),
     }
   } catch {
@@ -117,7 +127,7 @@ export function computeAttributionWrite({
   landingHostname,
 }: ComputeAttributionWriteInput): ComputeAttributionWriteResult {
   const params = new URLSearchParams(search)
-  const from = clampAttributionField(params.get('from') ?? undefined)
+  const from = clampFromField(params.get('from') ?? undefined)
   const utmSource = clampAttributionField(params.get('utm_source') ?? undefined)
 
   const next: KwAttrCookie = { ...existing }

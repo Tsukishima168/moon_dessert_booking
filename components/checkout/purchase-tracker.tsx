@@ -19,7 +19,7 @@ export function PurchaseTracker({ transactionId, value, items }: PurchaseTracker
     // purchase — 兩邊共用同一把 sessionStorage key，避免同一筆訂單算兩次。
     if (hasPurchaseBeenTracked(transactionId)) return;
 
-    trackShopEvent('purchase', {
+    const tracked = trackShopEvent('purchase', {
       transaction_id: transactionId,
       value,
       currency: 'TWD',
@@ -33,7 +33,12 @@ export function PurchaseTracker({ transactionId, value, items }: PurchaseTracker
       })),
     });
 
-    markPurchaseTracked(transactionId);
+    // 只有事件真的排進 dataLayer 才標記「追蹤過了」；沒送出就不標記，
+    // 避免明明沒送出的事件被永久當成已送出（曾經因為 gtag stub 還沒
+    // 定義好而整批漏掉，詳見 components/GoogleAnalytics.tsx 的註解）。
+    if (tracked) {
+      markPurchaseTracked(transactionId);
+    }
   }, [items, transactionId, value]);
 
   return null;

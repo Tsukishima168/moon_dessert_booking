@@ -63,14 +63,30 @@ export function readShopAttribution(): ShopAttribution {
     cookie = {};
   }
 
+  // v1.1 修訂：UTM 一律「整組」取用 — cookie 有 src 就整組用 cookie 的
+  // src/med/cmp/cnt/trm，否則整組用 localStorage 的備援，不逐欄混拼
+  // （混拼會把不同來源、不同時間點的 utm_source / utm_campaign 兜在一起，
+  // 產生語意上根本不存在的歸因組合）。
+  const utmSet = cookie.src
+    ? {
+        utm_source: cookie.src ?? null,
+        utm_medium: cookie.med ?? null,
+        utm_campaign: cookie.cmp ?? null,
+        utm_content: cookie.cnt ?? null,
+        utm_term: cookie.trm ?? null,
+      }
+    : {
+        utm_source: local.utm_source ?? null,
+        utm_medium: local.utm_medium ?? null,
+        utm_campaign: local.utm_campaign ?? null,
+        utm_content: local.utm_content ?? null,
+        utm_term: local.utm_term ?? null,
+      };
+
   return {
     from: cookie.from ?? local.from ?? null,
     mbti: cookie.mbti ?? local.mbti ?? null,
-    utm_source: cookie.src ?? local.utm_source ?? null,
-    utm_medium: cookie.med ?? local.utm_medium ?? null,
-    utm_campaign: cookie.cmp ?? local.utm_campaign ?? null,
-    utm_content: cookie.cnt ?? local.utm_content ?? null,
-    utm_term: cookie.trm ?? local.utm_term ?? null,
+    ...utmSet,
     landing_url: local.landing_url ?? null,
     captured_at: local.captured_at ?? null,
   };
@@ -93,17 +109,24 @@ export function getShopAnalyticsContext(attribution: ShopAttribution = readShopA
   };
 }
 
+/**
+ * 送一個 shop 電商事件。回傳這次呼叫是否「真的排進 dataLayer 佇列」了
+ * （window.gtag 是不是一個 function）— 呼叫端（尤其是 purchase 的
+ * sessionStorage 去重）要靠這個回傳值決定能不能標記「已追蹤」，
+ * 不能無條件標記，否則事件明明沒送出、卻永遠被當成送過了。
+ */
 export function trackShopEvent(
   eventName: string,
   params: Record<string, unknown> = {},
   attribution?: ShopAttribution
-) {
-  if (typeof window === 'undefined' || !window.gtag) return;
+): boolean {
+  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return false;
 
   window.gtag('event', eventName, {
     ...getShopAnalyticsContext(attribution),
     ...params,
   });
+  return true;
 }
 
 // R5：checkout/page.tsx（下單當下，銀行轉帳流程）與 purchase-tracker.tsx

@@ -187,6 +187,28 @@ export default function RootLayout({
         {/* Viewport and theme */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#0A0A0A" />
+
+        {/*
+          gtag stub — 定義 window.dataLayer / window.gtag，跟正式網域判斷完全脫鉤。
+          必須同步、無條件、在任何 body 內元件 hydrate 前就存在，否則
+          PurchaseTracker／ProductViewTracker 等在 mount 時呼叫 trackShopEvent，
+          會因為 window.gtag 還不存在而整個事件憑空消失（曾經發生過：GoogleAnalytics
+          的正式網域判斷需要等 client mount 才知道 hostname，導致 stub 延後出現，
+          on first render 就送出的事件全部漏掉，purchase 還因此被誤標記成「已送出」）。
+          這裡的 stub 本身不送任何資料出去，只是把呼叫排進 dataLayer 佇列；
+          真正把資料送到 Google 的 gtag.js（下面 components/GoogleAnalytics.tsx）
+          才會依正式網域白名單決定要不要載入。
+        */}
+        <script
+          id="gtag-stub"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+            `,
+          }}
+        />
+
         <script
           dangerouslySetInnerHTML={{
             __html: `

@@ -743,7 +743,7 @@ export default function CheckoutPage() {
         // /order/success（那裡的 PurchaseTracker 也會送 purchase）。
         // 用共用的 sessionStorage key 擋掉同一個 orderId 被算兩次。
         if (!hasPurchaseBeenTracked(newOrderId)) {
-          trackShopEvent('purchase', {
+          const tracked = trackShopEvent('purchase', {
             transaction_id: newOrderId,
             value: confirmedFinalPrice,
             currency: 'TWD',
@@ -760,7 +760,12 @@ export default function CheckoutPage() {
               item_variant: item.variant_name || '單一規格',
             })),
           }, attribution);
-          markPurchaseTracked(newOrderId);
+          // 只有事件真的排進 dataLayer 才標記「追蹤過了」，避免沒送出卻被
+          // 永久標記，導致使用者之後改走 LINE Pay 時 /order/success 的
+          // PurchaseTracker 誤判「已經追蹤過」而整筆漏送。
+          if (tracked) {
+            markPurchaseTracked(newOrderId);
+          }
         }
 
       } else {

@@ -9,7 +9,7 @@
             "schedule": "0 3 * * *"
         }
     ],
-    "redirects": [
+    "headers": [
         {
             "source": "/:path*",
             "has": [
@@ -18,8 +18,12 @@
                     "value": "moon-dessert-booking.vercel.app"
                 }
             ],
-            "destination": "https://shop.kiwimu.com/:path*",
-            "permanent": true
+            "headers": [
+                {
+                    "key": "X-Robots-Tag",
+                    "value": "noindex"
+                }
+            ]
         }
     ]
 }
