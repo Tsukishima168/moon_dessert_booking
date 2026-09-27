@@ -22,6 +22,7 @@ export type ShopAttribution = Partial<Record<AttributionKey, string | null>>;
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
+    __KW_GA_ENABLED?: boolean;
   }
 }
 
@@ -121,6 +122,9 @@ export function trackShopEvent(
   attribution?: ShopAttribution
 ): boolean {
   if (typeof window === 'undefined' || typeof window.gtag !== 'function') return false;
+  // Off the GA host allowlist (localhost, previews) nothing is sent — report false
+  // so callers like the purchase dedupe don't mark the event as tracked.
+  if (window.__KW_GA_ENABLED !== true) return false;
 
   window.gtag('event', eventName, {
     ...getShopAnalyticsContext(attribution),

@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import CartSidebar from '@/components/CartSidebar';
 import MobileCartBar from '@/components/MobileCartBar';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
+import { buildGaBootstrapScript } from '@/lib/ga-hosts';
 import FacebookPixel from '@/components/FacebookPixel';
 import AttributionSync from '@/components/AttributionSync';
 import { serializeJsonLd } from '@/lib/json-ld';
@@ -195,17 +196,15 @@ export default function RootLayout({
           會因為 window.gtag 還不存在而整個事件憑空消失（曾經發生過：GoogleAnalytics
           的正式網域判斷需要等 client mount 才知道 hostname，導致 stub 延後出現，
           on first render 就送出的事件全部漏掉，purchase 還因此被誤標記成「已送出」）。
-          這裡的 stub 本身不送任何資料出去，只是把呼叫排進 dataLayer 佇列；
-          真正把資料送到 Google 的 gtag.js（下面 components/GoogleAnalytics.tsx）
-          才會依正式網域白名單決定要不要載入。
+          在正式網域白名單上，同一段 script 也會同步排入 gtag('js') 與
+          gtag('config')，確保 config 永遠排在所有事件前面（事件若排在 config
+          之前，gtag.js 載入後會被丟掉）。gtag.js 本身由 components/GoogleAnalytics.tsx
+          載入。邏輯與白名單見 lib/ga-hosts.ts。
         */}
         <script
           id="gtag-stub"
           dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
-            `,
+            __html: buildGaBootstrapScript(process.env.NODE_ENV === 'production'),
           }}
         />
 
