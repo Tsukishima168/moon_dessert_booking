@@ -1,37 +1,28 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Script from 'next/script';
+import { GA_ID, isProductionHost } from '@/lib/ga-hosts';
 
+// gtag('js') / gtag('config') are queued synchronously by the <head> bootstrap
+// script in app/layout.tsx (see lib/ga-hosts.ts). This component only loads
+// gtag.js, which then flushes the queued dataLayer in order: config first,
+// then any events tracked before it arrived.
 export default function GoogleAnalytics() {
-    // Use the new Kiwimu-Core GA4 ID for unified funnel tracking
-    const GA_ID = process.env.NEXT_PUBLIC_GA4_ID || 'G-DM6F27KL8B';
+    const [shouldLoad, setShouldLoad] = useState(false);
 
-    // 只在生產環境載入
-    if (!GA_ID || process.env.NODE_ENV !== 'production') {
+    useEffect(() => {
+        setShouldLoad(isProductionHost(window.location.hostname));
+    }, []);
+
+    if (!GA_ID || process.env.NODE_ENV !== 'production' || !shouldLoad) {
         return null;
     }
 
     return (
-        <>
-            {/* Google Analytics Script */}
-            <Script
-                strategy="afterInteractive"
-                src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-            />
-            <Script
-                id="google-analytics"
-                strategy="afterInteractive"
-                dangerouslySetInnerHTML={{
-                    __html: `
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${GA_ID}', {
-              page_path: window.location.pathname,
-            });
-          `,
-                }}
-            />
-        </>
+        <Script
+            strategy="afterInteractive"
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+        />
     );
 }

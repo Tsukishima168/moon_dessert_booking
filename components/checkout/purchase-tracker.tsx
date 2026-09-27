@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 
 import type { OrderItem } from '@/lib/supabase';
-import { trackShopEvent } from '@/lib/shop-analytics';
+import { trackShopEvent, hasPurchaseBeenTracked, markPurchaseTracked } from '@/lib/shop-analytics';
 
 interface PurchaseTrackerProps {
   transactionId: string;
@@ -15,14 +15,11 @@ export function PurchaseTracker({ transactionId, value, items }: PurchaseTracker
   useEffect(() => {
     if (typeof window === 'undefined' || !transactionId) return;
 
-    const storageKey = `shop_purchase_tracked:${transactionId}`;
-    try {
-      if (window.sessionStorage.getItem(storageKey) === '1') return;
-    } catch {
-      // Analytics should still fire if sessionStorage is unavailable.
-    }
+    // 同一筆訂單也可能已經在 app/checkout/page.tsx（銀行轉帳分支）觸發過
+    // purchase — 兩邊共用同一把 sessionStorage key，避免同一筆訂單算兩次。
+    if (hasPurchaseBeenTracked(transactionId)) return;
 
-    trackShopEvent('purchase', {
+    const tracked = trackShopEvent('purchase', {
       transaction_id: transactionId,
       value,
       currency: 'TWD',
@@ -36,10 +33,11 @@ export function PurchaseTracker({ transactionId, value, items }: PurchaseTracker
       })),
     });
 
-    try {
-      window.sessionStorage.setItem(storageKey, '1');
-    } catch {
-      // Ignore storage failures after the event has been sent.
+    // 只有事件真的排進 dataLayer 才標記「追蹤過了」；沒送出就不標記，
+    // 避免明明沒送出的事件被永久當成已送出（曾經因為 gtag stub 還沒
+    // 定義好而整批漏掉，詳見 components/GoogleAnalytics.tsx 的註解）。
+    if (tracked) {
+      markPurchaseTracked(transactionId);
     }
   }, [items, transactionId, value]);
 

@@ -68,11 +68,13 @@ export const KiwimuUniverseRail: React.FC<KiwimuUniverseRailProps> = ({ currentS
         <nav ref={navRef} className="ku-universe-rail__nav" aria-label="Kiwimu Universe 站點">
           {UNIVERSE_SITES.map((site, index) => {
             const isCurrent = site.id === currentSite;
+            // R3: 站內跨站連結帶 from=<來源站>_universe_rail（不用 utm_*），目的站寫進 kw_attr.from。
+            const href = isCurrent ? site.href : `${site.href}?from=${currentSite}_universe_rail`;
 
             return (
               <a
                 key={site.id}
-                href={site.href}
+                href={href}
                 className={`ku-universe-rail__link${isCurrent ? ' is-current' : ''}`}
                 aria-current={isCurrent ? 'page' : undefined}
               >

@@ -9,12 +9,14 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// R3：站內跨站連結（同屬 *.kiwimu.com）不用 utm_*，改用單一
+// from=<來源站>_<位置> 參數，讀取端請先讀 from 再 fallback utm_source。
+// 這支 API 回傳的連結是掛在 kiwimu.com 測驗結果頁上的 CTA（不是 shop 自己的
+// 頁面），所以來源站要標 mbti，不是 shop；mbti=<TYPE> 是 map 用來顯示個人化
+// 推薦的既有業務參數，維持不動。
 const buildMenuCtaUrl = (mbtiType: string) => {
   const url = new URL('https://map.kiwimu.com/menu');
-  url.searchParams.set('utm_source', 'mbti-lab');
-  url.searchParams.set('utm_medium', 'result-cta');
-  url.searchParams.set('utm_campaign', '2026-q2-unified-catalog');
-  url.searchParams.set('utm_content', 'soul-dessert-button');
+  url.searchParams.set('from', 'mbti_result_dessert');
   url.searchParams.set('mbti', mbtiType.toUpperCase());
   return url.toString();
 };

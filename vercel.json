@@ -8,5 +8,22 @@
             "path": "/api/cron/campaign-runner",
             "schedule": "0 3 * * *"
         }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "has": [
+                {
+                    "type": "host",
+                    "value": "moon-dessert-booking.vercel.app"
+                }
+            ],
+            "headers": [
+                {
+                    "key": "X-Robots-Tag",
+                    "value": "noindex"
+                }
+            ]
+        }
     ]
 }
