@@ -1,5 +1,16 @@
 # CURRENT.md — shop.kiwimu.com
 
+## Snapshot · 2026-10-03
+
+Status: `本機完成並實測，已 commit 在 branch fix/shop-resend-email-errors，未 push`
+
+- 已改：Resend 寄信失敗不再靜默。訂單確認信改走共用 `lib/email/resend.ts`（檢查 `{ error }`＋try/catch）；移除 4 處 `onboarding@resend.dev` fallback（缺 `RESEND_FROM_EMAIL` 就不寄、記 error）；三個 Resend client 收斂為一個（`lib/email/resend.ts`，新增 `sendEmailDetailed`），刪除死代碼 `lib/resend.ts`、`src/handlers/email.handler.ts`；`/api/send-email` 保留 secret gate、改走共用 client。
+- 行為變化：訂單確認信寄件人由裸地址 `noreply@kiwimu.com` 變成 `月島甜點 <noreply@kiwimu.com>`（與狀態通知信一致）。Preview 環境沒設 `RESEND_FROM_EMAIL`，因此 Preview 不寄信（明確記 error），不再用沙盒寄件人靜默失敗。
+- 實測（寄 Resend 測試信箱 `delivered@resend.dev`）：①正常寄件人 → Resend 紀錄 delivered；②未驗證 `noreply@shop.kiwimu.com` → Resend 403，新版回 false（舊版同情境印「發送成功」回 true，已用 main 對照跑過）；③寄件人空白 → 不呼叫 API、回 false。tsc exit 0（另清掉 `.next` 內 74 個 Finder 重複檔，它們是 tsc 報錯來源）、lint 0 error。
+- 背景（2026-10-03 體檢）：網域 `kiwimu.com` 已在 Resend 驗證；DKIM／SPF／退信 MX 正常；缺 DMARC、根網域無 MX（客人回信會退）。
+- 下一步：Penso 同意後 push → PR → preview build 綠 → 合併上線；DNS 補 DMARC／決定 reply-to 信箱（Penso 手動）。
+- 已知未處理：訂單確認信不受後台 `notification_settings` 開關控制（後台 email 關著仍會寄）；信件主旨店名來自 `business_settings`（仍是 MoonMoon Dessert），與寄件人「月島甜點」不一致，待 Penso 定名。
+
 ## Snapshot · 2026-07-15
 
 Status: `五站共用視覺語言已完成本機整合與瀏覽器驗證，尚未 commit／push／deploy`

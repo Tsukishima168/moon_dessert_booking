@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { resend } from '@/lib/resend';
+import { sendEmailDetailed } from '@/lib/email/resend';
 
 /**
  * POST /api/send-email
@@ -29,24 +29,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!resend) {
-      console.warn('[send-email] RESEND_API_KEY 未設定');
+    // 共用 lib/email/resend.ts（唯一的 Resend client；缺 RESEND_FROM_EMAIL 不再 fallback 沙盒寄件者）
+    const result = await sendEmailDetailed(to, subject, html);
+
+    if (!result.ok) {
+      console.error(`[send-email] 發送失敗 (${result.reason}):`, result.message);
+      if (result.reason === 'no_api_key' || result.reason === 'no_from_email') {
+        return NextResponse.json(
+          { success: false, message: 'Email 服務未設定' },
+          { status: 503 }
+        );
+      }
       return NextResponse.json(
-        { success: false, message: 'Email 服務未設定' },
-        { status: 503 }
+        { success: false, message: result.reason === 'api_error' ? result.message : '發送失敗' },
+        { status: 500 }
       );
     }
 
-    const from = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
-
-    const { data, error } = await resend.emails.send({ from, to, subject, html });
-
-    if (error) {
-      console.error('[send-email] 發送失敗:', error);
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: { id: result.id } });
   } catch (error) {
     console.error('[send-email] route 錯誤:', error);
     return NextResponse.json({ success: false, message: '發送失敗' }, { status: 500 });
