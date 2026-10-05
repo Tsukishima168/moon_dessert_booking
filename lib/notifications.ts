@@ -127,7 +127,7 @@ export async function sendCustomerEmail(data: {
     </div>`;
   // 統一走 lib/email/resend.ts 的 sendEmail（檢查 { error }、缺 RESEND_FROM_EMAIL 不寄、不 throw）
   const sent = await sendEmail(data.to, `【${storeName}】訂單確認 - ${data.orderId}`, emailHtml);
-  if (sent) console.log(`Email 發送成功: ${data.to}`);
+  if (sent) console.log('Email 發送成功');
   return sent;
 }
 

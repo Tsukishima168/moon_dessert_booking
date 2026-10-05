@@ -53,7 +53,11 @@ export async function sendEmailDetailed(
       return { ok: false, reason: 'api_error', message: error.message };
     }
 
-    return { ok: true, id: data?.id ?? null };
+    if (!data?.id) {
+      console.error('[sendEmail] Email provider 未回傳寄送識別碼');
+      return { ok: false, reason: 'api_error', message: 'Email provider 未回傳寄送識別碼' };
+    }
+    return { ok: true, id: data.id };
   } catch (err) {
     console.error('[sendEmail] 發送失敗:', err);
     return {
