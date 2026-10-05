@@ -195,15 +195,17 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                         {/* 數量 */}
                         <div className="flex items-center border border-moon-border/60">
                             <button
+                                aria-label={`減少 ${item.name} 數量`}
                                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                className="p-1.5 hover:bg-moon-border/40 transition-colors"
+                                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-1.5 hover:bg-moon-border/40 transition-colors"
                             >
                                 <Minus size={11} className="text-moon-text" />
                             </button>
                             <span className="px-2.5 text-xs text-moon-text min-w-[2rem] text-center">{quantity}</span>
                             <button
+                                aria-label={`增加 ${item.name} 數量`}
                                 onClick={() => setQuantity(quantity + 1)}
-                                className="p-1.5 hover:bg-moon-border/40 transition-colors"
+                                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-1.5 hover:bg-moon-border/40 transition-colors"
                             >
                                 <Plus size={11} className="text-moon-text" />
                             </button>

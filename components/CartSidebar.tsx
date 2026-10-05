@@ -237,8 +237,9 @@ export default function CartSidebar() {
 
                       {/* 刪除按鈕 */}
                       <button
+                        aria-label={`移除 ${item.name} ${item.variant_name ?? ""}`}
                         onClick={() => removeItem(item.id)}
-                        className="text-moon-muted hover:text-moon-accent transition-colors self-start p-1"
+                        className="text-moon-muted hover:text-moon-accent transition-colors self-start p-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -248,8 +249,9 @@ export default function CartSidebar() {
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-moon-border">
                       <div className="flex items-center border border-moon-border">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="p-2 hover:bg-moon-border transition-colors"
+                          aria-label={`減少 ${item.name} ${item.variant_name ?? ""} 數量`}
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-moon-border transition-colors"
                         >
                           <Minus size={14} className="text-moon-text" />
                         </button>
@@ -257,8 +259,9 @@ export default function CartSidebar() {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="p-2 hover:bg-moon-border transition-colors"
+                          aria-label={`增加 ${item.name} ${item.variant_name ?? ""} 數量`}
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-moon-border transition-colors"
                         >
                           <Plus size={14} className="text-moon-text" />
                         </button>

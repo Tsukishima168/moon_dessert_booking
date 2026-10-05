@@ -199,15 +199,17 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
               {/* 數量選擇 */}
               <div className="flex items-center border border-moon-border">
                 <button
+                  aria-label={`減少 ${item.name} 數量`}
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-3 hover:bg-moon-border transition-colors"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-3 hover:bg-moon-border transition-colors"
                 >
                   <Minus size={14} className="text-moon-text" />
                 </button>
                 <span className="px-4 text-sm text-moon-text flex-1 text-center">{quantity}</span>
                 <button
+                  aria-label={`增加 ${item.name} 數量`}
                   onClick={() => setQuantity(quantity + 1)}
-                  className="p-3 hover:bg-moon-border transition-colors"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-3 hover:bg-moon-border transition-colors"
                 >
                   <Plus size={14} className="text-moon-text" />
                 </button>
