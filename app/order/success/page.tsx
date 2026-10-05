@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { CheckCircle } from 'lucide-react';
 import { redirect } from 'next/navigation';
 
+import MemberPassportLink from '@/components/MemberPassportLink';
 import { ClearPendingOrder } from '@/components/checkout/clear-pending-order';
 import { PurchaseTracker } from '@/components/checkout/purchase-tracker';
 import { findOrderSuccessSummary } from '@/src/repositories/order.repository';
@@ -117,6 +118,12 @@ export default async function OrderSuccessPage({
           <p className="text-xs text-moon-muted">
             LINE Pay 付款已確認。我們將盡快處理您的訂單，並在可取貨時通知您。
           </p>
+        </div>
+
+        <div className="border border-moon-border/30 p-4 space-y-3">
+          <h3 className="text-sm text-moon-text">下一次到店，從護照繼續</h3>
+          <p className="text-xs leading-relaxed text-moon-muted">本人會員訂單可在原帳號查看；匿名訂單請保留原訂單連結。開啟護照不會自動綁定訂單或發章。</p>
+          <MemberPassportLink surface="order" className="flex min-h-11 items-center justify-center border border-moon-border px-4 py-3 text-xs text-moon-text hover:border-moon-accent" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

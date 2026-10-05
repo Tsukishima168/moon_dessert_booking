@@ -12,6 +12,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
 import { MenuItemWithVariants, MenuCategory } from '@/lib/supabase';
 import { SHOP_ATTRIBUTION_STORAGE_KEY } from '@/lib/shop-analytics';
+import MemberPassportLink from '@/components/MemberPassportLink';
 import { AlertCircle, Sparkles, Search, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -98,6 +99,9 @@ function HomePageContent() {
 
   // 來源感知（from: moon-map / passport / lab）
   const fromSource = initialParams.get('from') || searchParams?.get('from');
+  const sourceSite = fromSource?.startsWith('passport_') ? 'passport'
+    : fromSource?.startsWith('map_') ? 'map'
+    : fromSource?.startsWith('mbti_') ? 'mbti' : fromSource;
 
   // 保存來源與 UTM（供結帳使用）
   useEffect(() => {
@@ -133,21 +137,21 @@ function HomePageContent() {
   }, [searchParamsKey, fromSource, mbtiType, initialSearch]);
 
   const getSourceMeta = () => {
-    if (fromSource === 'moon-map' || fromSource === 'map') {
+    if (sourceSite === 'moon-map' || sourceSite === 'map') {
       return {
         label: 'FROM MOON MAP',
         title: '你剛從展覽地圖，走進月島裡負責做甜點的這一格房間。',
         desc: '月島本質上仍是一間甜點店，只是我們先從情緒與行動出發，再慢慢長出對應的那一塊甜點。',
       };
     }
-    if (fromSource === 'passport') {
+    if (sourceSite === 'passport') {
       return {
         label: 'FROM DESSERT PASSPORT',
-        title: '你的甜點護照已蓋章，接下來換成真正可以帶走的實體。',
-        desc: '剛才那些題目，其實都是在幫我們確認：你最近比較需要哪一種情緒被安放在甜點裡。',
+        title: '從護照回來，為下一次到店選一份甜點。',
+        desc: '先選喜歡的口味與取貨時間；到店集章與獎勵領取由門市確認。',
       };
     }
-    if (fromSource === 'lab' || mbtiType) {
+    if (sourceSite === 'lab' || sourceSite === 'mbti' || mbtiType) {
       return {
         label: 'FROM KIWIMU MBTI LAB',
         title: '人格實驗室的檔案，被翻譯成可以一口一口吃掉的東西。',
@@ -282,14 +286,7 @@ function HomePageContent() {
                   逛展覽地圖 ↗
                 </a>
                 <span className="w-px h-3 bg-moon-border" />
-                <a
-                  href="https://passport.kiwimu.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] sm:text-xs tracking-[0.2em] hover:text-moon-accent transition-colors"
-                >
-                  甜點護照測驗 ↗
-                </a>
+                <MemberPassportLink surface="home" className="inline-flex min-h-11 items-center text-xs tracking-[0.2em] hover:text-moon-accent transition-colors" />
               </div>
             </div>
 
