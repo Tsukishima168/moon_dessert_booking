@@ -293,7 +293,7 @@ export async function sendOrderStatusNotification(data: {
 
     const emailSent = await sendEmail(data.email, subject, html);
     if (emailSent) {
-      console.log(`[Email] 狀態通知發送成功 → ${data.email} (${data.newStatus})`);
+      console.log(`[Email] 狀態通知發送成功 (${data.newStatus})`);
       return {
         success: discordResult.state !== 'failed',
         discord: discordResult,
