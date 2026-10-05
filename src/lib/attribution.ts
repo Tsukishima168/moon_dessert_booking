@@ -66,6 +66,13 @@ export function clampFromField(value: unknown): string | undefined {
   return candidate
 }
 
+/**
+ * GA4 `entry_from`：cookie 來源的 from 只在 from_ts 距今 < 30 分鐘時才當作這次著陸的入口。
+ * 實際判斷寫在 lib/ga-hosts.ts 的 <head> bootstrap script（要在 hydrate 前、同步排入 gtag
+ * config，無法 import 本檔），該處引用這裡的常數與 FROM_PATTERN 以免漂移。
+ */
+export const ENTRY_FROM_WINDOW_MS = 30 * 60 * 1000
+
 function clampTimestamp(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
