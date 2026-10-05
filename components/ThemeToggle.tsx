@@ -10,7 +10,7 @@ type ThemeMode = 'dark' | 'light';
 function applyTheme(theme: ThemeMode) {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
-  localStorage.setItem(STORAGE_KEY, theme);
+  try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* 本次主題仍可使用。 */ }
 }
 
 export default function ThemeToggle() {
@@ -18,7 +18,8 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState<ThemeMode>('dark');
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem(STORAGE_KEY);
+    let storedTheme: string | null = null;
+    try { storedTheme = localStorage.getItem(STORAGE_KEY); } catch { /* 儲存受限時沿用預設主題。 */ }
     const nextTheme = storedTheme === 'light' ? 'light' : 'dark';
     setTheme(nextTheme);
     applyTheme(nextTheme);
@@ -36,7 +37,7 @@ export default function ThemeToggle() {
       <button
         type="button"
         disabled
-        className="bg-moon-black border border-moon-border p-3 sm:p-4 opacity-60"
+        className="min-h-11 min-w-11 bg-moon-black border border-moon-border p-3 sm:p-4 opacity-60"
         aria-label="主題切換"
       >
         <Sun size={18} className="text-moon-text sm:h-5 sm:w-5" />
@@ -48,7 +49,7 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={handleToggle}
-      className="bg-moon-black border border-moon-border p-3 sm:p-4 hover:bg-moon-border transition-all group"
+      className="min-h-11 min-w-11 bg-moon-black border border-moon-border p-3 sm:p-4 hover:bg-moon-border transition-all group"
       aria-label={theme === 'dark' ? '切換為淺色模式' : '切換為深色模式'}
       title={theme === 'dark' ? '切換為淺色模式' : '切換為深色模式'}
     >

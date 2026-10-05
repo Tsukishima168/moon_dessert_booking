@@ -313,7 +313,7 @@ html[data-theme='light'] .theme-logo {
 @layer components {
   /* uppercase Latin 小標 */
   .brand-eyebrow {
-    font-size: 0.66rem;
+    font-size: 0.75rem;
     line-height: 1;
     letter-spacing: 0.3em;
     text-transform: uppercase;
@@ -355,5 +355,18 @@ html[data-theme='light'] .theme-logo {
   .brand-section {
     padding-top: clamp(3rem, 8vw, 6rem);
     padding-bottom: clamp(3rem, 8vw, 6rem);
+  }
+}
+
+/* 可讀的表單與跨主題鍵盤焦點。 */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid rgb(var(--moon-accent));
+  outline-offset: 3px;
+}
+.shop-checkout-form button { min-height: 2.75rem; }
+@media (max-width: 40rem) {
+  .shop-checkout-form :is(input:not([type='radio']):not([type='checkbox']):not([type='hidden']), select, textarea) {
+    min-width: 0;
+    font-size: 1rem;
   }
 }

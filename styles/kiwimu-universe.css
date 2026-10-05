@@ -94,7 +94,7 @@
 
 .ku-universe-rail__wordmark {
   font-family: var(--ku-font-display);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -103,7 +103,7 @@
 .ku-universe-rail__meta {
   color: rgba(247, 247, 242, 0.55);
   font-family: var(--ku-font-mono);
-  font-size: 0.52rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -176,7 +176,7 @@
   align-self: center;
   color: rgba(247, 247, 242, 0.3);
   font-family: var(--ku-font-mono);
-  font-size: 0.5rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
 }
@@ -184,7 +184,7 @@
 .ku-universe-rail__label {
   align-self: end;
   font-family: var(--ku-font-display);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -193,7 +193,7 @@
 .ku-universe-rail__descriptor {
   align-self: start;
   color: rgba(247, 247, 242, 0.55);
-  font-size: 0.55rem;
+  font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.1;
 }
@@ -275,41 +275,64 @@
 
 @media (max-width: 40rem) {
   :root {
-    --ku-rail-height: calc(5.1rem + 1px);
+    --ku-rail-height: calc(3rem + 1px);
   }
 
   .ku-universe-rail__inner {
-    display: block;
+    display: flex;
   }
 
   .ku-universe-rail__identity {
-    min-width: 0;
-    min-height: 2.2rem;
-    justify-content: space-between;
-    padding: 0 var(--ku-space-3);
-    border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: none;
+  }
+
+  .ku-universe-rail__wordmark {
+    font-size: 0.75rem;
+    letter-spacing: 0.13em;
   }
 
   .ku-universe-rail__identity::after {
     color: rgba(247, 247, 242, 0.55);
     content: 'EXPLORE 05';
     font-family: var(--ku-font-mono);
-    font-size: 0.5rem;
+    font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.12em;
   }
 
   .ku-universe-rail__nav {
-    scroll-snap-type: x proximity;
+    overflow-x: visible;
   }
 
   .ku-universe-rail__link {
-    flex-basis: 7.4rem;
-    min-height: 2.9rem;
-    scroll-snap-align: start;
+    flex: 1 1 0;
+    min-width: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    align-items: center;
+    min-height: 3rem;
+    padding: 0.35rem 0.15rem;
+    text-align: center;
+  }
+
+  .ku-universe-rail__index {
+    display: none;
+  }
+
+  .ku-universe-rail__label {
+    display: none;
+  }
+
+  .ku-universe-rail__descriptor {
+    display: block;
+    align-self: center;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: nowrap;
   }
 }
+
+
 
 @media (prefers-reduced-motion: reduce) {
   .ku-primary-action,

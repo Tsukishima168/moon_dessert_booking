@@ -27,12 +27,13 @@ function ErrorContent() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <XCircle className="w-12 h-12 text-red-400 mx-auto" />
-          <h2 className="brand-title text-xl">付款未完成</h2>
-          <p className="brand-eyebrow">PAYMENT FAILED</p>
+          <h2 className="brand-title text-xl">付款狀態需要確認</h2>
+          <p className="brand-eyebrow">PAYMENT STATUS</p>
         </div>
 
         <div className="border border-red-400/20 p-5 space-y-3 bg-red-400/5">
-          <p className="text-sm text-moon-text">{message}</p>
+          <p className="text-sm leading-relaxed text-moon-text">{message}</p>
+          <p className="text-sm leading-relaxed text-moon-muted">若 LINE Pay 已顯示扣款成功，請先確認訂單狀態或聯繫我們，避免重複付款。</p>
           {code && (
             <p className="text-xs text-moon-muted">錯誤代碼：{code}</p>
           )}
