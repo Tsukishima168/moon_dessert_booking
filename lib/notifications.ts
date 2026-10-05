@@ -1,4 +1,3 @@
-import { Resend } from 'resend';
 import { OrderItem } from './supabase';
 import { createAdminClient } from './supabase-admin';
 import { sendEmail } from './email/resend';
@@ -26,11 +25,6 @@ export interface OrderStatusNotificationResult {
 }
 
 export type StatusNotificationChannel = 'discord' | 'email';
-
-// 初始化 Resend
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
 
 // Discord 通知設定
 // 與 map / menu 共用「Kiwimu宇宙 → #月島訂單通知」頻道：
@@ -100,12 +94,10 @@ export async function sendCustomerEmail(data: {
   originalPrice?: number; paymentDate?: string; deliveryMethod?: 'pickup' | 'delivery';
   deliveryAddress?: string; deliveryFee?: number; deliveryNotes?: string;
 }): Promise<boolean> {
-  if (!resend) { console.warn('RESEND_API_KEY 未設定，跳過 Email 通知'); return false; }
   // 店名 / 匯款資訊改讀業務設定（service 預設已鏡像原 env fallback，行為不變）
   const settingsMap = await fetchBusinessSettings().catch(() => ({}));
   const store = await getStoreInfo(settingsMap);
   const payment = await getPaymentSettings(settingsMap);
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
   const storeName = store.name;
   const bankAccount = payment.bank_account;
   const bankLabel = payment.bank_name
@@ -133,11 +125,10 @@ export async function sendCustomerEmail(data: {
          啟用會員 / 查詢訂單
       </a>
     </div>`;
-  try {
-    await resend.emails.send({ from: fromEmail, to: data.to, subject: `【${storeName}】訂單確認 - ${data.orderId}`, html: emailHtml });
-    console.log(`Email 發送成功: ${data.to}`);
-    return true;
-  } catch (error) { console.error('Email 發送錯誤:', error); return false; }
+  // 統一走 lib/email/resend.ts 的 sendEmail（檢查 { error }、缺 RESEND_FROM_EMAIL 不寄、不 throw）
+  const sent = await sendEmail(data.to, `【${storeName}】訂單確認 - ${data.orderId}`, emailHtml);
+  if (sent) console.log('Email 發送成功');
+  return sent;
 }
 
 export async function notifyNewOrder(data: {
@@ -302,7 +293,7 @@ export async function sendOrderStatusNotification(data: {
 
     const emailSent = await sendEmail(data.email, subject, html);
     if (emailSent) {
-      console.log(`[Email] 狀態通知發送成功 → ${data.email} (${data.newStatus})`);
+      console.log(`[Email] 狀態通知發送成功 (${data.newStatus})`);
       return {
         success: discordResult.state !== 'failed',
         discord: discordResult,

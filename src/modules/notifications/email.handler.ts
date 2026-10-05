@@ -47,11 +47,11 @@ export async function handleOrderCreatedEmail(
       deliveryNotes: order.delivery_notes ?? undefined,
     })
     if (emailSent) {
-      console.log(`[EmailHandler] 訂單確認信發送成功 → ${order.email} (${order.order_id})`)
+      console.log(`[EmailHandler] 訂單確認信發送成功 (${order.order_id})`)
       return
     }
 
-    console.warn(`[EmailHandler] 訂單確認信未送達 → ${order.email} (${order.order_id})`)
+    console.warn(`[EmailHandler] 訂單確認信未送達 (${order.order_id})`)
   } catch (error) {
     console.error('[EmailHandler] 訂單確認信發送失敗', order.order_id, error)
     // 不 throw：email 是 fire-and-forget，失敗不阻塞訂單流程
