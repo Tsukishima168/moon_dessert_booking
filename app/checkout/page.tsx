@@ -153,6 +153,7 @@ export default function CheckoutPage() {
     normalizePrices,
   } = useCartStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState('');
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [confirmedName, setConfirmedName] = useState('');
@@ -237,6 +238,7 @@ export default function CheckoutPage() {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(PENDING_ORDER_STORAGE_KEY);
     }
+    setCheckoutMessage('');
     setOrderSuccess(false);
     setOrderId('');
     setConfirmedName('');
@@ -556,21 +558,22 @@ export default function CheckoutPage() {
 
   // 提交訂單
   const onSubmit = async (data: CheckoutFormData) => {
+    setCheckoutMessage('');
     if (!hasAvailableDeliveryMethod) {
-      alert('目前未開放自取或宅配，請稍後再試。');
+      setCheckoutMessage('目前未開放自取或宅配，請稍後再試。');
       return;
     }
     if (data.delivery_method === 'pickup' && !pickupAvailable) {
-      alert('目前未開放門市自取，請改選宅配。');
+      setCheckoutMessage('目前未開放門市自取，請改選宅配。');
       return;
     }
     if (data.delivery_method === 'delivery' && !deliveryAvailable) {
-      alert('目前未開放宅配，請改選門市自取。');
+      setCheckoutMessage('目前未開放宅配，請改選門市自取。');
       return;
     }
 
     if (minOrderAmount > 0 && totalPrice < minOrderAmount) {
-      alert(`本店最低消費金額為 $${minOrderAmount}（目前小計 $${totalPrice}），請再加購後送出。`);
+      setCheckoutMessage(`本店最低消費金額為 $${minOrderAmount}（目前小計 $${totalPrice}），請再加購後送出。`);
       return;
     }
 
@@ -579,7 +582,7 @@ export default function CheckoutPage() {
     const isValidationStale = validatedDateKey !== currentValidationKey;
     const isDateInvalid = !dateValidation?.valid;
     if (isDateValidationPending || !currentValidationKey || isValidationStale || isDateInvalid) {
-      alert(dateValidation?.reason || '日期驗證尚未完成，請稍候再送出訂單');
+      setCheckoutMessage(dateValidation?.reason || '日期驗證尚未完成，請稍候再送出訂單');
       return;
     }
 
@@ -606,7 +609,7 @@ export default function CheckoutPage() {
       );
       const unavailableItem = availabilityChecks.find(Boolean);
       if (unavailableItem) {
-        alert(`商品「${unavailableItem.itemName}」目前無法預訂：${unavailableItem.reason}`);
+        setCheckoutMessage(`商品「${unavailableItem.itemName}」目前無法預訂：${unavailableItem.reason}`);
         return;
       }
 
@@ -769,11 +772,11 @@ export default function CheckoutPage() {
         }
 
       } else {
-      alert(`訂單失敗：${result.message}`);
+      setCheckoutMessage(`訂單失敗：${result.message}`);
       }
     } catch (error) {
       console.error('訂單錯誤:', error);
-      alert('系統錯誤，請重試');
+      setCheckoutMessage('尚未取得訂單確認，請先至會員中心或透過 LINE 確認是否成立，避免重複下單。');
     } finally {
       setIsSubmitting(false);
     }
@@ -781,8 +784,9 @@ export default function CheckoutPage() {
 
   // LINE Pay 付款跳轉
   const handleLinePayRedirect = async () => {
+    setCheckoutMessage('');
     if (!paymentConfig?.can_use_line_pay) {
-      alert('LINE Pay 尚未開放，請先使用銀行轉帳付款');
+      setCheckoutMessage('LINE Pay 尚未開放，請先使用銀行轉帳付款');
       return;
     }
 
@@ -797,13 +801,13 @@ export default function CheckoutPage() {
       if (data.success && data.paymentUrl) {
         window.location.href = data.paymentUrl;
       } else if (res.status === 409) {
-        alert('此訂單已付款，將為您跳轉至訂單完成頁。');
+        setCheckoutMessage('此訂單已付款，將為您跳轉至訂單完成頁。');
         window.location.href = data.orderSuccessUrl || `/order/success?orderId=${orderId}`;
       } else {
-        alert(`LINE Pay 發起失敗：${data.message}`);
+        setCheckoutMessage(`LINE Pay 尚未開啟：${data.message || '請稍後重試，或使用頁面提供的其他付款方式。'}`);
       }
     } catch {
-      alert('LINE Pay 連線失敗，請改用轉帳付款');
+      setCheckoutMessage('LINE Pay 連線失敗，請改用轉帳付款');
     } finally {
       setIsLinePayLoading(false);
     }
@@ -908,6 +912,9 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          <p className="text-sm leading-relaxed text-moon-muted">訂單已建立。付款結果請以訂單狀態為準，重新開啟本頁可繼續付款。</p>
+          {checkoutMessage && <p role="alert" className="border border-red-400/30 p-3 text-sm leading-relaxed text-moon-text">{checkoutMessage}</p>}
+
           {/* LINE Pay 按鈕（由後台付款設定與公開狀態控制）*/}
           {paymentConfig?.can_use_line_pay && (
             <button
@@ -942,16 +949,16 @@ export default function CheckoutPage() {
           )}
 
           <p className="text-center text-xs text-moon-muted/60">
-            訂單確認信已發送至您的信箱（若有填寫）
+            訂單通知使用您填寫的 Email。若未收到，請查看垃圾郵件或至會員中心確認。
           </p>
 
-          <Link href="/" className="block text-center text-xs text-moon-muted underline underline-offset-4">
+          <Link href="/" className="flex min-h-11 items-center justify-center text-center text-xs text-moon-muted underline underline-offset-4">
             返回首頁
           </Link>
 
           <Link
             href="/account"
-            className="block text-center text-xs text-moon-muted underline underline-offset-4 transition-colors hover:text-moon-accent"
+            className="flex min-h-11 items-center justify-center text-center text-xs text-moon-muted underline underline-offset-4 transition-colors hover:text-moon-accent"
           >
             前往會員中心
           </Link>
@@ -959,7 +966,7 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={clearPendingOrder}
-            className="block w-full text-center text-xs text-moon-muted underline underline-offset-4 transition-colors hover:text-moon-accent"
+            className="flex min-h-11 w-full items-center justify-center text-center text-xs text-moon-muted underline underline-offset-4 transition-colors hover:text-moon-accent"
           >
             建立新訂單
           </button>
@@ -1050,7 +1057,7 @@ export default function CheckoutPage() {
 
           {/* 右側：表單 */}
           <div>
-            <form onSubmit={handleSubmit(onSubmit)} className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="shop-checkout-form border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 space-y-6">
 
               {/* Promo Code */}
               <div className="space-y-2">
@@ -1152,7 +1159,7 @@ export default function CheckoutPage() {
                     placeholder="例：example@gmail.com"
                     className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                   />
-                  <p className="text-[10px] text-moon-muted mt-1">
+                  <p className="text-xs text-moon-muted mt-1">
                     訂單確認與匯款資訊將寄至此信箱
                   </p>
                   {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
@@ -1167,13 +1174,13 @@ export default function CheckoutPage() {
                     <input type="radio" value="pickup" {...register('delivery_method')} disabled={!pickupAvailable} className="sr-only" />
                     <div className="text-xl mb-1">🏪</div>
                     <div className="text-xs">門市自取</div>
-                    {!pickupAvailable && <div className="mt-1 text-[10px] text-moon-muted">暫停開放</div>}
+                    {!pickupAvailable && <div className="mt-1 text-xs text-moon-muted">暫停開放</div>}
                   </label>
                   <label className={`border p-4 text-center transition-all ${!deliveryAvailable ? 'cursor-not-allowed border-moon-border/30 text-moon-muted/40 opacity-50' : watchedDeliveryMethod === 'delivery' ? 'cursor-pointer border-moon-accent bg-moon-accent/10' : 'cursor-pointer border-moon-border'}`}>
                     <input type="radio" value="delivery" {...register('delivery_method')} disabled={!deliveryAvailable} className="sr-only" />
                     <div className="text-xl mb-1">🚚</div>
                     <div className="text-xs">{`宅配 (+$${deliveryConfig?.delivery_fee ?? 150})`}</div>
-                    {!deliveryAvailable && <div className="mt-1 text-[10px] text-moon-muted">暫停開放</div>}
+                    {!deliveryAvailable && <div className="mt-1 text-xs text-moon-muted">暫停開放</div>}
                   </label>
                 </div>
                 {!hasAvailableDeliveryMethod && (
@@ -1186,7 +1193,7 @@ export default function CheckoutPage() {
                 <label className="text-xs text-moon-muted block">
                   {deliveryMethod === 'pickup' ? '取貨日期' : '期望到貨日期'} <span className="text-moon-accent">*</span>
                 </label>
-                <p className="text-[10px] text-moon-muted">
+                <p className="text-xs text-moon-muted">
                   {deliveryMethod === 'pickup'
                     ? describeClosedDays(closedDays, '公休')
                     : describeClosedDays(Array.from(new Set([...closedDays, 0])), '不配送')} • 需提前 {Math.max(0, Number(reservationRules?.min_advance_days ?? 3))} 天預訂
@@ -1220,7 +1227,7 @@ export default function CheckoutPage() {
                             : 'border-moon-border text-moon-text hover:border-moon-accent hover:text-moon-accent'
                         }`}
                     >
-                      <span className="text-[10px] opacity-70">{dayName}</span>
+                      <span className="text-xs opacity-70">{dayName}</span>
                       <span className="font-light">{label}</span>
                     </button>
                   ))}
@@ -1320,6 +1327,8 @@ export default function CheckoutPage() {
                 <input type="checkbox" {...register('marketing_consent')} className="mt-0.5 w-4 h-4 shrink-0" />
                 <span>我願意接收月島甜點的優惠與新品資訊（可隨時退訂）</span>
               </label>
+
+              {checkoutMessage && <p role="alert" className="border border-red-400/30 p-3 text-sm leading-relaxed text-moon-text">{checkoutMessage}</p>}
 
               <button
                 type="submit"

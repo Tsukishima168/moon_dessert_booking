@@ -76,13 +76,16 @@ export default function Navbar() {
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
-      await supabase.auth.signOut();
-      await clearServerSession();
+      setAuthError(null);
+      if (!await clearServerSession()) throw new Error('server_logout_failed');
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       setCurrentUser(null);
       router.push('/');
       router.refresh();
     } catch (error) {
       console.error('登出失敗:', error);
+      setAuthError('登出尚未完成，請再試一次。');
     } finally {
       setLoggingOut(false);
     }
@@ -126,13 +129,13 @@ export default function Navbar() {
       >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between sm:h-20">
-          <Link href="/" className="flex items-center group">
+          <Link href="/" className="flex min-h-11 min-w-0 items-center group">
             <Image
               src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1769501262/%E6%A8%99%E6%BA%96%E5%AD%97-04_swnuoh.png"
               alt="MOON MOON"
               width={120}
               height={40}
-              className="theme-logo h-8 w-auto transition-opacity group-hover:opacity-80 sm:h-10"
+              className="theme-logo h-auto w-24 transition-opacity group-hover:opacity-80 sm:w-[140px]"
               priority
             />
           </Link>
@@ -142,7 +145,7 @@ export default function Navbar() {
               href="https://map.kiwimu.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
+              className="flex min-h-11 items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
             >
               品牌地圖
             </a>
@@ -150,7 +153,7 @@ export default function Navbar() {
               href="https://kiwimu.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
+              className="flex min-h-11 items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
             >
               MBTI測驗
             </a>
@@ -158,35 +161,37 @@ export default function Navbar() {
               type="button"
               onClick={handleLogin}
               disabled={authLoginBusy}
-              className="flex items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
+              className="flex min-h-11 items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
             >
               {authLoginBusy ? '登入中...' : '甜點護照'}
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {!isAdminRoute ? <ThemeToggle /> : null}
 
             {authReady ? (
               currentUser ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                   <Link
                     href="/account"
-                    className="flex items-center gap-1.5 border border-moon-border px-3 py-3 transition-all hover:bg-moon-border sm:px-4"
+                    className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 border border-moon-border px-3 py-3 transition-all hover:bg-moon-border sm:px-4"
+                    aria-label="前往會員中心"
                     title="前往會員中心"
                   >
                     <User size={14} className="text-moon-accent" />
                     <span className="hidden text-xs font-bold tracking-widest text-moon-text transition-colors hover:text-moon-accent sm:block">
                       會員中心
                     </span>
-                    <span className="hidden max-w-[120px] truncate text-[11px] text-moon-muted lg:block">
+                    <span className="hidden max-w-[120px] truncate text-xs text-moon-muted lg:block">
                       {currentUser.email?.split('@')[0]}
                     </span>
                   </Link>
                   <button
                     onClick={handleLogout}
                     disabled={loggingOut}
-                    className="flex items-center gap-2 border border-moon-border bg-moon-black p-3 transition-all hover:bg-moon-border disabled:opacity-50 sm:px-4 sm:py-3"
+                    className="flex min-h-11 min-w-11 items-center justify-center gap-2 border border-moon-border bg-moon-black p-3 transition-all hover:bg-moon-border disabled:opacity-50 sm:px-4 sm:py-3"
+                    aria-label={loggingOut ? '登出中' : '登出'}
                     title="登出"
                   >
                     <span className="hidden text-xs font-bold tracking-widest text-moon-text sm:block">
@@ -201,6 +206,7 @@ export default function Navbar() {
                   onClick={handleLogin}
                   disabled={authLoginBusy}
                   className="border border-moon-border bg-moon-black p-3 transition-all hover:bg-moon-border sm:p-4"
+                  aria-label={authLoginBusy ? '登入中' : '登入或註冊'}
                   title={authLoginBusy ? '登入中...' : '登入 / 註冊'}
                 >
                   <User size={18} className="text-moon-text transition-colors sm:h-5 sm:w-5" />
@@ -227,7 +233,7 @@ export default function Navbar() {
                 </div>
 
                 {totalItems > 0 && (
-                  <span className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-moon-accent text-[10px] font-bold text-moon-black sm:-right-2 sm:-top-2 sm:h-6 sm:w-6 sm:text-xs ${cartBump ? 'animate-cart-bump' : ''}`}>
+                  <span className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-moon-accent text-xs font-bold text-moon-black sm:-right-2 sm:-top-2 sm:h-6 sm:w-6 sm:text-xs ${cartBump ? 'animate-cart-bump' : ''}`}>
                     {totalItems}
                   </span>
                 )}
@@ -238,6 +244,11 @@ export default function Navbar() {
         {authError ? (
           <div role="alert" className="pb-3 text-center text-xs text-red-300">
             {authError}
+            {authError.startsWith('登出') && (
+              <button type="button" onClick={handleLogout} disabled={loggingOut} className="ml-2 min-h-11 px-3 underline underline-offset-4">
+                {loggingOut ? '登出中...' : '再試一次登出'}
+              </button>
+            )}
           </div>
         ) : null}
       </div>

@@ -125,13 +125,15 @@ export async function getServerSessionUser(): Promise<ServerSessionUser | null> 
   }
 }
 
-export async function clearServerSession(): Promise<void> {
+export async function clearServerSession(): Promise<boolean> {
   try {
-    await fetch('/api/auth/set-session', {
+    const response = await fetch('/api/auth/set-session', {
       method: 'DELETE',
     })
+    return response.ok
   } catch (error) {
     console.error('清除 server cookie 失敗:', error)
+    return false
   }
 }
 
