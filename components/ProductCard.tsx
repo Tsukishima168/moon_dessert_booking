@@ -154,15 +154,17 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
           <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
             <div className="flex items-center border border-moon-border">
               <button
+                aria-label={`減少 ${item.name} 數量`}
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-2 hover:bg-moon-border transition-colors"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 hover:bg-moon-border transition-colors"
               >
                 <Minus size={14} className="text-moon-text sm:w-4 sm:h-4" />
               </button>
               <span className="px-4 sm:px-6 text-sm sm:text-base text-moon-text">{quantity}</span>
               <button
+                aria-label={`增加 ${item.name} 數量`}
                 onClick={() => setQuantity(quantity + 1)}
-                className="p-2 hover:bg-moon-border transition-colors"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 hover:bg-moon-border transition-colors"
               >
                 <Plus size={14} className="text-moon-text sm:w-4 sm:h-4" />
               </button>

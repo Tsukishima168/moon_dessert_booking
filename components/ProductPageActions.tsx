@@ -91,16 +91,18 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
         <div className="flex items-center border border-moon-border/60 shrink-0">
           <button
             type="button"
+            aria-label={`減少 ${item.name} 數量`}
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
-            className="p-2.5 hover:bg-moon-border/40 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 hover:bg-moon-border/40 transition-colors"
           >
             <Minus size={14} className="text-moon-text" />
           </button>
           <span className="px-4 text-sm text-moon-text min-w-[2.5rem] text-center">{quantity}</span>
           <button
             type="button"
+            aria-label={`增加 ${item.name} 數量`}
             onClick={() => setQuantity(quantity + 1)}
-            className="p-2.5 hover:bg-moon-border/40 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 hover:bg-moon-border/40 transition-colors"
           >
             <Plus size={14} className="text-moon-text" />
           </button>
