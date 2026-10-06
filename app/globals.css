@@ -40,33 +40,33 @@ html[data-theme='dark'] { color-scheme: dark; }
 html[data-theme='light'] {
   color-scheme: light;
 
-  --moon-black: 247 243 236;
+  --moon-black: 245 240 232;
   --moon-dark: 255 251 246;
   --moon-gray: 240 232 222;
-  --moon-border: 220 209 195;
-  --moon-text: 31 57 45;
-  --moon-muted: 85 108 92;
-  --moon-accent: 27 58 43;
+  --moon-border: 216 215 196;
+  --moon-text: 31 47 31;
+  --moon-muted: 95 104 86;
+  --moon-accent: 31 47 31;
   --moon-gold: 121 91 35;
 
-  --background: 247 243 236;
-  --foreground: 31 57 45;
+  --background: 245 240 232;
+  --foreground: 31 47 31;
   --card: 255 251 246;
-  --card-foreground: 31 57 45;
+  --card-foreground: 31 47 31;
   --popover: 255 251 246;
-  --popover-foreground: 31 57 45;
-  --primary: 27 58 43;
-  --primary-foreground: 247 243 236;
+  --popover-foreground: 31 47 31;
+  --primary: 31 47 31;
+  --primary-foreground: 245 240 232;
   --secondary: 240 232 222;
   --secondary-foreground: 42 35 30;
   --muted: 240 232 222;
-  --muted-foreground: 85 108 92;
+  --muted-foreground: 95 104 86;
   --accent: 240 232 222;
   --accent-foreground: 42 35 30;
   --destructive: 220 38 38;
-  --border: 220 209 195;
-  --input: 220 209 195;
-  --ring: 27 58 43;
+  --border: 216 215 196;
+  --input: 216 215 196;
+  --ring: 48 79 47;
 }
 
 .admin-shell {
@@ -359,6 +359,10 @@ html[data-theme='light'] .theme-logo {
   outline: 2px solid rgb(var(--moon-accent));
   outline-offset: 3px;
 }
+/* Light theme: forest ring on cream surfaces. The dark-green hero keeps gold; the fixed-dark admin shell keeps its own ring. */
+html[data-theme='light'] :where(a, button, input, select, textarea, summary):focus-visible { outline-color: #304f2f; }
+html[data-theme='light'] .shop-hero :where(a, button, input, select, textarea, summary):focus-visible { outline-color: #d7c678; }
+html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea, summary):focus-visible { outline-color: rgb(var(--moon-accent)); }
 .shop-checkout-form button { min-height: 2.75rem; }
 @media (max-width: 40rem) {
   .shop-checkout-form :is(input:not([type='radio']):not([type='checkbox']):not([type='hidden']), select, textarea) {
@@ -452,7 +456,7 @@ html[data-theme='light'] .theme-logo {
 .shop-row-controls button { min-height: 44px; min-width: 44px; font-size: 13px; border-radius: 6px; }
 .shop-row-controls > div:first-child { display: flex; }
 .shop-row-controls > div:first-child button { white-space: normal; }
-.shop-row-controls > div:last-child > button { min-height: 48px; padding-inline: 18px; }
+.shop-row-controls > div:last-child > button { min-height: 48px; padding-inline: 18px; border-radius: 12px; }
 .shop-mobile-product > button { padding: 18px 14px; }
 .shop-mobile-product h3 { font-size: 16px; line-height: 1.65; font-weight: 500; }
 .shop-mobile-product p { font-size: 13px; line-height: 1.7; color: rgb(var(--moon-muted)); }
@@ -469,7 +473,7 @@ html[data-theme='light'] .theme-logo {
 .shop-order-guide h2 { margin: 10px 0 28px; }
 .shop-order-guide ol { list-style: none; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px; }
 .shop-order-guide li { display: flex; gap: 16px; }
-.shop-order-guide li > span { font-family: Georgia,serif; font-size: 27px; color: rgb(var(--moon-gold)); line-height: 1.4; }
+.shop-order-guide li > span { font-family: 'Noto Sans TC', var(--font-sans), system-ui, sans-serif; font-size: 27px; color: rgb(var(--moon-gold)); line-height: 1.4; }
 .shop-order-guide h3 { font-size: 17px; font-weight: 500; line-height: 1.5; margin-bottom: 8px; }
 .shop-order-guide li p { font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.8; }
 .shop-guide-links { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 24px; }
@@ -489,12 +493,12 @@ html[data-theme='light'] .theme-logo {
 .shop-product .brand-section { padding-block: 48px; }
 .shop-product .aspect-square { border-radius: 12px; }
 .shop-product-actions [aria-pressed] { min-height: 44px; font-size: 14px; border-radius: 6px; }
-.shop-product-actions .shop-buy-row > button { min-height: 52px; border-radius: 6px; }
+.shop-product-actions .shop-buy-row > button { min-height: 52px; border-radius: 12px; }
 .shop-product > div:last-child a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
 .shop-cart-drawer { border-radius: 16px 0 0 16px; }
 .shop-cart-drawer h3 { white-space: normal; font-size: 15px; line-height: 1.6; }
-.shop-cart-drawer a[href='/checkout'] { min-height: 52px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-.shop-mobile-cart a { min-height: 50px; border-radius: 6px; }
+.shop-cart-drawer a[href='/checkout'] { min-height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.shop-mobile-cart a { min-height: 50px; border-radius: 12px; }
 .shop-mobile-cart button { min-height: 50px; }
 .shop-mobile-cart p:first-child { font-size: 12px; }
 @media (max-width: 1023px) {
@@ -550,9 +554,11 @@ html[data-theme='light'] .theme-logo {
 .shop-checkout-form :is(input:not([type='radio']):not([type='checkbox']), select, textarea) { border-radius: 6px; min-height: 46px; }
 .shop-checkout-form :is(label,p) { font-size: 13px; line-height: 1.8; }
 .shop-checkout-form button { border-radius: 6px; min-width: 44px; }
-.shop-checkout-form button[type='submit'] { min-height: 54px; }
+.shop-checkout-form button[type='submit'] { min-height: 54px; border-radius: 12px; }
 .shop-checkout-form :is(input,select,textarea):focus-visible { outline: 2px solid rgb(var(--moon-gold)); outline-offset: 3px; }
 .shop-checkout-form input[type='radio']:focus-visible + div { outline: 2px solid rgb(var(--moon-gold)); outline-offset: 3px; }
+html[data-theme='light'] .shop-checkout-form :is(input,select,textarea):focus-visible,
+html[data-theme='light'] .shop-checkout-form input[type='radio']:focus-visible + div { outline-color: #304f2f; }
 /* Keep the mobile disclosure focus ring inside the clipped, rounded card. */
 .shop-mobile-product > button:focus-visible { outline-offset: -3px; }
 
@@ -561,6 +567,7 @@ html[data-theme='light'] .theme-logo {
 .shop-hero :focus-visible { outline-color: #d7c678; }
 .shop-hero-photo:focus-visible { outline-offset: 4px; }
 .shop-home :is(.shop-mobile-product,.shop-row-controls) .text-green-400 { color: #304f2f; }
+html[data-theme='light'] .shop-product-actions .text-green-400 { color: #304f2f; }
 .shop-home .shop-mobile-product a, .shop-home .shop-row-controls :is([class*='text-moon-muted/60'],[class*='text-moon-muted/70']) { color: rgb(var(--moon-muted)); }
 .shop-home [class*='text-[9px]'], .shop-home [class*='text-[10px]'], .shop-home [class*='text-[11px]'] { font-size: 12px; }
 @media (max-width: 360px) {

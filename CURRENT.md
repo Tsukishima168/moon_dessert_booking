@@ -2,6 +2,8 @@
 
 ## Snapshot · 2026-10-06
 
+- 上線後配色細節統一（獨立比對差異表 S1–S4）：淺色主題 token 由舊綠改為規格（底 #F5F0E8、字／主色 #1F2F1F、muted #5F6856、邊框 #D8D7C4、ring #304F2F）；淺色主題焦點框與商品成功字改 #304F2F（深綠 Hero 內維持金色、後台 `.admin-shell` 維持原樣）；加入購物車／前往結帳／行動購物車／結帳送出圓角改 12px；三步驟數字字體由 Georgia 改 Noto Sans TC。只改 `app/globals.css`；tsc／lint 0 error／build 通過；本機淺色主題實測商品頁主按鈕深綠底＋圓角 12px。未做：Email 範本與預設 banner 舊色（另案）。
+
 Status: `月島深綠視覺改版已上線（PR #27 squash merge 3107323，production Ready）`
 
 - 上線驗證（2026-10-06）：Vercel preview 與 production 皆 Ready；production `shop.kiwimu.com` theme-color 已為 `#1F2F1F`；首頁、checkout、商品頁、faq／shipping／refund／location／terms／privacy、menu API、robots、sitemap 全 200，未知商品 404，空 payload 打 `/api/order` 回 400（未建單）；瀏覽器桌機＋390px 無 console error、無水平溢出。
