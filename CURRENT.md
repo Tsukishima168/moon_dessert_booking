@@ -2,7 +2,10 @@
 
 ## Snapshot · 2026-10-06
 
-Status: `月島深綠視覺改版（Codex 作者）本機完成；Claude 接手重驗通過，待 push／PR／preview`
+Status: `月島深綠視覺改版已上線（PR #27 squash merge 3107323，production Ready）`
+
+- 上線驗證（2026-10-06）：Vercel preview 與 production 皆 Ready；production `shop.kiwimu.com` theme-color 已為 `#1F2F1F`；首頁、checkout、商品頁、faq／shipping／refund／location／terms／privacy、menu API、robots、sitemap 全 200，未知商品 404，空 payload 打 `/api/order` 回 400（未建單）；瀏覽器桌機＋390px 無 console error、無水平溢出。
+- 下一步：gacha／passport 同系列改版仍只在本機，要上線需各自 push／PR；PR #26（LINE Pay 分店名稱）Penso 決定先不合，等 internal_test 真人小額單時一起簽收。實機 Safari／LINE 內建瀏覽器尚未看過。
 
 - 分支 `codex/shop-green-20261006`（base `e22d034`＝main）：`bc720d5` 導入月島深綠選購介面與手機細節、`8a736f5` 對齊奶油白森林綠與商品閱讀層級。13 檔，純樣式／排版，付款、auth、cart 狀態、歸因、菜單 API 無邏輯變更。規格見 `docs/DESIGN_NOTES.md`。
 - Codex 已做：作者 UI QA（320/390/768/1280）＋兩輪獨立審查 APPROVE（3 MEDIUM＋1 LOW、2 MEDIUM 對比問題皆已修）；證據在 `/private/tmp/kiwimu-shop-green-20261006/qa/`、`/private/tmp/kiwimu-shop-style-match-20261006/qa/`（tmp，重開機會消失）。
