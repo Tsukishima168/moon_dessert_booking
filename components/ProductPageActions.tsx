@@ -27,7 +27,7 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
   if (isSoldOut) {
     return (
       <div className="border border-moon-border/60 px-4 py-3 text-sm text-moon-muted tracking-widest text-center">
-        已售完
+        {item.is_available ? '暫不開放預訂' : '已售完'}
       </div>
     );
   }
@@ -63,7 +63,7 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="shop-product-actions space-y-4">
       {item.variants.length > 1 && (
         <div>
           <label className="text-xs text-moon-muted tracking-wider mb-2 block">
@@ -73,6 +73,7 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
             {item.variants.map((variant) => (
               <button
                 key={variant.id}
+                aria-pressed={selectedVariant?.id === variant.id}
                 type="button"
                 onClick={() => setSelectedVariant(variant)}
                 className={`text-xs tracking-wider px-3 py-2 border transition-all ${selectedVariant?.id === variant.id
@@ -87,7 +88,7 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="shop-buy-row flex items-center gap-3">
         <div className="flex items-center border border-moon-border/60 shrink-0">
           <button
             type="button"

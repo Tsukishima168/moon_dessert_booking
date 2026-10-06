@@ -15,14 +15,7 @@ interface ProductRowProps {
     index?: number;
 }
 
-/**
- * ProductRow — 桌面版精品菜單列表樣式
- * 
- * 設計邏輯：
- * - 橫排：左側小縮圖（固定 96×96）+ 右側文字資訊 + 最右操作區
- * - 圖片不主導，文案敘事為主（品牌訂購頁，不是電商 grid）
- * - hover 時左側橫線滑入，整行有微動效
- */
+/** Desktop ordering row. Product data and cart actions remain shared with the existing flow. */
 export default function ProductRow({ item, displayOnly = false, index = 0 }: ProductRowProps) {
     const addItem = useCartStore((state) => state.addItem);
     const openCart = useCartStore((state) => state.openCart);
@@ -31,6 +24,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
     const [added, setAdded] = useState(false);
 
     const handleAddToCart = () => {
+        if (!selectedVariant || isSoldOut || displayOnly) return;
         for (let i = 0; i < quantity; i++) {
             addItem({
                 id: `${item.id}-${selectedVariant.id}`,
@@ -68,7 +62,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
     const isPickupOnly = item.delivery_type === 'pickup_only';
     const productHref = `/product/${item.slug || item.id}`;
 
-    if (isSoldOut) {
+    if (isSoldOut && !displayOnly) {
         return (
             <div className="flex items-center gap-6 py-5 px-4 border-b border-moon-border/20 opacity-40">
                 <span className="text-xs text-moon-muted/40 font-mono w-6 shrink-0">{serialNo}</span>
@@ -79,30 +73,30 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                         <span className="text-moon-muted/30">—</span>
                     )}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="shop-row-copy flex-1 min-w-0">
                     <h3 className="text-moon-muted line-through text-sm tracking-wide">{item.name}</h3>
                 </div>
-                <span className="text-xs text-moon-muted tracking-widest shrink-0">已售完</span>
+                <span className="text-xs text-moon-muted tracking-widest shrink-0">{item.is_available ? '暫不開放預訂' : '已售完'}</span>
             </div>
         );
     }
 
     return (
-        <div className="group flex items-center gap-5 lg:gap-8 py-4 lg:py-5 px-4 border-b border-moon-border/20 hover:bg-moon-dark/40 transition-all duration-300">
+        <div className="shop-product-row group flex items-center gap-5 lg:gap-8 py-4 lg:py-5 px-4 border-b border-moon-border/20 hover:bg-moon-dark/40 transition-all duration-300">
             {/* 序號 */}
             <span className="text-[10px] text-moon-muted/40 font-mono w-5 shrink-0 group-hover:text-moon-accent/50 transition-colors">
                 {serialNo}
             </span>
 
             {/* 縮圖 — 固定 80px，不主導視覺 */}
-            <div className="relative w-20 h-20 lg:w-24 lg:h-24 shrink-0 overflow-hidden bg-moon-gray">
+            <div className="shop-row-photo relative w-20 h-20 lg:w-24 lg:h-24 shrink-0 overflow-hidden bg-moon-gray">
                 {item.image_url && item.image_url.trim() !== '' ? (
                     <Image
                         src={item.image_url}
                         alt={item.name}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="96px"
+                        sizes="112px"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                 ) : (
@@ -118,9 +112,9 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
             </div>
 
             {/* 主要文字資訊 */}
-            <div className="flex-1 min-w-0">
+            <div className="shop-row-copy flex-1 min-w-0">
                 <div className="flex items-baseline gap-3 mb-1">
-                    <h3 className="text-sm lg:text-base font-light text-moon-accent tracking-wide truncate">
+                    <h3 className="text-sm lg:text-base font-light text-moon-accent tracking-wide">
                         {item.name}
                     </h3>
                     {item.category && (
@@ -153,13 +147,14 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
             </div>
 
             {/* 右側：規格選擇 + 價格 + 操作（桌面橫排） */}
-            <div className="shrink-0 flex items-center gap-3 lg:gap-5">
+            <div className="shop-row-controls shrink-0 flex items-center gap-3 lg:gap-5">
                 {/* 規格選擇 */}
                 {!displayOnly && item.variants.length > 1 && (
                     <div className="hidden lg:flex flex-col gap-1">
                         {item.variants.map((variant) => (
                             <button
                                 key={variant.id}
+                                aria-pressed={selectedVariant?.id === variant.id}
                                 onClick={() => setSelectedVariant(variant)}
                                 className={`text-[10px] tracking-wider px-2.5 py-1 border transition-all whitespace-nowrap ${selectedVariant.id === variant.id
                                         ? 'border-moon-accent bg-moon-accent text-moon-black'
@@ -180,10 +175,10 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                 )}
 
                 {/* 價格 */}
-                <div className="text-lg lg:text-xl font-light text-moon-accent tracking-wide whitespace-nowrap">
+                {(!displayOnly || (selectedVariant?.price ?? item.price) > 0) && <div className="text-lg lg:text-xl font-light text-moon-accent tracking-wide whitespace-nowrap">
                     <span className="text-xs mr-0.5">$</span>
-                    {selectedVariant.price}
-                </div>
+                    {selectedVariant?.price ?? item.price}
+                </div>}
 
                 {/* 操作區 */}
                 {displayOnly ? (
@@ -219,7 +214,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                                 }`}
                         >
                             <ShoppingCart size={11} />
-                            {added ? '已加入' : '加入'}
+                            {added ? '已加入' : '加入購物車'}
                         </button>
                     </div>
                 )}

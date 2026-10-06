@@ -110,7 +110,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
   };
 
   return (
-    <div className="min-h-screen bg-moon-black">
+    <div className="shop-product min-h-screen bg-moon-black">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(productSchema) }}

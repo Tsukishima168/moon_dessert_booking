@@ -125,10 +125,10 @@ export default function Navbar() {
     <>
       {!isAdminRoute ? <KiwimuUniverseRail currentSite="shop" /> : null}
       <nav
-        className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-sm ${isAdminRoute ? 'admin-shell' : ''}`}
+        className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-sm ${isAdminRoute ? 'admin-shell' : 'shop-navbar'}`}
       >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between sm:h-20">
+        <div className={`flex h-16 items-center justify-between sm:h-20 ${isAdminRoute ? '' : 'shop-navbar-main'}`}>
           <Link href="/" className="flex min-h-11 min-w-0 items-center group">
             <Image
               src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1769501262/%E6%A8%99%E6%BA%96%E5%AD%97-04_swnuoh.png"
@@ -141,30 +141,9 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden items-center gap-6 md:flex">
-            <a
-              href="https://map.kiwimu.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex min-h-11 items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
-            >
-              品牌地圖
-            </a>
-            <a
-              href="https://kiwimu.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex min-h-11 items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
-            >
-              MBTI測驗
-            </a>
-            <button
-              type="button"
-              onClick={handleLogin}
-              disabled={authLoginBusy}
-              className="flex min-h-11 items-center gap-1 text-sm tracking-widest text-moon-muted transition-colors hover:text-moon-accent"
-            >
-              {authLoginBusy ? '登入中...' : '甜點護照'}
-            </button>
+            <Link href="/#menu-section" className="flex min-h-11 items-center text-sm text-moon-text hover:text-moon-accent">選購甜點</Link>
+            <Link href="/shipping" className="flex min-h-11 items-center text-sm text-moon-muted hover:text-moon-accent">取貨說明</Link>
+            <button type="button" onClick={handleLogin} disabled={authLoginBusy} className="flex min-h-11 items-center text-sm text-moon-muted hover:text-moon-accent">{authLoginBusy ? '登入中…' : '我的訂單'}</button>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">

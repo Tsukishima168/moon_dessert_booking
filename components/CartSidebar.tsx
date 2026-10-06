@@ -150,7 +150,7 @@ export default function CartSidebar() {
         aria-label="購物車"
         tabIndex={-1}
         className={`
-          fixed top-0 right-0 h-full w-full sm:max-w-md bg-moon-black border-l border-moon-border shadow-2xl z-50
+          shop-cart-drawer fixed top-0 right-0 h-full w-full sm:max-w-md bg-moon-black border-l border-moon-border shadow-2xl z-50
           transform transition-transform duration-500 ease-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
         `}
