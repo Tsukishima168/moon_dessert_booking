@@ -993,7 +993,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-moon-black py-8 sm:py-12 lg:py-16">
+    <div className="shop-checkout min-h-screen bg-moon-black py-8 sm:py-12 lg:py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* 步驟引導 */}
         <div className="flex justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
@@ -1020,7 +1020,7 @@ export default function CheckoutPage() {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* 左側：訂單總覽 */}
           <div>
-            <div className="border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 sticky top-24">
+            <div className="shop-order-summary border border-moon-border bg-moon-dark p-4 sm:p-6 lg:p-8 sticky top-24">
               <h2 className="brand-title text-lg sm:text-xl mb-6 sm:mb-8">訂單摘要</h2>
               {/* Product List */}
               <div className="space-y-4 mb-6">
@@ -1124,6 +1124,7 @@ export default function CheckoutPage() {
                     {authStatus !== 'authenticated' ? (
                       <button
                         type="button"
+                        aria-label="重新確認會員登入狀態"
                         onClick={() => void resolveCheckoutSession()}
                         className="shrink-0 text-moon-accent transition-colors hover:text-moon-text"
                       >

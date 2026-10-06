@@ -1,5 +1,15 @@
 # CURRENT.md — shop.kiwimu.com
 
+## Snapshot · 2026-10-06
+
+Status: `月島深綠視覺改版（Codex 作者）本機完成；Claude 接手重驗通過，待 push／PR／preview`
+
+- 分支 `codex/shop-green-20261006`（base `e22d034`＝main）：`bc720d5` 導入月島深綠選購介面與手機細節、`8a736f5` 對齊奶油白森林綠與商品閱讀層級。13 檔，純樣式／排版，付款、auth、cart 狀態、歸因、菜單 API 無邏輯變更。規格見 `docs/DESIGN_NOTES.md`。
+- Codex 已做：作者 UI QA（320/390/768/1280）＋兩輪獨立審查 APPROVE（3 MEDIUM＋1 LOW、2 MEDIUM 對比問題皆已修）；證據在 `/private/tmp/kiwimu-shop-green-20261006/qa/`、`/private/tmp/kiwimu-shop-style-match-20261006/qa/`（tmp，重開機會消失）。
+- Claude 接手重驗（2026-10-06）：tsc exit 0；lint 0 error／11 既有 warning；production build exit 0；本機 `next start` 實跑首頁、加入購物車（$549、免運進度條）、`/checkout`（僅未登入 401）、商品頁、未知商品 404、390px 無水平溢出。未建單、未付款、未登入、未寄信；測試購物車已清。
+- 同系列 gacha（`codex/gacha-map-green-20261006`）、passport（`codex/passport-green-simplify-20261006`）也都只在本機，未 push。
+- 另一條：PR #26（LINE Pay 帶分店名稱）Vercel 綠、可合併，與本分支無檔案衝突。
+
 ## Snapshot · 2026-10-03
 
 Status: `本機完成並實測，已 commit 在 branch fix/shop-resend-email-errors，未 push`

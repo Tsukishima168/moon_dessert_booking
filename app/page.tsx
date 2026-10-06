@@ -8,14 +8,18 @@ import ProductRow from '@/components/ProductRow';
 import Banner from '@/components/Banner';
 import { MenuSkeleton } from '@/components/ui/MenuSkeleton';
 import Reveal from '@/components/ui/Reveal';
-import Eyebrow from '@/components/ui/Eyebrow';
-import SectionHeading from '@/components/ui/SectionHeading';
 import { MenuItemWithVariants, MenuCategory } from '@/lib/supabase';
 import { SHOP_ATTRIBUTION_STORAGE_KEY } from '@/lib/shop-analytics';
 import MemberPassportLink from '@/components/MemberPassportLink';
-import { AlertCircle, Sparkles, Search, X } from 'lucide-react';
+import { AlertCircle, ArrowRight, Search, X, MapPin, PackageCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+
+const CATEGORY_LABELS: Record<string, string> = {
+  tiramisu: '提拉米蘇', basque: '巴斯克乳酪', chiffon: '戚風蛋糕',
+  mille_crepe: '千層蛋糕', pudding: '布丁與單點', drinks: '飲品',
+};
+const categoryLabel = (category: MenuCategory) => CATEGORY_LABELS[category.id] || category.name;
 
 type ShopWindow = Window & {
   __SHOP_INITIAL_SEARCH__?: string;
@@ -136,36 +140,18 @@ function HomePageContent() {
     }
   }, [searchParamsKey, fromSource, mbtiType, initialSearch]);
 
-  const getSourceMeta = () => {
-    if (sourceSite === 'moon-map' || sourceSite === 'map') {
-      return {
-        label: 'FROM MOON MAP',
-        title: '你剛從展覽地圖，走進月島裡負責做甜點的這一格房間。',
-        desc: '月島本質上仍是一間甜點店，只是我們先從情緒與行動出發，再慢慢長出對應的那一塊甜點。',
-      };
-    }
-    if (sourceSite === 'passport') {
-      return {
-        label: 'FROM DESSERT PASSPORT',
-        title: '從護照回來，為下一次到店選一份甜點。',
-        desc: '先選喜歡的口味與取貨時間；到店集章與獎勵領取由門市確認。',
-      };
-    }
-    if (sourceSite === 'lab' || sourceSite === 'mbti' || mbtiType) {
-      return {
-        label: 'FROM KIWIMU MBTI LAB',
-        title: '人格實驗室的檔案，被翻譯成可以一口一口吃掉的東西。',
-        desc: 'Kiwimu 幫你整理的那些標籤，在這裡會對應到幾種「適合現在的你」的口感與份量，而不是隨機的甜味。',
-      };
-    }
-    return {
-      label: 'MOON MOON DESSERT STUDIO',
-      title: '月島還是一間甜點店，只是我們先問：你現在是什麼狀態？',
-      desc: '甜點在這裡不是只有口味，而是用來滿足某種情緒和即將發生的行動。你可以把它想成，為那個時刻準備的一個可食的道具。',
-    };
-  };
+  const sourceNote = sourceSite === 'passport'
+    ? '從會員中心回來，為下一次到店選一份甜點。'
+    : sourceSite === 'moon-map' || sourceSite === 'map'
+      ? '從島嶼地圖走進來，把喜歡的風景帶進日常。'
+      : sourceSite === 'lab' || sourceSite === 'mbti' || mbtiType
+        ? '從人格測驗走過來，慢慢找一款喜歡的口味。'
+        : '選一份喜歡的甜點，留給自己，也留給想念的人。';
 
-  const sourceMeta = getSourceMeta();
+  const featuredItems = menuItems
+    .filter(item => item.is_available && item.variants?.length > 0 && !/drink|飲品|飲料/i.test(item.category || ''))
+    .slice(0, 4);
+  const heroItem = featuredItems.find(item => item.image_url?.trim());
 
   if (loading) {
     return (
@@ -206,349 +192,95 @@ function HomePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-moon-black">
-      {/* Hero Section - 來源感知 + 三入口 */}
-      <div className="border-b border-moon-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 lg:py-20">
-          {/* 上方：Logo + 來源標籤 */}
-          <div className="flex flex-col items-center text-center">
-            <p className="ku-site-kicker mb-5 sm:mb-7">05 / Dessert commerce</p>
-
-            <div className="mb-5 sm:mb-7 flex justify-center">
-              <Image
-                src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png"
-                alt="月島甜點"
-                width={300}
-                height={100}
-                className="theme-logo h-16 sm:h-20 lg:h-24 w-auto"
-                priority
-              />
+    <div className="shop-home min-h-screen bg-moon-black">
+      <section className="shop-hero shop-container">
+        <div className="shop-hero-grid">
+          <div className="shop-hero-copy">
+            <p className="shop-eyebrow">MOON MOON · 月島甜點</p>
+            <h1>把日常，<br />留一口甜。</h1>
+            <p className="shop-hero-description">{sourceNote}</p>
+            <p className="shop-hero-detail">看口味、選規格，再確認適合你的取貨方式。</p>
+            <a href="#menu-section" className="shop-primary">選購甜點 <ArrowRight size={18} aria-hidden="true" /></a>
+            <div className="shop-hero-links">
+              <Link href="/shipping"><PackageCheck size={16} aria-hidden="true" /> 取貨與配送</Link>
+              <Link href="/location"><MapPin size={16} aria-hidden="true" /> 門市資訊</Link>
             </div>
-
-            <div className="mb-4 sm:mb-6">
-              <Eyebrow bordered>{sourceMeta.label}</Eyebrow>
-            </div>
-
-            {/* Banner 推廣區塊 */}
-            <Banner />
-
-            {/* 主敘事文字 */}
-            <div className="max-w-3xl mx-auto mb-6 sm:mb-8 px-4 sm:px-0">
-              <h1 className="brand-display text-base sm:text-lg lg:text-xl mb-4 sm:mb-5">
-                DESSERT STUDIO
-              </h1>
-              <p className="brand-body text-sm sm:text-base text-moon-text/90">
-                {sourceMeta.title}
-              </p>
-              <p className="brand-body mt-4 sm:mt-5 text-[11px] sm:text-xs text-moon-muted/80">
-                {sourceMeta.desc}
-              </p>
-            </div>
-
-            {/* MBTI 個性化標語（若有） */}
-            {mbtiType && (
-              <div className="mb-6 sm:mb-8 w-full">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 border border-moon-border/80 bg-moon-black/40">
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Sparkles size={14} className="text-moon-accent sm:w-4 sm:h-4" />
-                    <span className="text-[10px] sm:text-xs tracking-[0.25em] text-moon-accent whitespace-nowrap">
-                      FOR {mbtiType}
-                    </span>
-                  </div>
-                  <p className="text-[10px] sm:text-xs text-moon-muted tracking-wide">
-                    已為你整理 {recommendedItems.length} 款較貼近你狀態的甜點作品。
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* CTA：主行動（直接預訂）突出，跨站連結降為次級 */}
-            <div className="flex flex-col items-center gap-4 w-full">
-              <button
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById('menu-section');
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                }}
-                className="ku-primary-action w-full px-8 py-4 text-xs tracking-[0.3em] sm:w-auto sm:min-w-[280px] sm:text-sm"
-              >
-                直接預訂本季甜點
-              </button>
-              <div className="flex items-center gap-4 sm:gap-5 text-moon-muted/70">
-                <a
-                  href="https://map.kiwimu.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] sm:text-xs tracking-[0.2em] hover:text-moon-accent transition-colors"
-                >
-                  逛展覽地圖 ↗
-                </a>
-                <span className="w-px h-3 bg-moon-border" />
-                <MemberPassportLink surface="home" className="inline-flex min-h-11 items-center text-xs tracking-[0.2em] hover:text-moon-accent transition-colors" />
-              </div>
-            </div>
-
-            <div className="w-16 sm:w-20 h-px bg-moon-border mx-auto mt-8 sm:mt-10"></div>
           </div>
-        </div>
-      </div>
-
-      {/* 主要內容 */}
-      <div
-        id="menu-section"
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16"
-      >
-        {/* 選購引導（不擅長網路的人也能輕鬆跟上） */}
-        <div className="mb-6 p-4 sm:p-6 border border-moon-border/60 bg-moon-dark/30">
-          <p className="text-xs sm:text-sm text-moon-muted text-center leading-relaxed">
-            <span className="text-moon-accent">三步驟完成預訂：</span>① 選擇喜歡的甜點與規格 → ② 點「加入購物車」→ ③ 前往結帳填寫資料
-          </p>
-        </div>
-
-        {/* 搜尋列 */}
-        <div className="mb-8 sm:mb-12">
-          <div className="relative max-w-md mx-auto">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-moon-muted pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="搜尋甜點..."
-              className="w-full pl-9 pr-8 py-2.5 bg-moon-dark border border-moon-border text-moon-text text-sm placeholder-moon-muted focus:outline-none focus:border-moon-accent transition"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-moon-muted hover:text-moon-text"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          {searchQuery && (
-            <p className="text-center text-xs text-moon-muted mt-2">
-              找到 {filteredMenuItems.length} 款符合「{searchQuery}」的商品
-            </p>
+          {heroItem && (
+            <Link href={`/product/${heroItem.slug || heroItem.id}`} className="shop-hero-photo">
+              <div className="shop-hero-image">
+                <Image src={heroItem.image_url} alt={heroItem.name} fill priority sizes="(max-width: 767px) calc(100vw - 40px), 50vw" className="object-cover" />
+              </div>
+              <div className="shop-hero-caption"><span>{heroItem.name}</span><span>看看這款 <ArrowRight size={16} aria-hidden="true" /></span></div>
+            </Link>
           )}
         </div>
+      </section>
 
-        {/* MBTI 推薦區塊 - 卡片式展示 */}
-        {mbtiType && recommendedItems.length > 0 && (
-          <div className="mb-16 sm:mb-24">
-            <SectionHeading
-              className="mb-8 sm:mb-12"
-              icon={<Sparkles size={16} className="sm:w-5 sm:h-5" />}
-              title="為您推薦"
-              subtitle={`根據您的 ${mbtiType} 人格特質精選 · 點擊查看詳情`}
-            />
+      <div className="shop-container shop-announcement"><Banner /></div>
 
-            {/* 推薦商品列表 */}
-            {/* Mobile: List */}
-            <div className="md:hidden border border-moon-border bg-moon-dark">
-              {recommendedItems.map((item) => (
-                <ProductListItem key={item.id} item={item} />
-              ))}
-            </div>
-            {/* Desktop: Row List */}
-            <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
-              {recommendedItems.map((item, i) => (
-                <ProductRow key={item.id} item={item} index={i} />
-              ))}
-            </div>
-
-            <div className="mt-12 sm:mt-16 border-t border-moon-border pt-12 sm:pt-16">
-              <h2 className="text-lg sm:text-xl font-light text-moon-muted text-center mb-8 sm:mb-12 tracking-wider px-4">
-                或瀏覽所有商品
-              </h2>
-            </div>
-          </div>
-        )}
-
-        {/* 本季精選（無 MBTI 且無搜尋時顯示前幾項推薦或熱門） */}
-        {!mbtiType && !searchQuery && menuItems.length > 0 && (
-          <div className="mb-16 sm:mb-24">
-            <SectionHeading
-              className="mb-8 sm:mb-12"
-              title="本季精選 · 人氣預訂"
-              subtitle="不確定選什麼？試試這些熱門品項"
-            />
-            {/* 顯示前 4 個有規格可預訂的商品 */}
-            {(() => {
-              const featured = menuItems
-                .filter(i => i.is_available && i.variants?.length > 0 && !/drink|飲品|飲料/i.test(i.category || ''))
-                .slice(0, 4);
-              if (featured.length === 0) return null;
-              return (
-                <>
-                  <div className="md:hidden border border-moon-border bg-moon-dark">
-                    {featured.map(item => <ProductListItem key={item.id} item={item} />)}
-                  </div>
-                  <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
-                    {featured.map((item, i) => <ProductRow key={item.id} item={item} index={i} />)}
-                  </div>
-                  <div className="mt-12 sm:mt-16 border-t border-moon-border pt-12 sm:pt-16">
-                    <h2 className="text-lg sm:text-xl font-light text-moon-muted text-center mb-8 sm:mb-12 tracking-wider px-4">
-                      瀏覽全部商品
-                    </h2>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        )}
-
-        {categories.length === 0 ? (
-          // 如果沒有分類，顯示所有商品（依搜尋結果）
-          <>
-            {filteredMenuItems.length === 0 && searchQuery ? (
-              <p className="text-center text-moon-muted py-12">沒有符合的商品</p>
-            ) : (
-              <>
-                {/* Mobile: 列表式 */}
-                <div className="md:hidden border border-moon-border bg-moon-dark">
-                  {filteredMenuItems.map((item) => (
-                    <ProductListItem key={item.id} item={item} />
-                  ))}
-                </div>
-                {/* Desktop: Row List */}
-                <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
-                  {filteredMenuItems.map((item, i) => (
-                    <ProductRow key={item.id} item={item} index={i} />
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        ) : (
-          // 按分類分組顯示
-          <div className="space-y-8 sm:space-y-16">
-            {categories.map((category) => {
-              const categoryItems = getItemsByCategory(category.id);
-
-              // 如果該分類沒有商品，跳過
-              if (categoryItems.length === 0) return null;
-
-              const isDrinkCategory =
-                category.name.toLowerCase().includes('drink') ||
-                category.name.includes('飲品') ||
-                category.name.includes('飲料');
-
-              return (
-                <Reveal key={category.id} className="category-section">
-                  {/* 分類標題 */}
-                  <div className="mb-6 px-4 sm:px-0">
-                    <div className="flex items-center gap-4 mb-2">
-                      {/* 裝飾線 - 左 */}
-                      <div className="hidden sm:block h-px bg-moon-border w-8"></div>
-                      <h2 className="brand-title text-base sm:text-lg lg:text-xl break-words">
-                        {category.name.toUpperCase()}
-                      </h2>
-                      <div className="h-px bg-moon-border flex-1"></div>
-                      <span className="text-xs text-moon-muted tracking-wider shrink-0">
-                        {categoryItems.length} 款
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 商品列表 - Mobile (List) */}
-                  <div className="md:hidden border border-moon-border bg-moon-dark">
-                    {categoryItems.map((item) => (
-                      <ProductListItem
-                        key={item.id}
-                        item={item}
-                        displayOnly={isDrinkCategory}
-                      />
-                    ))}
-                  </div>
-
-                  {/* 商品列表 - Desktop (Row List) */}
-                  <div className="hidden md:block border border-moon-border/40 bg-moon-dark/30">
-                    {categoryItems.map((item, i) => (
-                      <ProductRow
-                        key={item.id}
-                        item={item}
-                        displayOnly={isDrinkCategory}
-                        index={i}
-                      />
-                    ))}
-                  </div>
-                </Reveal>
-              );
-            })}
-          </div>
-        )}
-
-        {/* 如果沒有任何商品 */}
-        {menuItems.length === 0 && !loading && (
-          <div className="text-center py-32">
-            <div className="text-2xl mb-6 opacity-20">—</div>
-            <p className="text-sm text-moon-muted tracking-wider mb-4">目前沒有可預訂的商品</p>
-            <p className="text-xs text-moon-muted/60 max-w-md mx-auto">請稍後再來看看，或聯繫我們了解更多</p>
-          </div>
-        )}
-      </div>
-
-      {/* Kiwimu 故事區塊 */}
-      <section className="border-t border-moon-border/60 bg-moon-dark/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 brand-section">
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start lg:items-center">
-            {/* 左側：Logo 或象徵圖 */}
-            <div className="w-full lg:w-auto flex justify-center lg:justify-start">
-              <div className="inline-flex flex-col items-center gap-3">
-                <Image
-                  src="https://res.cloudinary.com/dvizdsv4m/image/upload/v1768736617/mbti_%E5%B7%A5%E4%BD%9C%E5%8D%80%E5%9F%9F_1_zpt5jq.webp"
-                  alt="Kiwimu Lab"
-                  width={120}
-                  height={120}
-                  className="h-16 sm:h-20 w-auto opacity-80"
-                />
-                <span className="brand-eyebrow text-moon-muted/70">
-                  KIWIMU MBTI LAB
-                </span>
-              </div>
-            </div>
-
-            {/* 右側：文字敘事 */}
-            <div className="flex-1 text-left">
-              <Eyebrow className="mb-4">STORY BEHIND THE BRIDGE</Eyebrow>
-              <h2 className="brand-body text-base sm:text-lg lg:text-xl text-moon-text mb-5">
-                Kiwimu 不是一個品牌，而是一團從鮮奶油誕生、會融化又重組的奶霜生物。
-              </h2>
-              <p className="brand-body text-xs sm:text-sm text-moon-muted/90 mb-3">
-                牠沒有固定形狀，情緒一來就會融化；願意停下來面對、命名、整理，牠就又能被重新打發成形。
-                在 Kiwimu 的實驗室裡，我們做的事很單純：先陪你看見自己現在的狀態，再想像一塊適合這個狀態的甜點。
-              </p>
-              <p className="brand-body text-xs sm:text-sm text-moon-muted/80 mb-5">
-                測驗和標籤不是最後的答案，只是一面鏡子；Kiwimu 的角色，是在每一個階段提醒你：
-                <span className="text-moon-gold">「成長不是變堅硬，而是學會柔軟地存在。」</span>
-                你現在打開的這個預訂頁，則是那面鏡子在月島裡的其中一個出口。
-              </p>
-
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/about"
-                  className="inline-flex items-center gap-2 bg-moon-accent text-moon-black px-4 py-2 text-[11px] sm:text-xs tracking-[0.25em] hover:bg-moon-text transition-colors"
-                >
-                  品牌故事
-                  <span className="text-[10px]">→</span>
-                </Link>
-                <Link
-                  href="https://kiwimu.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 border border-moon-border/80 px-4 py-2 text-[11px] sm:text-xs tracking-[0.25em] text-moon-text hover:bg-moon-border/40 transition-colors"
-                >
-                  前往 Kiwimu 人格實驗室
-                  <span className="text-[10px]">↗</span>
-                </Link>
-              </div>
-            </div>
+      <section id="menu-section" className="shop-container shop-menu">
+        <div className="shop-menu-heading">
+          <div><p className="shop-eyebrow">DESSERT SELECTION</p><h2>慢慢選一份喜歡的。</h2><p>品項、規格與價格，以各款甜點頁面為準。</p></div>
+          <div className="shop-search">
+            <label htmlFor="dessert-search" className="sr-only">搜尋甜點</label>
+            <Search size={18} aria-hidden="true" />
+            <input id="dessert-search" type="search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="找甜點或口味" />
+            {searchQuery && <button type="button" aria-label="清除搜尋" onClick={() => setSearchQuery('')}><X size={18} /></button>}
           </div>
         </div>
+        {searchQuery && <p className="shop-search-result" role="status">找到 {filteredMenuItems.length} 款符合「{searchQuery}」的品項</p>}
+
+        {!searchQuery && !mbtiType && featuredItems.length > 0 && (
+          <div className="shop-featured-grid">
+            {featuredItems.map(item => (
+              <Link key={item.id} href={`/product/${item.slug || item.id}`} className="shop-featured-card">
+                <div className="shop-featured-image">{item.image_url?.trim() ? <Image src={item.image_url} alt={item.name} fill sizes="(max-width: 639px) 50vw, (max-width: 1023px) 50vw, 25vw" className="object-cover" /> : <span>甜點照片準備中</span>}</div>
+                <div className="shop-featured-copy"><h3>{item.name}</h3><p>NT$ {Math.min(...item.variants.map(v => v.price)).toLocaleString('zh-TW')}{item.variants.length > 1 ? ' 起' : ''}</p><span>選擇規格 <ArrowRight size={15} aria-hidden="true" /></span></div>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {mbtiType && recommendedItems.length > 0 && (
+          <section className="shop-recommendations">
+            <h2>給 {mbtiType} 的口味靈感</h2><p>推薦只是起點，喜歡什麼口味由你決定。</p>
+            <div className="shop-product-list md:hidden">{recommendedItems.map(item => <ProductListItem key={item.id} item={item} />)}</div>
+            <div className="shop-product-list hidden md:block">{recommendedItems.map((item, i) => <ProductRow key={item.id} item={item} index={i} />)}</div>
+          </section>
+        )}
+
+        <div className="shop-catalog-heading"><h2>全部甜點與飲品</h2><span>展開品項，選規格與數量</span></div>
+        {categories.length > 0 && <nav className="shop-category-nav" aria-label="甜點分類">{categories.filter(category => getItemsByCategory(category.id).length > 0).map(category => <a key={category.id} href={`#category-${category.id}`}>{categoryLabel(category)}</a>)}</nav>}
+        {filteredMenuItems.length === 0 && searchQuery && <div className="shop-no-results"><p>沒有找到這個口味。</p><button type="button" onClick={() => setSearchQuery('')}>查看全部甜點</button></div>}
+        {categories.length === 0 ? (
+          <>
+            <div className="shop-product-list md:hidden">{filteredMenuItems.map(item => <ProductListItem key={item.id} item={item} />)}</div>
+            <div className="shop-product-list hidden md:block">{filteredMenuItems.map((item, i) => <ProductRow key={item.id} item={item} index={i} />)}</div>
+          </>
+        ) : (
+          <div className="shop-categories">{categories.map(category => {
+            const categoryItems = getItemsByCategory(category.id);
+            if (!categoryItems.length) return null;
+            const isDrinkCategory = /drink|飲品|飲料/i.test(category.name);
+            return (
+              <Reveal key={category.id} className="shop-category-section">
+                <div id={`category-${category.id}`} className="shop-category-title"><h3>{categoryLabel(category)}</h3><span>{categoryItems.length} 款</span></div>
+                <div className="shop-product-list md:hidden">{categoryItems.map(item => <ProductListItem key={item.id} item={item} displayOnly={isDrinkCategory} />)}</div>
+                <div className="shop-product-list hidden md:block">{categoryItems.map((item, i) => <ProductRow key={item.id} item={item} displayOnly={isDrinkCategory} index={i} />)}</div>
+              </Reveal>
+            );
+          })}</div>
+        )}
+        {menuItems.length === 0 && <div className="shop-no-results"><p>目前沒有可預訂的甜點。</p><a href="https://line.me/R/ti/p/@931cxefd" target="_blank" rel="noopener noreferrer">詢問月島甜點</a></div>}
       </section>
+
+      <section className="shop-order-guide"><div className="shop-container">
+        <p className="shop-eyebrow">HOW TO ORDER</p><h2>把甜點帶回去，很簡單。</h2>
+        <ol><li><span>01</span><div><h3>選甜點與規格</h3><p>先看看口味、份量與預訂資訊。</p></div></li><li><span>02</span><div><h3>加入購物車</h3><p>確認數量，再一起前往結帳。</p></div></li><li><span>03</span><div><h3>確認取貨方式</h3><p>結帳時選擇可用的方式與日期。</p></div></li></ol>
+        <div className="shop-guide-links"><Link href="/shipping">查看取貨說明 <ArrowRight size={16} aria-hidden="true" /></Link><MemberPassportLink surface="home" /></div>
+      </div></section>
+      <section className="shop-story shop-container"><div><p className="shop-eyebrow">A LITTLE MOMENT ON THE ISLAND</p><h2>留一點時間，給喜歡的事。</h2><p>從一份甜點開始，也可以到月島地圖走走，或回會員中心看看自己的收藏。</p></div><Link href="/about">認識月島 <ArrowRight size={17} aria-hidden="true" /></Link></section>
     </div>
   );
 }
@@ -560,7 +292,7 @@ export default function HomePage() {
         <div className="min-h-screen bg-moon-black flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin text-moon-accent mx-auto mb-4 w-12 h-12 border-2 border-moon-accent border-t-transparent rounded-full" />
-            <p className="text-sm text-moon-muted tracking-widest">LOADING...</p>
+            <p className="text-sm text-moon-muted tracking-widest">甜點準備中…</p>
           </div>
         </div>
       }

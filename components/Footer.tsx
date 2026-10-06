@@ -67,7 +67,7 @@ function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) 
 
 export default function Footer() {
   return (
-    <footer className="border-t border-moon-border mt-0 sm:mt-4 lg:mt-8">
+    <footer className="shop-footer border-t border-moon-border mt-0 sm:mt-4 lg:mt-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         {/* 四分區連結 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-10 text-center sm:text-left mb-10 sm:mb-14">
@@ -103,7 +103,7 @@ export default function Footer() {
           </div>
 
           {/* 版權資訊 */}
-          <p className="brand-eyebrow mb-2">© 2024 MOON MOON DESSERT</p>
+          <p className="brand-eyebrow mb-2">© {new Date().getFullYear()} MOON MOON DESSERT</p>
           <p className="brand-subtitle text-moon-muted/60">安南區本原街・果菜市場周邊療癒系甜點</p>
         </div>
       </div>

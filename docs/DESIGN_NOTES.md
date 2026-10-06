@@ -1,240 +1,29 @@
-# 🎨 設計說明
+# Shop 設計說明
 
-## 風格定位
-**極簡高級 × 療癒系 × 月島美學**
+## 2026-10-06：月島深綠系列（本機預覽）
 
-參考來源：[https://map.kiwimu.com](https://map.kiwimu.com)
+Penso 已選定 Map／Passport／Gacha 的深綠、奶油白、柔金方向；Shop 延續此系列。MBTI 維持獨立。這份規格取代早期黑白藝術館方向，尚未發布正式站。
 
----
+- 配色對齊 Map：森林深綠 `#1F2F1F`、Hero `#1F3527`、窗景綠 `#304F2F`、奶油白 `#F5F0E8`、日光金 `#D7C678`。
+- 首頁使用固定品牌奶油白閱讀表面＋深綠Hero，照片與價格卡使用紙白；商品／cart／checkout保留深淺色切換。淺底小字與價格使用深綠或深金 `#795B23`，不使用日光金文字。
+- 主標改用既有 Universe 導覽已載入的 Noto Sans TC，字級／字重對齊 Passport／Gacha，不增加字體來源。後台 `.admin-shell` 原token保持。
+- Hero桌機44px／手機32px（320px寬用30px）、section28／24px，內文15–16px，輔助文字至少12px。
+- Hero24／22px圓角、商品卡16px、主要按鈕12px；移除獨立的宋體與大拱角。
+- 主要入口「選購甜點」56px；規格、數量、搜尋清除與次級連結至少44px。手機輸入16px，避免 Safari 自動縮放。
+- 黑色Universe rail與各站active lime仍是共用導覽識別，依Map既有設計契約保持。
 
-## 🎨 配色方案
+## 首頁工作
 
-### 主色調
-```
-moon-black:  #0A0A0A  - 主背景
-moon-dark:   #141414  - 卡片背景
-moon-gray:   #1F1F1F  - 次要背景
-moon-border: #2A2A2A  - 邊框
-```
+單一主要行動：選甜點。商品實拍是主角；奶油邊框的照片與淡金按鈕連結月島識別。首屏→照片選購→中文分類與品項展開→三步驟說明→會員與品牌次級入口。
 
-### 文字色
-```
-moon-accent: #FFFFFF  - 主標題、強調
-moon-text:   #E5E5E5  - 內文
-moon-muted:  #999999  - 次要文字
-```
+四個照片入口取自當下可預訂、有規格的商品；不宣稱人氣／當季銷量。起價由真實 variants 最低價計算。原有搜尋、MBTI推薦、來源歸因、分類順序保留；分類只做顯示名稱簡化。飲品維持門市展示，缺價格不顯示零元。
 
-### 特殊色
-```
-moon-gold:   #D4AF37  - 備用（未使用）
-```
+## 購買流程
 
----
+桌機菜單放大照片、完整品名、規格選項與加入購物車；手機收合先看縮圖與起價，展開再選規格與數量。已售完與缺規格商品不能加入。商品頁保留資料庫提供的成分、保存與過敏原；沒有資料就不補寫。
 
-## 📐 設計原則
+購物車保留 focus trap、Escape、inert、數量、優惠與結帳事件。結帳表單只改色彩與排版，原有付款 gate、日期驗證、待付款恢復、配送限制均保留。LINE Pay 分店工作與政策草案由 Claude 原分支管理，不包含於這份預覽。
 
-### 1. 極簡主義
-- ❌ 不使用圓角
-- ❌ 不使用陰影（只用 border）
-- ❌ 不使用漸層
-- ✅ 使用方形元素
-- ✅ 使用細邊框
-- ✅ 大量留白
+## 驗收
 
-### 2. 排版
-- 大標題：`font-light` + `tracking-wider`
-- 內文：`text-sm` + `leading-relaxed`
-- 按鈕/標籤：`text-xs` + `tracking-widest`（大字距）
-- 價格：`font-light` + 大字號
-
-### 3. 互動
-- Hover：改變 border 顏色（不改背景）
-- 過渡：`duration-500`（慢速、優雅）
-- 按鈕：方形、無圓角、細邊框
-
-### 4. 間距
-- 組件之間：`gap-8`（較大）
-- 內容區：`p-6` ~ `p-8`
-- 標題下方：`mb-8`（大留白）
-
----
-
-## 🧩 組件設計
-
-### Navbar
-- 固定頂部
-- 半透明背景（`bg-opacity-90` + `backdrop-blur-sm`）
-- Logo 左、購物車右
-- 高度：`h-20`
-- 字體：`font-light`
-
-### ProductCard
-- 方形
-- 圖片區：`h-64`
-- 細邊框
-- Hover：邊框變亮
-- 標籤：方形、細邊框、背景半透明
-
-### CartSidebar
-- 從右滑入（`duration-500`）
-- 背景半透明遮罩
-- 黑色主體 + 細邊框
-- 數量控制：方形按鈕 + 細邊框
-
-### Checkout
-- 兩欄佈局（Desktop）
-- 輸入框：黑色背景 + 細邊框
-- Focus：邊框變亮（不改背景）
-
----
-
-## 🔤 文字風格
-
-### 英文大寫
-- 導航文字：`MOON MOON`
-- 按鈕：`ADD TO CART`
-- 分類：`ALL ITEMS`
-- 標籤：`SOLD OUT`
-
-### 中英混合
-- 標題：`MOON MOON | 月島甜點訂購`
-- 描述：中文段落保持小寫
-
-### 字距
-- 標題：`tracking-wider`（0.05em）
-- 按鈕/標籤：`tracking-widest`（0.1em）
-- 一般文字：預設
-
----
-
-## 🎭 動畫效果
-
-### 頁面載入
-- 淡入：簡單的 opacity 過渡
-- 無複雜動畫
-
-### 互動
-- Hover：`transition-all`
-- 圖片縮放：`scale-105`（緩慢）
-- 購物車滑入：`duration-500`
-
-### 避免
-- ❌ 跳動（bounce）
-- ❌ 旋轉（除了 loading）
-- ❌ 彈跳（spring）
-- ✅ 保持優雅、緩慢
-
----
-
-## 📱 響應式
-
-### 斷點
-- Mobile: `<768px` - 單欄
-- Tablet: `768px-1024px` - 雙欄
-- Desktop: `>1024px` - 三欄
-
-### 調整
-- 標題：Mobile 較小（`text-3xl` → `text-4xl`）
-- 間距：Mobile 較小（`px-4` → `px-6`）
-- 網格：Mobile 1 欄、Tablet 2 欄、Desktop 3 欄
-
----
-
-## 🚫 禁止使用
-
-- ❌ 圓角（`rounded-*`）改用方形
-- ❌ 陰影（`shadow-*`）改用 border
-- ❌ 漸層（`gradient-*`）改用純色
-- ❌ 粗體（`font-bold`）改用 `font-light`
-- ❌ 鮮豔色（紅橙黃綠藍）改用灰階
-- ❌ 小字距（`tracking-tight`）改用 `tracking-wider`
-
----
-
-## ✅ 推薦使用
-
-- ✅ 方形元素
-- ✅ 細邊框（`border`）
-- ✅ 大留白
-- ✅ 黑白灰配色
-- ✅ 大字距（`tracking-widest`）
-- ✅ 輕字重（`font-light`）
-- ✅ 緩慢過渡（`duration-500`）
-- ✅ 英文大寫
-
----
-
-## 🎯 關鍵差異點
-
-### 之前（活潑甜點風）
-- 🔵 深藍 + 金黃 + 奶油色
-- 🔴 圓角（`rounded-2xl`）
-- 💫 陰影（`shadow-xl`）
-- 🎨 鮮豔色彩
-- 🌈 漸層背景
-
-### 現在（極簡藝術館風）
-- ⚫ 黑白灰
-- ⬜ 方形（無圓角）
-- 📏 細邊框
-- 🎨 極簡單色
-- ⬛ 純色背景
-
----
-
-## 🌙 Moon Moon 識別元素
-
-1. **月亮 Emoji**: 🌙（用於 Logo、裝飾）
-2. **英文大寫**: MOON MOON
-3. **字距加寬**: tracking-widest
-4. **方形設計**: 所有元素無圓角
-5. **深色主調**: 黑色背景為主
-
----
-
-## 📝 範例程式碼
-
-### 標題
-```tsx
-<h1 className="text-4xl font-light text-moon-accent tracking-wider">
-  MOON MOON
-</h1>
-```
-
-### 按鈕
-```tsx
-<button className="border border-moon-border text-moon-text px-8 py-3 text-sm tracking-widest hover:bg-moon-border transition-colors">
-  ADD TO CART
-</button>
-```
-
-### 卡片
-```tsx
-<div className="border border-moon-border bg-moon-dark hover:border-moon-muted transition-all duration-500">
-  {/* 內容 */}
-</div>
-```
-
-### 輸入框
-```tsx
-<input className="w-full px-4 py-3 bg-moon-black border border-moon-border text-moon-text focus:border-moon-muted focus:outline-none transition-colors" />
-```
-
----
-
-## 🎨 如果要微調
-
-### 想要更溫暖
-- 加入 `#D4AF37`（金色）作為 accent
-
-### 想要更冷調
-- 使用藍灰色（`#1A1F2E`）取代純黑
-
-### 想要更柔和
-- 增加透明度（`bg-opacity-95`）
-- 使用模糊效果（`backdrop-blur-md`）
-
----
-
-**設計完成日期**: 2024-01-27
-**風格**: Moon Moon × Minimal × Gallery
+檢查320／390／768／1280px首頁、商品、購物車與結帳頁；搜尋／清除、規格／数量、移除、淺深色切換。UI測試不建立訂單、不付款、不登入或寄信。支援鍵盤focus與減少動態設定。正式政策與真人付款待各自核定，不能以視覺驗收取代。

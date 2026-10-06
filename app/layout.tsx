@@ -187,7 +187,7 @@ export default function RootLayout({
       <head>
         {/* Viewport and theme */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <meta name="theme-color" content="#0A0A0A" />
+        <meta name="theme-color" content="#1F2F1F" />
 
         {/*
           gtag stub — 定義 window.dataLayer / window.gtag，跟正式網域判斷完全脫鉤。

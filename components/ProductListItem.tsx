@@ -23,6 +23,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
   const [added, setAdded] = useState(false);
 
   const handleAddToCart = () => {
+    if (!selectedVariant || !item.is_available || isDisplayOnly) return;
     for (let i = 0; i < quantity; i++) {
       addItem({
         id: `${item.id}-${selectedVariant.id}`,
@@ -64,27 +65,29 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
     (!item.is_available && item.variants.length === 0 && /drink/i.test(item.category || ''));
 
   // 商品真正售完的判斷：只看 is_available === false
-  if (item.is_available === false && !isDisplayOnly) {
+  if ((!item.is_available || item.variants.length === 0) && !isDisplayOnly) {
     return (
       <div className="border-b border-moon-border/30 py-3 px-4 opacity-50">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <h3 className="text-sm text-moon-muted line-through">{item.name}</h3>
+            <h3 className="text-sm text-moon-muted">{item.name}</h3>
           </div>
-          <span className="text-xs text-moon-muted tracking-wider">已售完</span>
+          <span className="text-xs text-moon-muted tracking-wider">{item.is_available ? '暫不開放預訂' : '已售完'}</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="border-b border-moon-border/30">
+    <div className="shop-mobile-product border-b border-moon-border/30">
       {/* 收合狀態 - 純文字列表 */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
         className="w-full py-3 px-4 hover:bg-moon-gray/30 transition-colors text-left"
       >
         <div className="flex items-center justify-between gap-4">
+          <div className="shop-mobile-thumb">{item.image_url?.trim() ? <Image src={item.image_url} alt="" fill sizes="80px" className="object-cover" /> : <span aria-hidden="true">—</span>}</div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm sm:text-base text-moon-accent font-light tracking-wide line-clamp-2 leading-snug">
               {item.name}
@@ -94,6 +97,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 ? item.description
                 : '甜點說明準備中'}
             </p>
+            <p className="shop-mobile-price">{isDisplayOnly ? '門市供應' : <>NT$ {item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)).toLocaleString('zh-TW') : item.price.toLocaleString('zh-TW')}{item.variants.length > 1 ? ' 起' : ''}</>}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -176,6 +180,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 {item.variants.map((variant) => (
                   <button
                     key={variant.id}
+                    aria-pressed={selectedVariant?.id === variant.id}
                     onClick={() => setSelectedVariant(variant)}
                     className={`
                       w-full sm:flex-1 py-2 px-2 sm:px-3 text-xs tracking-wider border transition-all
