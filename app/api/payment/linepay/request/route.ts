@@ -26,6 +26,10 @@ import {
   getPaymentSettings,
 } from '@/src/services/settings.service';
 
+// 與 kiwimu.com（MBTI）共用同一個 LINE Pay 商店，靠分店名稱在商家後台分辨來源
+const LINE_PAY_BRANCH_NAME = '月島甜點 Shop';
+const LINE_PAY_BRANCH_ID = 'shop';
+
 interface RequestItem {
   name: string;
   quantity: number;
@@ -176,6 +180,7 @@ export async function POST(request: NextRequest) {
       options: {
         payment: { capture: true },
         display: { locale: 'zh_TW' },
+        extra: { branchName: LINE_PAY_BRANCH_NAME, branchId: LINE_PAY_BRANCH_ID },
       },
     };
 
