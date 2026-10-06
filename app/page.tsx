@@ -193,8 +193,8 @@ function HomePageContent() {
 
   return (
     <div className="shop-home min-h-screen bg-moon-black">
-      <section className="shop-hero">
-        <div className="shop-container shop-hero-grid">
+      <section className="shop-hero shop-container">
+        <div className="shop-hero-grid">
           <div className="shop-hero-copy">
             <p className="shop-eyebrow">MOON MOON · 月島甜點</p>
             <h1>把日常，<br />留一口甜。</h1>
