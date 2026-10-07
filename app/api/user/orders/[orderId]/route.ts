@@ -40,7 +40,7 @@ export async function GET(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '請先登入後再試。' }, { status: 401 });
     }
 
     // 查詢訂單
@@ -54,7 +54,7 @@ export async function GET(
 
     if (error || !order) {
       return NextResponse.json(
-        { error: 'Order not found' },
+        { error: '找不到這筆訂單，請確認訂單連結。' },
         { status: 404 }
       );
     }
@@ -71,7 +71,7 @@ export async function GET(
     });
   } catch (error: unknown) {
     console.error('查詢訂單錯誤:', error);
-    const message = error instanceof Error ? error.message : 'Failed to fetch order';
+    const message = '目前無法載入這筆訂單，請稍後重試。';
     return NextResponse.json(
       { error: message },
       { status: 500 }

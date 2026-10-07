@@ -17,11 +17,11 @@ export default function ProductNotice({ leadTimeDays }: ProductNoticeProps) {
     <div className="border border-moon-border/40 bg-moon-dark/30 p-4 sm:p-5 space-y-2">
       {typeof leadTimeDays === 'number' && leadTimeDays > 0 && (
         <p className="brand-body text-xs sm:text-sm text-moon-muted/90">
-          本品需提前 {leadTimeDays} 個工作日預訂。
+          本品預訂準備時間：{leadTimeDays} 天；可選取貨日期請查看結帳頁。
         </p>
       )}
       <p className="brand-body text-xs sm:text-sm text-moon-muted/90">
-        急件或客製需求，請洽門市或
+        急件、保存資訊或客製需求，請先透過
         <a
           href={OFFICIAL_LINE_URL}
           target="_blank"
@@ -30,7 +30,7 @@ export default function ProductNotice({ leadTimeDays }: ProductNoticeProps) {
         >
           官方 LINE
         </a>
-        。
+        確認能否安排與商品說明。
       </p>
     </div>
   );

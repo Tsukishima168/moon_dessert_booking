@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         data: [],
-        message: error instanceof Error ? error.message : '取得菜單資料失敗',
+        message: '目前無法載入菜單，請稍後重試。',
       },
       { status: 500 }
     );

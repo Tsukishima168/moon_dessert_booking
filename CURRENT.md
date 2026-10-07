@@ -1,3 +1,28 @@
+# Shop current work
+
+## 2026-10-07｜主對話收尾｜本機驗證完成，待獨立簽收與上線核定
+
+- ✅ 主對話補修通知信的HTML文字轉義與單次欄位替換；姓名、地址、商品、原因與銀行設定含`<`、`&`、引號、`$&`、`$1`及欄位樣式文字時仍作純文字，保留商家HTML／主旨／顏色與通知選擇。`lib/email/html.ts:1`、`lib/notifications.ts:284`。
+- ✅ 自取門牌補齊為本原街一段97巷168號；營業與取貨時段仍分開。六份資訊頁及商品顯示均已本機CUA檢查四種寬度；淺色rail鍵盤焦點維持既有lime。
+- ✅ 最終build、順序typecheck、lint通過（0error／11既有warning）；通知轉義／商家模板／Email-only選擇皆mock，未實際寄送。
+- ⚠️ 原獨立審查為REQUEST CHANGES；P2已由主對話修復並重跑reviewer設計探針。審查員額度受限，最終patch尚未獨立簽收，不得把primary PASS寫成APPROVE。Shop PR26與canonical工作區未改。
+- 📌 最終交付索引與hash：/Users/pensoair/.codex/visualizations/2026/10/07/kiwimu-public-copy-repair/shop/final-manifest.json；原作者證據保留為歷史，新的final-manifest才是送審版本。未部署；合併上線需Penso同意。
+
+
+## Snapshot · 2026-10-07 · 公開文字與深綠細節修復（本機待審）
+
+Status: `codex/shop-public-copy-repair-20261007，基於 origin/main f08753e；本輪未提交／push／合併／部署`
+
+- 正式深綠基線PR #27–29已部署；下方本機／未上線描述是歷史快照，不代表本輪修復已上線。PR #26仍獨立、未合併，canonical `feat/linepay-branch-name / 49ecd0a`保留。
+- 對外refund／terms／privacy／shipping／faq／location移除內部占位文案；以現行功能與LINE確認需求說明，不編造取消／退款／保存／配送承諾，不排除消費者七日解除權。
+- 核定營業來源：Tsuki-SSOT `06_行銷企劃/LINE官方帳號_漏斗與設定_2026-10-02.md:44–46`：週一公休、週二至五13–18、週六日11–18。可見頁與JSON-LD同步；預訂取貨另依結帳／訂單安排，scheduler及DB未變更。
+- 政策草稿實際位於Penso-SSOT Shop專案根目錄 `政策草稿_2026-10-06.md`，非`_HANDOFF/`；仍待核定，非本輪定稿依據。完整法遵所需營業人資料、保存期限、取消退款條件及配送範圍仍待店方決定。
+- 修復Shop淺色focus／優惠碼與狀態對比、12px商品徽章；通知fallback及新banner預設對齊森林綠／紙白；保留DB自訂顏色／模板與通知流程。
+- 公開API錯誤客戶化，保留授權、驗證、HTTP狀態及付款gate；不執行下單、付款、登入、發信、Discord、點數或DB操作。
+- 商品分類顯示沿用既有中文名稱，分類ID／API／篩選保留；移除缺說明／缺照片的內部準備中文字。
+- 作者機械驗證：build、lint（0 error／11既有warning）、既有Resend／logout／entry_from回歸通過；48項mock涵蓋通知選擇、自訂DB模板、配送資料、公開API錯誤隱去與HTTP/auth/payment守衛。11頁本機HTTP200且rendered-text／meta／JSON-LD無內部占位字串。沒有真實發信／DB寫入。
+- 驗證與完整交付索引：`/Users/pensoair/.codex/visualizations/2026/10/07/kiwimu-public-copy-repair/shop/delivery-index.md`。作者機械驗證與父對話獨立審查／CUA分開記錄；真人Safari／LINE及實際通知尚未簽收。
+
 # CURRENT.md — shop.kiwimu.com
 
 ## Snapshot · 2026-10-06

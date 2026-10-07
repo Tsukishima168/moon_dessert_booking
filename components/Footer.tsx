@@ -104,7 +104,7 @@ export default function Footer() {
 
           {/* 版權資訊 */}
           <p className="brand-eyebrow mb-2">© {new Date().getFullYear()} MOON MOON DESSERT</p>
-          <p className="brand-subtitle text-moon-muted/60">安南區本原街・果菜市場周邊療癒系甜點</p>
+          <p className="brand-subtitle text-moon-muted">安南區本原街・果菜市場周邊療癒系甜點</p>
         </div>
       </div>
     </footer>

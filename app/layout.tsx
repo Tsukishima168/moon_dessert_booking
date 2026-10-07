@@ -18,7 +18,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const siteConfig = {
   name: 'MOON MOON | 月島甜點',
   title: '月島甜點 | 安南區果菜市場・本原街療癒系甜點預訂',
-  description: '安南區本原街・果菜市場周邊療癒系甜點工作室。從情緒出發的甜點設計，結合 Kiwimu MBTI，為你找到最適合當下的甜點。本原街自取或宅配到府。',
+  description: '安南區本原街・果菜市場周邊療癒系甜點工作室。從情緒出發的甜點設計，結合 Kiwimu MBTI，為你找到最適合當下的甜點。本原街自取，配送需求請先確認。',
   url: 'https://shop.kiwimu.com',
   locale: 'zh_TW',
   type: 'website' as const, // Fix TypeScript type
@@ -50,7 +50,7 @@ const structuredData = {
       ...(publicStorePhone ? { telephone: publicStorePhone } : {}),
       address: {
         '@type': 'PostalAddress',
-        streetAddress: '台南市安南區本原街一段97巷',
+        streetAddress: '台南市安南區本原街一段97巷168號',
         addressLocality: '安南區',
         addressRegion: '台南市',
         postalCode: '709',
@@ -61,13 +61,21 @@ const structuredData = {
         latitude: 23.0478,
         longitude: 120.1831,
       },
-      areaServed: ['台南市安南區', '本原街', '果菜市場周邊', '台灣'],
-      openingHoursSpecification: {
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Sunday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        opens: '10:00',
-        closes: '18:00',
-      },
+      areaServed: ['台南市安南區', '本原街', '果菜市場周邊'],
+      openingHoursSpecification: [
+        {
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: ['Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          opens: '13:00',
+          closes: '18:00',
+        },
+        {
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: ['Saturday', 'Sunday'],
+          opens: '11:00',
+          closes: '18:00',
+        },
+      ],
       priceRange: '$$',
       servesCuisine: 'Dessert',
       description: siteConfig.description,

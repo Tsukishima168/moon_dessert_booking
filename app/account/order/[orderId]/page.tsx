@@ -117,9 +117,9 @@ export default function OrderDetailPage() {
         setAuthLoginBusy(false);
         router.refresh();
       },
-      onError: (detail) => {
+      onError: () => {
         setAuthLoginBusy(false);
-        setError(detail.message || '登入未完成，請允許彈出視窗後再試一次。');
+        setError('登入未完成，請依登入頁指示操作；若視窗被阻擋，請允許彈出視窗後再試。');
       },
     });
   };
@@ -328,8 +328,8 @@ export default function OrderDetailPage() {
 
           {order.status === 'pending' && (
             <div className="mt-6 rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-4">
-              <p className="mb-2 font-semibold text-yellow-300">⚠️ 待付款</p>
-              <p className="mb-4 text-sm text-yellow-200">
+              <p className="mb-2 font-semibold shop-status-warning">⚠️ 待付款</p>
+              <p className="mb-4 text-sm shop-status-warning">
                 請盡快完成付款，以確保您的訂單能夠按時製作。
               </p>
               <button
@@ -341,9 +341,9 @@ export default function OrderDetailPage() {
                 {isLinePayLoading ? '前往 LINE Pay 中...' : '使用 LINE Pay 付款'}
               </button>
               {linePayError ? (
-                <p className="mb-4 text-sm text-red-200">{linePayError}</p>
+                <p className="mb-4 text-sm shop-status-error">{linePayError}</p>
               ) : null}
-              <div className="space-y-2 text-sm text-yellow-200">
+              <div className="space-y-2 text-sm shop-status-warning">
                 <p className="font-semibold">匯款方式:</p>
                 <p>銀行: 連線商業銀行</p>
                 <p>帳號: 111007479473</p>

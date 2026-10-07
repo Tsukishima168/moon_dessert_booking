@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: error instanceof Error ? error.message : '取得可預訂日期失敗',
+        message: '目前無法確認可預訂日期，請稍後重試。',
         data: [],
       },
       { status: 500 }

@@ -50,12 +50,12 @@ export default function MobileCartBar() {
         >
           <div className="relative shrink-0">
             <ShoppingBag size={22} className="text-moon-accent" />
-            <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-moon-accent text-[10px] font-bold text-moon-black">
+            <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-moon-accent text-xs font-bold text-moon-black">
               {totalItems}
             </span>
           </div>
           <div className="leading-tight">
-            <p className="text-[10px] tracking-widest text-moon-muted">小計</p>
+            <p className="text-xs tracking-widest text-moon-muted">小計</p>
             <p className="text-sm font-light text-moon-accent">${finalPrice}</p>
           </div>
         </button>

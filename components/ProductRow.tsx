@@ -1,5 +1,6 @@
 'use client';
 
+import { productCategoryLabel } from '@/lib/product-copy';
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -119,7 +120,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                     </h3>
                     {item.category && (
                         <span className="text-[10px] text-moon-muted/50 tracking-widest shrink-0 hidden lg:inline">
-                            {item.category}
+                            {productCategoryLabel(item.category)}
                         </span>
                     )}
                     {deliveryLabel && (

@@ -6,17 +6,17 @@ import SectionHeading from '@/components/ui/SectionHeading';
 export const metadata: Metadata = {
   title: '門市資訊｜月島甜點',
   description:
-    '月島甜點門市資訊：台南市安南區本原街一段 97 巷，果菜市場周邊。週一公休，營業時間 10:00–18:00。',
+    '月島甜點門市資訊：台南市安南區本原街一段 97 巷 168 號，果菜市場周邊。週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。',
   alternates: { canonical: '/location' },
   openGraph: {
     title: '門市資訊｜月島甜點 | MOON MOON 月島甜點',
-    description: '台南市安南區本原街一段 97 巷，果菜市場周邊。週一公休，營業時間 10:00–18:00。',
+    description: '台南市安南區本原街一段 97 巷 168 號，果菜市場周邊。週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。',
     url: 'https://shop.kiwimu.com/location',
     type: 'article',
   },
 };
 
-const GOOGLE_MAPS_QUERY = encodeURIComponent('台南市安南區本原街一段97巷 月島甜點');
+const GOOGLE_MAPS_QUERY = encodeURIComponent('台南市安南區本原街一段97巷168號 月島甜點');
 
 export default function LocationPage() {
   return (
@@ -44,15 +44,15 @@ export default function LocationPage() {
           <SectionHeading className="mb-8 sm:mb-12" title="地址與營業時間" />
           <div className="space-y-4 max-w-2xl mx-auto text-center">
             <p className="brand-body text-sm sm:text-base text-moon-text">
-              台南市安南區本原街一段 97 巷（709 台南市，果菜市場周邊）
+              台南市安南區本原街一段 97 巷 168 號（709 台南市，果菜市場周邊）
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              週一公休・營業時間 10:00–18:00
+              週一公休；週二至五 13:00–18:00；週六日 11:00–18:00
               <br />
-              實際可自取日期與時段：以結帳頁當下顯示為準
+              臨時營業異動請看月島公告；已預訂的取貨日期與時段以訂單內容為準
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-gold">
-              【待補：門市聯絡電話。原始碼以 NEXT_PUBLIC_STORE_PHONE 環境變數帶入，目前未查得公開號碼值。】
+              來店前需要確認位置或取貨安排，請透過 LINE 官方帳號 @931cxefd 聯繫我們。
             </p>
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${GOOGLE_MAPS_QUERY}`}
@@ -67,19 +67,10 @@ export default function LocationPage() {
 
         {/* 自取時段 */}
         <section className="brand-section border-t border-moon-border/40">
-          <SectionHeading className="mb-8 sm:mb-12" title="自取時段" subtitle="結帳時可選擇當日時段" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-xl mx-auto">
-            {['12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'].map(
-              (slot) => (
-                <div
-                  key={slot}
-                  className="border border-moon-border/40 bg-moon-dark/30 py-3 text-center text-xs sm:text-sm text-moon-muted"
-                >
-                  {slot}
-                </div>
-              )
-            )}
-          </div>
+          <SectionHeading className="mb-8 sm:mb-12" title="自取時段" subtitle="與門市營業時間分開安排" />
+          <p className="brand-body text-sm sm:text-base text-moon-muted max-w-2xl mx-auto text-center">
+            預訂取貨請從結帳頁當時開放的日期與時段選擇，並依訂單內容到店。如需提早、延後或變更取貨安排，請先透過 LINE 確認。
+          </p>
         </section>
 
         {/* CTA */}

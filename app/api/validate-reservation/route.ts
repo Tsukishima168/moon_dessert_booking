@@ -18,6 +18,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result)
   } catch (error) {
     console.error('API 錯誤 - 驗證預訂:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: '目前無法確認預訂日期，請稍後重試。' }, { status: 500 })
   }
 }

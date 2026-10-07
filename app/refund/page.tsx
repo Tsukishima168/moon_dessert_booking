@@ -5,11 +5,11 @@ import SectionHeading from '@/components/ui/SectionHeading';
 
 export const metadata: Metadata = {
   title: '退換貨政策｜月島甜點',
-  description: '月島甜點退換貨政策：食品類商品的退換規則、瑕疵處理與申請方式。',
+  description: '月島甜點取消、更改訂單、商品問題與退款進度的聯絡及申請方式。',
   alternates: { canonical: '/refund' },
   openGraph: {
     title: '退換貨政策｜月島甜點 | MOON MOON 月島甜點',
-    description: '食品類商品退換貨規則與申請方式。',
+    description: '取消、更改訂單與商品問題的聯絡方式。',
     url: 'https://shop.kiwimu.com/refund',
     type: 'article',
   },
@@ -19,20 +19,24 @@ type PolicySection = { title: string; body: string };
 
 const SECTIONS: PolicySection[] = [
   {
-    title: '退換貨原則',
-    body: '【待補：月島甜點屬易腐食品，是否比照食品業慣例「非瑕疵不接受退換」，或提供特定條件下的退換，需 Penso 拍板後填入。】',
+    title: '退換貨與訂單問題',
+    body: '如需退換貨，請透過 LINE 官方帳號提供訂單編號、商品名稱與遇到的問題，讓我們確認訂單並與您討論處理方式。',
   },
   {
-    title: '瑕疵商品處理',
-    body: '【待補：收到商品有瑕疵（如破損、變質）時的處理流程、需提供的證明（照片/影片）、處理時限，需 Penso 提供。】',
+    title: '商品有問題時',
+    body: '收到商品後若發現破損、品質異常或品項、數量與訂單不符，請儘快聯繫我們。附上商品與包裝照片，有助於確認狀況；請先保留商品與包裝。',
   },
   {
-    title: '訂單取消',
-    body: '若已完成付款想取消訂單，建議儘快透過頁尾 LINE 官方帳號聯繫我們；實際能否取消依當時備料進度而定。【待補：可取消的時間窗與退款方式（原路退回/其他）。】',
+    title: '取消或更改訂單',
+    body: '若想取消訂單、更改品項或取貨日期，請儘快透過 LINE 提供訂單編號與需求。我們會確認備料及製作進度，再與您確認能否調整及後續處理方式。',
   },
   {
-    title: '客製化 / 檔期商品例外',
-    body: '【待補：客製化商品（若有）與節慶檔期限定商品是否適用不同的退換規則，需 Penso 確認。】',
+    title: '退款進度',
+    body: '如訂單需要退款，請透過 LINE 與我們確認退款金額、方式及進度。尚未確認原訂單狀態前，請先不要重複下單或付款。',
+  },
+  {
+    title: '客製與檔期商品',
+    body: '有插卡、蠟燭、寫字或節慶訂購需求，請先透過 LINE 確認是否可以安排、商品內容與金額，再決定是否訂購。',
   },
 ];
 
@@ -46,12 +50,12 @@ export default function RefundPage() {
             <Eyebrow bordered>REFUND · 退換貨政策</Eyebrow>
           </div>
           <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug">
-            甜點是易腐食品，
+            訂單有需要調整的地方，
             <br className="hidden sm:block" />
-            我們用這套規則保護雙方。
+            讓我們一起確認。
           </h1>
           <p className="brand-body text-sm sm:text-base text-moon-text/90 max-w-2xl mx-auto">
-            以下條文尚在補齊事實階段，正式生效內容以月島公告版本為準。有疑問請直接透過 LINE 聯繫我們。
+            有商品或訂單問題，請帶著訂單編號與我們聯繫。以下說明如何提出取消、更改與退換貨需求。
           </p>
         </div>
       </section>
@@ -64,14 +68,14 @@ export default function RefundPage() {
           >
             <SectionHeading className="mb-8 sm:mb-12" title={section.title} />
             <div className="max-w-2xl mx-auto">
-              <p className="brand-body text-sm sm:text-base text-moon-gold">{section.body}</p>
+              <p className="brand-body text-sm sm:text-base text-moon-muted">{section.body}</p>
             </div>
           </section>
         ))}
 
         {/* 申請方式 */}
         <section className="brand-section border-t border-moon-border/40">
-          <SectionHeading className="mb-8 sm:mb-12" title="申請方式" subtitle="目前唯一管道" />
+          <SectionHeading className="mb-8 sm:mb-12" title="申請方式" subtitle="請提供訂單編號與問題" />
           <div className="max-w-2xl mx-auto text-center">
             <p className="brand-body text-sm sm:text-base text-moon-muted/90 mb-6">
               如需申請退換貨或有訂單問題，請透過 LINE 官方帳號聯繫月島甜點，我們會盡快協助處理。
@@ -80,7 +84,7 @@ export default function RefundPage() {
               href="https://line.me/R/ti/p/@931cxefd"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 text-xs sm:text-sm border border-[#00B900]/30 text-[#00B900] px-6 py-3 hover:bg-[#00B900]/10 transition-colors"
+              className="inline-flex items-center justify-center gap-2 text-xs sm:text-sm border border-moon-accent/30 text-moon-accent px-6 py-3 hover:bg-moon-accent/10 transition-colors"
             >
               聯繫月島甜點（LINE）
             </a>

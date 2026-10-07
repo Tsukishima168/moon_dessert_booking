@@ -26,7 +26,7 @@ function ErrorContent() {
     <div className="min-h-screen bg-moon-black flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <XCircle className="w-12 h-12 text-red-400 mx-auto" />
+          <XCircle className="w-12 h-12 shop-status-error mx-auto" />
           <h2 className="brand-title text-xl">付款狀態需要確認</h2>
           <p className="brand-eyebrow">PAYMENT STATUS</p>
         </div>

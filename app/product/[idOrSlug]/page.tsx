@@ -1,3 +1,4 @@
+import { productCategoryLabel } from '@/lib/product-copy';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -156,7 +157,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
             <div className={galleryImages.length > 0 ? '' : 'md:col-span-2 max-w-2xl'}>
               {item.category && (
                 <Eyebrow bordered className="mb-4">
-                  {item.category.toUpperCase()}
+                  {productCategoryLabel(item.category)}
                 </Eyebrow>
               )}
 
@@ -172,7 +173,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
 
               {deliveryLabel && (
                 <span
-                  className={`inline-block text-[10px] sm:text-xs tracking-widest px-3 py-1 mb-4 border ${isPickupOnly
+                  className={`inline-block text-xs tracking-widest px-3 py-1 mb-4 border ${isPickupOnly
                       ? 'border-moon-gold text-moon-gold'
                       : 'border-moon-border/60 text-moon-muted'
                     }`}

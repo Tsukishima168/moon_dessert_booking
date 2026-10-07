@@ -1,5 +1,6 @@
 'use client';
 
+import { productCategoryLabel } from '@/lib/product-copy';
 import { useState } from 'react';
 import Image from 'next/image';
 import { Plus, Minus } from 'lucide-react';
@@ -98,7 +99,7 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
         {/* 分類標籤 */}
         <div className="absolute top-4 left-4">
           <span className="text-xs tracking-widest text-moon-muted border border-moon-border bg-moon-black/80 px-3 py-1 backdrop-blur-sm">
-            {item.category}
+            {productCategoryLabel(item.category)}
           </span>
         </div>
       </div>
@@ -122,7 +123,7 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
                   key={variant.id}
                   onClick={() => setSelectedVariant(variant)}
                   className={`
-                    flex-1 py-2 px-2 sm:px-3 text-[10px] sm:text-xs tracking-wider border transition-all
+                    flex-1 py-2 px-2 sm:px-3 text-xs sm:text-xs tracking-wider border transition-all
                     ${selectedVariant.id === variant.id
                       ? 'border-moon-accent bg-moon-accent text-moon-black'
                       : 'border-moon-border text-moon-muted hover:border-moon-muted'
@@ -145,7 +146,7 @@ export default function ProductCard({ item, displayOnly = false }: ProductCardPr
         {/* 僅門市供應提示 */}
         {displayOnly ? (
           <div className="text-center py-2 border border-moon-border/40 bg-moon-dark/30">
-            <p className="text-[11px] sm:text-xs text-moon-muted/80 tracking-widest italic">
+            <p className="text-xs sm:text-xs text-moon-muted/80 tracking-widest italic">
               僅供門市內用
             </p>
           </div>

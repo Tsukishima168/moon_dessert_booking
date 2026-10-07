@@ -6,7 +6,7 @@ import SectionHeading from '@/components/ui/SectionHeading';
 export const metadata: Metadata = {
   title: '運送與取貨資訊｜月島甜點',
   description:
-    '月島甜點自取與宅配須知：自取地點與時段、宅配範圍與運費、預訂前置天數、公休日。台南市安南區本原街一段 97 巷自取或宅配到府。',
+    '月島甜點自取與宅配須知：自取地點與時段、宅配確認方式與運費、可預訂日期。',
   alternates: { canonical: '/shipping' },
   openGraph: {
     title: '運送與取貨資訊｜月島甜點 | MOON MOON 月島甜點',
@@ -28,7 +28,7 @@ export default function ShippingPage() {
           <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug">
             本原街自取，
             <br className="hidden sm:block" />
-            或讓月島宅配到府。
+            配送安排先確認。
           </h1>
           <p className="brand-body text-sm sm:text-base text-moon-text/90 max-w-2xl mx-auto">
             結帳時可依當季開放狀態選擇自取或宅配，實際天數與費率以結帳頁當下顯示為準。
@@ -42,14 +42,13 @@ export default function ShippingPage() {
           <SectionHeading className="mb-8 sm:mb-12" title="門市自取" subtitle="本原街一段 97 巷" />
           <div className="space-y-4 max-w-2xl mx-auto">
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              自取地址：台南市安南區本原街一段 97 巷（月島甜點店，果菜市場周邊）。
+              自取地址：台南市安南區本原街一段 97 巷 168 號（月島甜點店，果菜市場周邊）。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              週一公休・營業時間 10:00–18:00。結帳時可從當時開放的日期與時段中選擇取貨時間（例如
-              12:00–13:00 至 17:00–18:00 之間，每小時一個時段）。
+              週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。臨時營業異動請看月島公告。預訂取貨時段與營業時間分開安排，請從結帳頁當時開放的日期及時段選擇，並依訂單內容取貨。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              系統預設至少需提前 3 個工作天預訂，實際天數依當時後台設定與品項狀況而定，請以結帳頁當下顯示為準。
+              請從結帳頁可選的日期安排預訂。不同品項所需準備時間可能不同，急件請先透過 LINE 確認能否安排。
             </p>
           </div>
         </section>
@@ -59,13 +58,13 @@ export default function ShippingPage() {
           <SectionHeading className="mb-8 sm:mb-12" title="宅配到府" subtitle="配送日與運費" />
           <div className="space-y-4 max-w-2xl mx-auto">
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              宅配週日、週一不配送；其餘天數依訂單日期安排到貨，實際天數依當時後台設定為準。
+              宅配是否開放請查看結帳頁；配送地點與到貨安排，請在下單前透過 LINE 確認。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              宅配運費與免運門檻可由後台調整；請以結帳頁當下顯示的金額為準。
+              運費與免運門檻請查看結帳頁當下顯示的金額；若有特殊配送需求，請先聯繫我們確認。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-gold">
-              【待補：實際宅配涵蓋縣市／偏遠地區加價規則。目前後台可自由設定配送區域，原始碼中未查得固定清單，需 Penso 提供現行政策。】
+              請先提供收件縣市、區域與希望到貨日期，讓我們確認是否可以配送及相關費用。
             </p>
           </div>
         </section>
@@ -75,7 +74,7 @@ export default function ShippingPage() {
           <SectionHeading className="mb-8 sm:mb-12" title="保存與運送注意事項" />
           <div className="space-y-4 max-w-2xl mx-auto">
             <p className="brand-body text-sm sm:text-base text-moon-gold">
-              【待補：各品項冷藏／冷凍配送規則、保存方式與保存期限，需 Penso 依配方與出貨方式提供。】
+              不同甜點的保存與食用方式不同，請查看商品頁及取貨時提供的說明。若未找到您要的品項資訊，請先透過 LINE 詢問保存溫度、期限與運送方式。
             </p>
           </div>
         </section>

@@ -18,7 +18,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '請先登入後再試。' }, { status: 401 });
     }
 
     const { data: profile, error } = await supabase
@@ -40,7 +40,7 @@ export async function GET() {
 
     return NextResponse.json(resolved);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : '查詢失敗';
+    const message = '目前無法載入會員資料，請稍後重試。';
     console.error('[GET /api/user/profile] 錯誤:', error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -56,7 +56,7 @@ export async function PATCH(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '請先登入後再試。' }, { status: 401 });
     }
 
     const body = await request.json() as unknown;
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : '更新失敗';
+    const message = '會員資料儲存失敗，請稍後重試。';
     console.error('[PATCH /api/user/profile] 錯誤:', error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

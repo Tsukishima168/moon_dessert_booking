@@ -38,7 +38,7 @@ interface PendingOrderSnapshot {
   createdAt: string;
 }
 
-const STORE_PICKUP_ADDRESS = '月島甜點店 台南市安南區本原街一段97巷';
+const STORE_PICKUP_ADDRESS = '月島甜點店 台南市安南區本原街一段97巷168號';
 const PICKUP_TIME_SLOTS = ['12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'] as const;
 const PENDING_ORDER_STORAGE_KEY = 'moonmoon_pending_order';
 const PENDING_ORDER_TTL_MS = 24 * 60 * 60 * 1000;
@@ -313,10 +313,10 @@ export default function CheckoutPage() {
         await resolveCheckoutSession();
         setAuthLoginBusy(false);
       },
-      onError: (detail) => {
+      onError: () => {
         setAuthLoginBusy(false);
         setAuthStatus('guest');
-        setAuthMessage(detail.message || '登入未完成，請允許彈出視窗後再試一次。');
+        setAuthMessage('登入未完成，請依登入頁指示操作；若視窗被阻擋，請允許彈出視窗後再試。');
       },
     });
   };
@@ -804,10 +804,10 @@ export default function CheckoutPage() {
         setCheckoutMessage('此訂單已付款，將為您跳轉至訂單完成頁。');
         window.location.href = data.orderSuccessUrl || `/order/success?orderId=${orderId}`;
       } else {
-        setCheckoutMessage(`LINE Pay 尚未開啟：${data.message || '請稍後重試，或使用頁面提供的其他付款方式。'}`);
+        setCheckoutMessage(data.message || '目前無法連接 LINE Pay，請先確認原訂單及付款狀態，再重試或聯繫我們。');
       }
     } catch {
-      setCheckoutMessage('LINE Pay 連線失敗，請改用轉帳付款');
+      setCheckoutMessage('目前無法連接 LINE Pay，請先確認原訂單及付款狀態，再重試或聯繫我們。');
     } finally {
       setIsLinePayLoading(false);
     }
@@ -948,7 +948,7 @@ export default function CheckoutPage() {
             </a>
           )}
 
-          <p className="text-center text-xs text-moon-muted/60">
+          <p className="text-center text-xs text-moon-muted">
             訂單通知使用您填寫的 Email。若未收到，請查看垃圾郵件或至會員中心確認。
           </p>
 
@@ -1073,7 +1073,7 @@ export default function CheckoutPage() {
                     type="button"
                     onClick={handleValidatePromo}
                     disabled={promoLoading}
-                    className="px-4 bg-moon-gray text-white text-xs hover:bg-white hover:text-black transition-colors disabled:opacity-50"
+                    className="px-4 bg-moon-accent text-moon-black text-xs hover:opacity-90 transition-colors disabled:opacity-50"
                   >
                     {promoLoading ? '驗證中...' : '套用'}
                   </button>
@@ -1093,8 +1093,8 @@ export default function CheckoutPage() {
                     </button>
                   </div>
                 ) : null}
-                {promoMessage && <p className="text-xs text-green-400">{promoMessage}</p>}
-                {promoError && <p className="text-xs text-red-400">{promoError}</p>}
+                {promoMessage && <p className="text-xs shop-status-success">{promoMessage}</p>}
+                {promoError && <p className="text-xs shop-status-error">{promoError}</p>}
               </div>
 
               {/* Personal Info */}
@@ -1140,7 +1140,7 @@ export default function CheckoutPage() {
                     placeholder="例：王小明"
                     className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                   />
-                  {errors.customer_name && <p className="text-xs text-red-400 mt-1">{errors.customer_name.message}</p>}
+                  {errors.customer_name && <p className="text-xs shop-status-error mt-1">{errors.customer_name.message}</p>}
                 </div>
                 <div>
                   <label className="text-xs text-moon-muted block mb-1">電話 <span className="text-moon-accent">*</span></label>
@@ -1150,7 +1150,7 @@ export default function CheckoutPage() {
                     placeholder="例：0912-345-678"
                     className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                   />
-                  {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone.message}</p>}
+                  {errors.phone && <p className="text-xs shop-status-error mt-1">{errors.phone.message}</p>}
                 </div>
                 <div>
                   <label className="text-xs text-moon-muted block mb-1">電子信箱 <span className="text-moon-accent">*</span></label>
@@ -1163,7 +1163,7 @@ export default function CheckoutPage() {
                   <p className="text-xs text-moon-muted mt-1">
                     訂單確認與匯款資訊將寄至此信箱
                   </p>
-                  {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
+                  {errors.email && <p className="text-xs shop-status-error mt-1">{errors.email.message}</p>}
                 </div>
               </div>
 
@@ -1185,7 +1185,7 @@ export default function CheckoutPage() {
                   </label>
                 </div>
                 {!hasAvailableDeliveryMethod && (
-                  <p className="text-xs text-red-400">目前未開放自取或宅配，請稍後再試。</p>
+                  <p className="text-xs shop-status-error">目前未開放自取或宅配，請稍後再試。</p>
                 )}
               </div>
 
@@ -1235,8 +1235,8 @@ export default function CheckoutPage() {
                 </div>
 
                 {watchedPickupDate && <p className="text-xs text-moon-accent">已選：{watchedPickupDate}</p>}
-                {errors.pickup_date && <p className="text-xs text-red-400">{errors.pickup_date.message}</p>}
-                {dateValidation && !dateValidation.valid && <p className="text-xs text-red-400">{dateValidation.reason}</p>}
+                {errors.pickup_date && <p className="text-xs shop-status-error">{errors.pickup_date.message}</p>}
+                {dateValidation && !dateValidation.valid && <p className="text-xs shop-status-error">{dateValidation.reason}</p>}
 
                 {deliveryMethod === 'pickup' && (
                   <div>
@@ -1257,7 +1257,7 @@ export default function CheckoutPage() {
                       ))}
                     </div>
                     <input type="hidden" {...register('pickup_time', { required: deliveryMethod === 'pickup' ? '請選擇時段' : false })} />
-                    {errors.pickup_time && <p className="text-xs text-red-400 mt-1">{errors.pickup_time.message}</p>}
+                    {errors.pickup_time && <p className="text-xs shop-status-error mt-1">{errors.pickup_time.message}</p>}
                   </div>
                 )}
               </div>
@@ -1273,7 +1273,7 @@ export default function CheckoutPage() {
                     <MapPin className="text-moon-accent mt-1" size={16} />
                     <div>
                       <p className="text-moon-text text-sm">月島甜點店</p>
-                      <p className="text-moon-muted text-xs">台南市安南區本原街一段97巷</p>
+                      <p className="text-moon-muted text-xs">台南市安南區本原街一段97巷168號</p>
                     </div>
                   </div>
                 ) : (
@@ -1292,7 +1292,7 @@ export default function CheckoutPage() {
                           <option value="">請選擇縣市</option>
                           {TAIWAN_CITIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                         </select>
-                        {errors.delivery_city && <p className="text-xs text-red-400 mt-1">{errors.delivery_city.message}</p>}
+                        {errors.delivery_city && <p className="text-xs shop-status-error mt-1">{errors.delivery_city.message}</p>}
                       </div>
                       <div>
                         <select
@@ -1302,7 +1302,7 @@ export default function CheckoutPage() {
                           <option value="">請選擇區域</option>
                           {districts.map(d => <option key={d} value={d}>{d}</option>)}
                         </select>
-                        {errors.delivery_district && <p className="text-xs text-red-400 mt-1">{errors.delivery_district.message}</p>}
+                        {errors.delivery_district && <p className="text-xs shop-status-error mt-1">{errors.delivery_district.message}</p>}
                       </div>
                     </div>
                     <div>
@@ -1311,7 +1311,7 @@ export default function CheckoutPage() {
                         placeholder="例：中正路 123 號"
                         className="w-full bg-moon-black border border-moon-border px-3 py-2 text-moon-text focus:border-moon-accent outline-none placeholder:text-moon-muted"
                       />
-                      {errors.delivery_address_detail && <p className="text-xs text-red-400 mt-1">{errors.delivery_address_detail.message}</p>}
+                      {errors.delivery_address_detail && <p className="text-xs shop-status-error mt-1">{errors.delivery_address_detail.message}</p>}
                     </div>
                     <textarea
                       {...register('delivery_notes')}
