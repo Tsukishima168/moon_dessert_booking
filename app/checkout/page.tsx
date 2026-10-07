@@ -772,7 +772,15 @@ export default function CheckoutPage() {
         }
 
       } else {
-      setCheckoutMessage(`訂單失敗：${result.message}`);
+        // HTTP 400＝驗證錯誤，訂單一定沒成立 → 維持「訂單失敗：」。
+        // 其他狀態（500：寫入結果不明／寫入前失敗）直接顯示 API 訊息，不加「失敗」前綴，
+        // 否則「尚未取得訂單確認…避免重複下單」會被讀成失敗而重複下單。
+        // 訊息缺漏時無法判斷是否已寫入，保守顯示「尚未取得訂單確認」。
+        setCheckoutMessage(
+          response.status === 400 && result.message
+            ? `訂單失敗：${result.message}`
+            : result.message || '尚未取得訂單確認，請先至會員中心或透過 LINE 確認是否成立，避免重複下單。'
+        );
       }
     } catch (error) {
       console.error('訂單錯誤:', error);
