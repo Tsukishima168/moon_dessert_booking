@@ -23,6 +23,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(capacity)
   } catch (error) {
     console.error('API 錯誤 - 檢查產能:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: '目前無法確認可預訂名額，請稍後重試。' }, { status: 500 })
   }
 }

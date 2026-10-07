@@ -57,7 +57,7 @@ export async function GET() {
         success: false,
         data: [],
         message:
-          error instanceof Error ? error.message : '取得菜單分類失敗',
+          '目前無法載入菜單分類，請稍後重試。',
       },
       { status: 500, headers: CORS_HEADERS }
     );

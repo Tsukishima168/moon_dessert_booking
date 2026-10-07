@@ -167,10 +167,10 @@ export default function AccountPage() {
         setAuthLoginBusy(false);
         router.refresh();
       },
-      onError: (detail) => {
+      onError: () => {
         setAuthLoginBusy(false);
         setAuthMissing(true);
-        setError(detail.message || '登入未完成，請允許彈出視窗後再試一次。');
+        setError('登入未完成，請依登入頁指示操作；若視窗被阻擋，請允許彈出視窗後再試。');
       },
     });
   };
@@ -200,7 +200,7 @@ export default function AccountPage() {
       setSuccessMessage('會員資料已更新。');
     } catch (saveError) {
       console.error('更新會員資料錯誤:', saveError);
-      setError(saveError instanceof Error ? saveError.message : '更新會員資料失敗');
+      setError('會員資料儲存失敗，請稍後重試。');
     } finally {
       setSavingProfile(false);
     }

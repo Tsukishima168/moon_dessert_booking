@@ -511,7 +511,7 @@ export async function createOrder(
   authUserId: string | null
 ): Promise<CreateOrderResult> {
   if (input.user_id && input.user_id !== authUserId) {
-    throw new OrderValidationError('user_id 無效')
+    throw new OrderValidationError('登入資訊無法確認，請重新登入後再試。')
   }
 
   // 手機格式驗證（接受 +886、09XX 等台灣常見格式）
@@ -634,7 +634,7 @@ export async function createOrder(
       error.code === 'P0001'
     ) {
       throw new OrderValidationError(
-        error instanceof Error ? error.message : '當日已達產能上限，請選擇其他日期'
+        '當日已無可預訂名額，請選擇其他日期。'
       )
     }
     throw error

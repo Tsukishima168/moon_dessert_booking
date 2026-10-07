@@ -89,7 +89,7 @@ export default function AboutPage() {
           <SectionHeading className="mb-8 sm:mb-12" title="安南區・本原街" subtitle="月島在台南的座標" />
           <div className="space-y-4 max-w-2xl mx-auto">
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              月島落在台南市安南區本原街一段 97 巷，果菜市場的邊上。這裡不是觀光大街，而是日常會經過的地方——就像甜點本來該有的位置。
+              月島落在台南市安南區本原街一段 97 巷 168 號，果菜市場的邊上。這裡不是觀光大街，而是日常會經過的地方——就像甜點本來該有的位置。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
               本季品項依網站當季供應，可選擇本原街自取，或宅配到府。

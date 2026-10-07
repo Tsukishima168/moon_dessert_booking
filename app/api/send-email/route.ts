@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const internalSecret = process.env.INTERNAL_API_SECRET;
   if (!internalSecret) {
     console.error('[send-email] INTERNAL_API_SECRET 未設定，拒絕所有請求');
-    return NextResponse.json({ success: false, message: '服務未設定' }, { status: 503 });
+    return NextResponse.json({ success: false, message: '目前無法寄送通知，請稍後重試。' }, { status: 503 });
   }
   const providedSecret = request.headers.get('x-internal-secret');
   if (providedSecret !== internalSecret) {
@@ -36,12 +36,12 @@ export async function POST(request: NextRequest) {
       console.error(`[send-email] 發送失敗 (${result.reason}):`, result.message);
       if (result.reason === 'no_api_key' || result.reason === 'no_from_email') {
         return NextResponse.json(
-          { success: false, message: 'Email 服務未設定' },
+          { success: false, message: '目前無法寄送 Email 通知，請稍後重試。' },
           { status: 503 }
         );
       }
       return NextResponse.json(
-        { success: false, message: result.reason === 'api_error' ? result.message : '發送失敗' },
+        { success: false, message: '目前無法寄送 Email 通知，請稍後重試。' },
         { status: 500 }
       );
     }

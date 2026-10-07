@@ -359,8 +359,8 @@ html[data-theme='light'] .theme-logo {
   outline: 2px solid rgb(var(--moon-accent));
   outline-offset: 3px;
 }
-/* Light theme: forest ring on cream surfaces. The dark-green hero keeps gold; the fixed-dark admin shell keeps its own ring. */
-html[data-theme='light'] :where(a, button, input, select, textarea, summary):focus-visible { outline-color: #304f2f; }
+/* Light theme: forest ring on Shop cream surfaces; exclude the fixed-black Universe rail. The dark-green hero keeps gold; the fixed-dark admin shell keeps its own ring. */
+html[data-theme='light'] :where(a, button, input, select, textarea, summary):not(:where(.ku-universe-rail *)):focus-visible { outline-color: #304f2f; }
 html[data-theme='light'] .shop-hero :where(a, button, input, select, textarea, summary):focus-visible { outline-color: #d7c678; }
 html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea, summary):focus-visible { outline-color: rgb(var(--moon-accent)); }
 .shop-checkout-form button { min-height: 2.75rem; }
@@ -575,3 +575,11 @@ html[data-theme='light'] .shop-product-actions .text-green-400 { color: #304f2f;
   .shop-hero-copy h1 { font-size: 30px; }
   .shop-hero-links { gap: 8px 16px; }
 }
+
+/* Public feedback remains readable on forest and paper surfaces. */
+.shop-status-success { color: #86efac; }
+.shop-status-error { color: #fca5a5; }
+html[data-theme='light'] .shop-status-success { color: #304f2f; }
+html[data-theme='light'] .shop-status-error { color: #9b2c2c; }
+.shop-status-warning { color: #d7c678; }
+html[data-theme='light'] .shop-status-warning { color: #795b23; }

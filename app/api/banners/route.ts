@@ -28,13 +28,13 @@ export async function GET() {
             }
 
             console.error('取得 Banner 錯誤:', error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ error: '目前無法載入公告，請稍後重試。' }, { status: 500 });
         }
 
         return NextResponse.json(banners || []);
     } catch (error) {
         console.error('API 錯誤 - 取得 Banner:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ error: '目前無法處理公告資訊，請稍後重試。' }, { status: 500 });
     }
 }
 
@@ -50,6 +50,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('API 錯誤 - 記錄 Banner 統計:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ error: '目前無法處理公告資訊，請稍後重試。' }, { status: 500 });
     }
 }

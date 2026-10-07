@@ -14,38 +14,36 @@ export const metadata: Metadata = {
   },
 };
 
-type PrivacySection = { title: string; body: string; grounded?: boolean };
+type PrivacySection = { title: string; body: string };
 
 const SECTIONS: PrivacySection[] = [
   {
-    title: '蒐集之個人資料類別',
-    body: '結帳時我們會請您填寫：姓名、聯絡電話、Email；選擇宅配時另需填寫縣市／區域／詳細地址；您也可以填寫訂單備註，並可選擇是否同意接收行銷資訊（可隨時退訂）。',
-    grounded: true,
+    title: '訂購資料',
+    body: '結帳時會請您填寫姓名、聯絡電話與 Email；選擇宅配時另需提供縣市、區域及詳細地址。您也可以填寫訂單備註，並自行選擇是否接收優惠資訊。',
   },
   {
-    title: '蒐集目的與利用方式',
-    body: '【待補：個人資料蒐集之特定目的（依個資法應標明之項目）與利用範圍，需法遵確認後填入。】',
+    title: '資料的用途',
+    body: '您提供的訂購資料會用於處理訂單、核對付款、安排取貨或配送，以及聯繫訂單與售後事宜。登入後可查看您的會員資料及訂單。',
   },
   {
-    title: '資料保存期限',
-    body: '【待補：訂單與會員資料保存期限，需法遵確認。】',
+    title: '登入與網站儲存',
+    body: '本站透過 Kiwimu Passport 提供會員登入，並使用瀏覽器儲存功能維持登入、購物車、主題及來源資訊。您可透過瀏覽器設定管理裝置上的網站資料。',
   },
   {
-    title: 'Cookie 與追蹤技術',
-    body: '本站使用 Google Analytics（GA4）與 Facebook Pixel 進行網站流量分析與廣告成效追蹤，這些工具可能會在您的裝置上存放 Cookie。',
-    grounded: true,
+    title: '流量分析與優惠資訊',
+    body: '本站使用 Google Analytics 分析網站瀏覽情形；啟用 Facebook Pixel 時，也會用於廣告成效追蹤。相關工具可能使用 Cookie。結帳時可選擇是否接收優惠資訊，行銷信件提供退訂連結。',
   },
   {
-    title: '資料之第三方提供與國際傳輸',
-    body: '【待補：是否有將資料提供予配送、金流（LINE Pay）等第三方之細節與國際傳輸情形，需法遵確認。】',
+    title: '服務提供者',
+    body: '網站使用 Supabase 及 Vercel 提供資料儲存、登入與網站服務，並透過 Resend 處理 Email 通知。選用 LINE Pay 付款時，付款所需資訊會交由 LINE Pay 處理。',
   },
   {
-    title: '當事人權利',
-    body: '【待補：查詢、更正、刪除個人資料之權利行使方式，需法遵確認。】',
+    title: '資料查詢與處理需求',
+    body: '如需查詢、更正或刪除您提供的資料，或想了解訂單及會員資料的保存情形，請透過 LINE 聯繫我們，說明需求。請勿在公開留言中提供完整個人資料。',
   },
   {
     title: '聯絡方式',
-    body: '【待補：個資保護聯絡窗口 Email／電話，目前原始碼未查得固定客服信箱，需 Penso 提供。如需立即協助，可先透過頁尾 LINE 官方帳號聯繫。】',
+    body: '個人資料或優惠訊息有疑問，請透過 LINE 官方帳號 @931cxefd 聯繫月島甜點。',
   },
 ];
 
@@ -62,7 +60,7 @@ export default function PrivacyPage() {
             隱私權政策
           </h1>
           <p className="brand-body text-sm sm:text-base text-moon-text/90 max-w-2xl mx-auto">
-            本頁版型優先上線；帶【待補】標記的段落為法遵文字，仍待 Penso 或法務確認後填入。
+            這裡說明您在訂購與使用會員服務時提供的資料、網站使用的服務，以及資料相關問題的聯絡方式。
           </p>
         </div>
       </section>
@@ -76,9 +74,7 @@ export default function PrivacyPage() {
             <SectionHeading className="mb-8 sm:mb-12" title={section.title} />
             <div className="max-w-2xl mx-auto">
               <p
-                className={`brand-body text-sm sm:text-base ${
-                  section.grounded ? 'text-moon-muted/90' : 'text-moon-gold'
-                }`}
+                className="brand-body text-sm sm:text-base text-moon-muted"
               >
                 {section.body}
               </p>

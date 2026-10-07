@@ -185,7 +185,7 @@ export default function CartSidebar() {
             <div className="flex-1 flex flex-col items-center justify-center text-moon-muted p-8">
               <ShoppingBag size={64} strokeWidth={1} className="mb-4 opacity-30" />
               <p className="text-sm tracking-wider mb-2">購物車是空的</p>
-              <p className="text-xs text-moon-muted/60 mb-8">加入甜點開始選購吧</p>
+              <p className="text-xs text-moon-muted mb-8">加入甜點開始選購吧</p>
               <button
                 onClick={closeCart}
                 className="border border-moon-border text-moon-text px-8 py-3 text-sm tracking-widest hover:bg-moon-border transition-colors"

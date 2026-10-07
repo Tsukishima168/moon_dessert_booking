@@ -18,7 +18,7 @@ export async function GET() {
       {
         success: false,
         data: [],
-        message: error instanceof Error ? error.message : '取得分類資料失敗',
+        message: '目前無法載入分類，請稍後重試。',
       },
       { status: 500 }
     );

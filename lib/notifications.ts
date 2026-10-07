@@ -1,6 +1,7 @@
 import { OrderItem } from './supabase';
 import { createAdminClient } from './supabase-admin';
 import { sendEmail } from './email/resend';
+import { escapeEmailText } from './email/html';
 import { orderReadyTemplate } from './email/templates/order-ready';
 import { orderCancelledTemplate } from './email/templates/order-cancelled';
 import { fetchBusinessSettings } from '@/src/repositories/settings.repository';
@@ -107,24 +108,33 @@ export async function sendCustomerEmail(data: {
     const v = item.variant_name ? ` (${item.variant_name})` : '';
     return `  • ${item.name}${v} x${item.quantity} ($${item.price * item.quantity})`;
   }).join('\n');
-  const emailHtml = `<h1>${storeName} 訂單確認</h1>
-    <p>訂單編號: <b>${data.orderId}</b></p>
-    <p>金額: <b style="color:blue;font-size:18px">$${data.totalPrice}</b></p>
-    <hr/><h3>商品明細:</h3><pre>${itemsList}</pre><hr/>
-    <p>取貨/配送時間: <b>${data.pickupTime}</b></p>
-    ${data.deliveryMethod === 'delivery' ? `<p>配送地址: ${data.deliveryAddress}</p>` : '<p>取貨方式: 門市自取</p>'}
-    <div style="background:#eee;padding:10px;margin-top:20px;">
-      <h3>匯款資訊</h3><p>銀行代碼: ${bankLabel}</p>
-      <p>帳號: <b>${bankAccount}</b></p>
-      <p style="color:red">請於 24 小時內匯款並回傳末五碼</p>
+  const emailHtml = `<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f5f0e8;color:#1f2f1f;">
+  <div style="font-family:'Noto Sans TC',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;line-height:1.8;">
+    <h1 style="margin:0 0 24px;font-size:24px;color:#1f3527;">${escapeEmailText(storeName)} 訂單確認</h1>
+    <p>我們已收到您的預訂，請核對以下內容。</p>
+    <div style="background:#fffdf8;border:1px solid #d8d7c4;border-radius:12px;padding:20px;">
+      <p>訂單編號：<b>${escapeEmailText(data.orderId)}</b></p>
+      <p>金額：<b style="color:#795b23;font-size:20px;">NT$ ${escapeEmailText(data.totalPrice)}</b></p>
+      <h2 style="font-size:16px;">商品明細</h2>
+      <pre style="font-family:inherit;white-space:pre-wrap;font-size:14px;">${escapeEmailText(itemsList)}</pre>
+      <p>取貨／配送時間：<b>${escapeEmailText(data.pickupTime)}</b></p>
+      ${data.deliveryMethod === 'delivery' ? `<p>配送地址：${escapeEmailText(data.deliveryAddress)}</p>` : '<p>取貨方式：門市自取</p>'}
     </div>
-    <div style="text-align:center;margin-top:30px;padding-top:20px;border-top:1px dashed #ccc;">
-      <p>想隨時查詢訂單狀態？</p>
-      <a href="https://shop.kiwimu.com/auth/login"
-         style="background-color:#d4a574;color:black;padding:10px 20px;text-decoration:none;border-radius:5px;font-weight:bold;display:inline-block;">
-         啟用會員 / 查詢訂單
-      </a>
-    </div>`;
+    <div style="background:#fffdf8;border:1px solid #d8d7c4;border-radius:12px;padding:20px;margin-top:20px;">
+      <h2 style="margin-top:0;font-size:16px;">匯款資訊</h2>
+      <p>銀行代碼：${escapeEmailText(bankLabel)}</p>
+      <p>帳號：<b>${escapeEmailText(bankAccount)}</b></p>
+      <p style="color:#5f6856;">請依訂單畫面的付款資訊完成匯款，並透過 LINE 提供訂單編號與帳號後五碼供我們核對。付款狀態不明時，請先確認原訂單，避免重複付款。</p>
+    </div>
+    <div style="margin-top:24px;">
+      <a href="https://shop.kiwimu.com/account" style="background:#1f3527;color:#f5f0e8;padding:14px 20px;text-decoration:none;border-radius:12px;font-weight:600;display:inline-block;">前往會員中心</a>
+      <p style="font-size:14px;color:#5f6856;">有訂單或取貨問題，請透過 <a href="https://line.me/R/ti/p/@931cxefd" style="color:#1f3527;">LINE 官方帳號</a> 聯繫我們。</p>
+    </div>
+    <p style="font-size:12px;color:#5f6856;border-top:1px solid #d8d7c4;padding-top:16px;margin-top:32px;">月島甜點 · shop.kiwimu.com</p>
+  </div>
+</body></html>`;
   // 統一走 lib/email/resend.ts 的 sendEmail（檢查 { error }、缺 RESEND_FROM_EMAIL 不寄、不 throw）
   const sent = await sendEmail(data.to, `【${storeName}】訂單確認 - ${data.orderId}`, emailHtml);
   if (sent) console.log('Email 發送成功');
@@ -273,10 +283,13 @@ export async function sendOrderStatusNotification(data: {
 
     if (tpl) {
       subject = tpl.subject;
-      html = tpl.html_content
-        .replace(/\{customer_name\}/g, data.customerName)
-        .replace(/\{order_id\}/g, data.orderId)
-        .replace(/\{pickup_time\}/g, data.pickupTime ?? '');
+      const fields: Record<string, string> = {
+        customer_name: escapeEmailText(data.customerName),
+        order_id: escapeEmailText(data.orderId),
+        pickup_time: escapeEmailText(data.pickupTime),
+      };
+      // Keep merchant markup; a single callback pass preserves literal $& and field-like text.
+      html = tpl.html_content.replace(/\{(customer_name|order_id|pickup_time)\}/g, (_, key: string) => fields[key]);
     } else if (data.newStatus === 'ready') {
       ({ subject, html } = orderReadyTemplate({
         customerName: data.customerName,

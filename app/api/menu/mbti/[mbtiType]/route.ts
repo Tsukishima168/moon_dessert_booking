@@ -64,7 +64,7 @@ export async function GET(
       {
         success: false,
         data: null,
-        message: error instanceof Error ? error.message : '取得 MBTI 甜點對應失敗',
+        message: '目前無法載入甜點推薦，請稍後重試。',
       },
       { status: 500, headers: CORS_HEADERS }
     );

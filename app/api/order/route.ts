@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('API 錯誤 - 建立訂單:', error)
     const message =
-      error instanceof Error ? error.message : '建立訂單失敗，請稍後再試'
+      error instanceof OrderValidationError ? error.message : '尚未取得訂單確認，請先至會員中心或透過 LINE 確認是否成立，避免重複下單。'
     const status = error instanceof OrderValidationError ? 400 : 500
     return NextResponse.json({ success: false, message }, { status })
   }

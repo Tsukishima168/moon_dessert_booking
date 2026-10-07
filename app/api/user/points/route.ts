@@ -14,14 +14,14 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '請先登入後再試。' }, { status: 401 });
     }
 
     const points = await getUserPoints(user.id);
 
     return NextResponse.json({ points });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : '查詢失敗';
+    const message = '目前無法載入點數，請稍後重試。';
     console.error('[GET /api/user/points] 錯誤:', error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

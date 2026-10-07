@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 
 import { useSearchParams } from 'next/navigation';
+import { productCategoryLabel } from '@/lib/product-copy';
 import ProductListItem from '@/components/ProductListItem';
 import ProductRow from '@/components/ProductRow';
 import Banner from '@/components/Banner';
@@ -15,11 +16,7 @@ import { AlertCircle, ArrowRight, Search, X, MapPin, PackageCheck } from 'lucide
 import Image from 'next/image';
 import Link from 'next/link';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  tiramisu: '提拉米蘇', basque: '巴斯克乳酪', chiffon: '戚風蛋糕',
-  mille_crepe: '千層蛋糕', pudding: '布丁與單點', drinks: '飲品',
-};
-const categoryLabel = (category: MenuCategory) => CATEGORY_LABELS[category.id] || category.name;
+const categoryLabel = (category: MenuCategory) => productCategoryLabel(category.id, category.name);
 
 type ShopWindow = Window & {
   __SHOP_INITIAL_SEARCH__?: string;
@@ -235,7 +232,7 @@ function HomePageContent() {
           <div className="shop-featured-grid">
             {featuredItems.map(item => (
               <Link key={item.id} href={`/product/${item.slug || item.id}`} className="shop-featured-card">
-                <div className="shop-featured-image">{item.image_url?.trim() ? <Image src={item.image_url} alt={item.name} fill sizes="(max-width: 639px) 50vw, (max-width: 1023px) 50vw, 25vw" className="object-cover" /> : <span>甜點照片準備中</span>}</div>
+                <div className="shop-featured-image">{item.image_url?.trim() ? <Image src={item.image_url} alt={item.name} fill sizes="(max-width: 639px) 50vw, (max-width: 1023px) 50vw, 25vw" className="object-cover" /> : <span aria-hidden="true">月島甜點</span>}</div>
                 <div className="shop-featured-copy"><h3>{item.name}</h3><p>NT$ {Math.min(...item.variants.map(v => v.price)).toLocaleString('zh-TW')}{item.variants.length > 1 ? ' 起' : ''}</p><span>選擇規格 <ArrowRight size={15} aria-hidden="true" /></span></div>
               </Link>
             ))}
@@ -292,7 +289,7 @@ export default function HomePage() {
         <div className="min-h-screen bg-moon-black flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin text-moon-accent mx-auto mb-4 w-12 h-12 border-2 border-moon-accent border-t-transparent rounded-full" />
-            <p className="text-sm text-moon-muted tracking-widest">甜點準備中…</p>
+            <p className="text-sm text-moon-muted tracking-widest">載入甜點中…</p>
           </div>
         </div>
       }

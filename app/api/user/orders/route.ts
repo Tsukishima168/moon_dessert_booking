@@ -36,7 +36,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '請先登入後再試。' }, { status: 401 });
     }
 
     // 使用 admin client 查詢用戶訂單（繞過 RLS）
@@ -52,7 +52,7 @@ export async function GET() {
 
     return NextResponse.json(orders || []);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch orders';
+    const message = '目前無法載入訂單，請稍後重試。';
     console.error('查詢訂單錯誤:', error);
     return NextResponse.json(
       { error: message },

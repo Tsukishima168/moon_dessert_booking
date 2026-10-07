@@ -52,7 +52,7 @@ function isValidRequestItem(item: unknown): item is RequestItem {
 export async function POST(request: NextRequest) {
   if (!process.env.LINEPAY_CHANNEL_ID || !process.env.LINEPAY_CHANNEL_SECRET) {
     return NextResponse.json(
-      { success: false, message: '線上付款功能即將開放，目前請使用銀行轉帳付款' },
+      { success: false, message: '目前未開放線上 LINE Pay，請使用結帳頁提供的銀行轉帳付款。' },
       { status: 503 }
     );
   }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     if (!canUseLinePay(paymentSettings, isAdmin)) {
       return NextResponse.json(
-        { success: false, message: 'LINE Pay 尚未公開，目前請使用銀行轉帳付款' },
+        { success: false, message: '目前未開放線上 LINE Pay，請使用結帳頁提供的銀行轉帳付款。' },
         { status: 403 }
       );
     }
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     if (result.returnCode !== '0000' || !result.info) {
       console.error('[LINE Pay] 發起付款失敗:', result);
       return NextResponse.json(
-        { success: false, message: `LINE Pay 錯誤：${result.returnMessage}` },
+        { success: false, message: '目前無法連接 LINE Pay，請先確認原訂單及付款狀態，再重試或聯繫我們。' },
         { status: 502 }
       );
     }
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[LINE Pay] request error:', error);
-    const message = error instanceof Error ? error.message : 'LINE Pay 連線失敗';
+    const message = '目前無法連接 LINE Pay，請先確認原訂單及付款狀態，再重試或聯繫我們。';
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

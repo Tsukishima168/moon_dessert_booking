@@ -92,11 +92,11 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
             <h3 className="text-sm sm:text-base text-moon-accent font-light tracking-wide line-clamp-2 leading-snug">
               {item.name}
             </h3>
-            <p className="text-xs sm:text-sm text-moon-muted mt-1 line-clamp-2">
-              {item.description && item.description.trim() !== ''
-                ? item.description
-                : '甜點說明準備中'}
-            </p>
+            {item.description?.trim() && (
+              <p className="text-xs sm:text-sm text-moon-muted mt-1 line-clamp-2">
+                {item.description}
+              </p>
+            )}
             <p className="shop-mobile-price">{isDisplayOnly ? '門市供應' : <>NT$ {item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)).toLocaleString('zh-TW') : item.price.toLocaleString('zh-TW')}{item.variants.length > 1 ? ' 起' : ''}</>}</p>
           </div>
 

@@ -85,11 +85,11 @@ function LoginPageContent() {
             onComplete: () => {
                 void completeLogin();
             },
-            onError: (detail) => {
+            onError: () => {
                 setLoading(false);
                 setMessage({
                     type: 'error',
-                    text: detail.message || '登入失敗，請再試一次。',
+                    text: '登入未完成，請依登入頁指示操作；若視窗被阻擋，請允許彈出視窗後再試。',
                 });
             },
         });
@@ -134,7 +134,7 @@ function LoginPageContent() {
                         </button>
 
                         {message?.type === 'error' && (
-                            <p className="text-red-400 text-xs text-center animate-pulse">
+                            <p className="shop-status-error text-xs text-center animate-pulse">
                                 {message.text}
                             </p>
                         )}

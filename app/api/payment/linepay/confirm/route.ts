@@ -17,7 +17,7 @@ import { buildOrderSuccessPath } from '@/src/lib/order-success-token';
 export async function GET(request: NextRequest) {
   if (!process.env.LINEPAY_CHANNEL_ID || !process.env.LINEPAY_CHANNEL_SECRET) {
     return NextResponse.json(
-      { success: false, message: '線上付款功能即將開放，目前請使用銀行轉帳付款' },
+      { success: false, message: '目前未開放線上 LINE Pay，請使用結帳頁提供的銀行轉帳付款。' },
       { status: 503 }
     );
   }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[LINE Pay confirm] invalid site url:', error);
     return NextResponse.json(
-      { success: false, message: '站台網址未設定，無法確認付款' },
+      { success: false, message: '目前無法確認付款，請透過 LINE 提供訂單編號協助查詢，避免重複付款。' },
       { status: 500 }
     );
   }

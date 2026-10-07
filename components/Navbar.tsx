@@ -114,9 +114,9 @@ export default function Navbar() {
 
         setAuthError('登入已完成，但會員狀態尚未同步，請再試一次。');
       },
-      onError: (detail) => {
+      onError: () => {
         setAuthLoginBusy(false);
-        setAuthError(detail.message || '登入失敗，請再試一次。');
+        setAuthError('登入未完成，請依登入頁指示操作；若視窗被阻擋，請允許彈出視窗後再試。');
       },
     });
   };
@@ -221,7 +221,7 @@ export default function Navbar() {
           </div>
         </div>
         {authError ? (
-          <div role="alert" className="pb-3 text-center text-xs text-red-300">
+          <div role="alert" className="pb-3 text-center text-xs shop-status-error">
             {authError}
             {authError.startsWith('登出') && (
               <button type="button" onClick={handleLogout} disabled={loggingOut} className="ml-2 min-h-11 px-3 underline underline-offset-4">
