@@ -53,6 +53,19 @@ export class OrderValidationError extends Error {
   }
 }
 
+/**
+ * insertOrder 已被呼叫之後發生的錯誤：DB 可能已提交訂單、只是回應失敗或後續處理拋錯，
+ * 無法確定「訂單沒成立」。route 必須提醒顧客先確認訂單狀態，避免重複下單。
+ * 原始錯誤保留在 cause，供 route 的 console.error 追查。
+ * （寫入「之前」的失敗用一般 Error / OrderValidationError，代表訂單一定沒成立。）
+ */
+export class OrderPersistenceUncertainError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options)
+    this.name = 'OrderPersistenceUncertainError'
+  }
+}
+
 interface MenuItemRow {
   id: string
   name: string
@@ -620,12 +633,19 @@ export async function createOrder(
     status: 'pending',
   } as const
 
+  // ── 寫入邊界：從 insertOrder 被呼叫起，任何失敗都不能斷言「訂單沒成立」 ──
+  // RPC 可能已提交、只是回應失敗；唯一能確定「沒寫入」的是 P0001（函式內 raise exception，交易已回滾）。
   let createdOrder: Awaited<ReturnType<typeof insertOrder>>
   try {
     createdOrder = await insertOrder(orderData)
   } catch (error) {
     if (promoUsageReservation) {
-      await rollbackPromoCodeUsage(promoUsageReservation)
+      // 回滾本身不得蓋掉原始錯誤的分類（否則寫入結果不明會被誤報成「尚未成立」）
+      try {
+        await rollbackPromoCodeUsage(promoUsageReservation)
+      } catch (rollbackError) {
+        console.error('優惠碼使用次數回滾失敗:', rollbackError)
+      }
     }
     if (
       error &&
@@ -637,25 +657,30 @@ export async function createOrder(
         '當日已無可預訂名額，請選擇其他日期。'
       )
     }
-    throw error
+    throw new OrderPersistenceUncertainError('訂單寫入結果不明', { cause: error })
   }
 
-  console.log(`成功建立訂單: ${createdOrder.order_id}`)
+  try {
+    console.log(`成功建立訂單: ${createdOrder.order_id}`)
 
-  // Phase 2: emit("order.created") event bus
-  // 所有後續副作用（加點、通知、integration）都由 event handlers 處理
-  // 此處改為 fire-and-forget emit，不阻塞回應
-  EventBus.emit('order.created', {
-    order: createdOrder,
-    metadata: {
-      createdAt: new Date().toISOString(),
-      source: createdOrder.source_from ?? 'shop',
-    },
-  }).catch((error) => {
-    console.error('事件發送錯誤（不影響訂單）:', error)
-  })
+    // Phase 2: emit("order.created") event bus
+    // 所有後續副作用（加點、通知、integration）都由 event handlers 處理
+    // 此處改為 fire-and-forget emit，不阻塞回應
+    EventBus.emit('order.created', {
+      order: createdOrder,
+      metadata: {
+        createdAt: new Date().toISOString(),
+        source: createdOrder.source_from ?? 'shop',
+      },
+    }).catch((error) => {
+      console.error('事件發送錯誤（不影響訂單）:', error)
+    })
 
-  return { orderId: createdOrder.order_id, finalPrice }
+    return { orderId: createdOrder.order_id, finalPrice }
+  } catch (error) {
+    // 寫入已成功，但回傳前拋錯：訂單其實已成立，同樣不能對顧客說「尚未成立」
+    throw new OrderPersistenceUncertainError('訂單已寫入但後續處理失敗', { cause: error })
+  }
 }
 
 /**
