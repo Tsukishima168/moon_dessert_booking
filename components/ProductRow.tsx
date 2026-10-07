@@ -119,7 +119,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                         {item.name}
                     </h3>
                     {item.category && (
-                        <span className="text-[10px] text-moon-muted/50 tracking-widest shrink-0 hidden lg:inline">
+                        <span className="text-xs text-moon-muted/50 tracking-widest shrink-0 hidden lg:inline">
                             {productCategoryLabel(item.category)}
                         </span>
                     )}
