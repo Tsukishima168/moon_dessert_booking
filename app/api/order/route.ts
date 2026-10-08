@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-import { createOrder, OrderValidationError } from '@/src/services/order.service'
+import {
+  createOrder,
+  OrderPersistenceUncertainError,
+  OrderValidationError,
+} from '@/src/services/order.service'
 import { setConsent } from '@/src/repositories/marketing.repository'
 
 // POST /api/order - 建立新訂單
@@ -76,9 +80,27 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('API 錯誤 - 建立訂單:', error)
-    const message =
-      error instanceof OrderValidationError ? error.message : '尚未取得訂單確認，請先至會員中心或透過 LINE 確認是否成立，避免重複下單。'
-    const status = error instanceof OrderValidationError ? 400 : 500
-    return NextResponse.json({ success: false, message }, { status })
+
+    // 驗證類錯誤：訂單一定沒成立，回原始提示讓顧客修正
+    if (error instanceof OrderValidationError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 400 })
+    }
+
+    // 寫入結果不明（insertOrder 已被呼叫）：訂單可能已成立，絕不能說「尚未成立」，避免顧客重複下單
+    if (error instanceof OrderPersistenceUncertainError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: '尚未取得訂單確認，請先至會員中心或透過 LINE 確認是否成立，避免重複下單。',
+        },
+        { status: 500 }
+      )
+    }
+
+    // 其餘錯誤都發生在寫入之前（解析、驗證、價格／日期／產能／商品可用性檢查）：訂單一定沒成立
+    return NextResponse.json(
+      { success: false, message: '目前無法完成下單，訂單尚未成立，請稍後再試。' },
+      { status: 500 }
+    )
   }
 }

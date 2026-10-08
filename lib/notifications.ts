@@ -50,8 +50,11 @@ export async function sendDiscordNotify(message: string, embed?: unknown): Promi
   }
 
   // 來源標籤：在共用頻道中標明這則訊息來自 shop
+  // allowed_mentions.parse=[]：訊息內含顧客姓名等使用者輸入，一律不解析任何提及
+  //（@everyone / @here / 角色 / 使用者），bot 與 webhook 兩條路徑共用此 payload。
   const payload: Record<string, unknown> = {
     content: `〔🛍️ ${DISCORD_SOURCE_LABEL}〕\n${message}`,
+    allowed_mentions: { parse: [] },
   };
   if (embed) payload.embeds = [embed];
 

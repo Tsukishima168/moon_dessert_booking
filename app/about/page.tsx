@@ -7,7 +7,7 @@ import SectionHeading from '@/components/ui/SectionHeading';
 export const metadata: Metadata = {
   title: '品牌故事 — 月島 × Kiwimu',
   description:
-    '月島甜點是台南安南區本原街的甜點工作室，結合 Kiwimu MBTI 的人格甜點宇宙。從情緒與狀態出發，為你現在的狀態找到一塊適合的甜點。本原街自取或宅配到府。',
+    '月島甜點是台南安南區本原街的甜點工作室，結合 Kiwimu MBTI 的人格甜點宇宙。從情緒與狀態出發，為你現在的狀態找到一塊適合的甜點。本原街自取，配送需求請先確認。',
   alternates: { canonical: '/about' },
   openGraph: {
     title: '品牌故事 — 月島 × Kiwimu | MOON MOON 月島甜點',
@@ -92,7 +92,7 @@ export default function AboutPage() {
               月島落在台南市安南區本原街一段 97 巷 168 號，果菜市場的邊上。這裡不是觀光大街，而是日常會經過的地方——就像甜點本來該有的位置。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              本季品項依網站當季供應，可選擇本原街自取，或宅配到府。
+              本季品項依網站當季供應，可預訂本原街自取；宅配是否開放，請查看結帳頁或先透過 LINE 確認。
             </p>
           </div>
         </section>
