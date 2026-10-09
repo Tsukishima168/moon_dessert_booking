@@ -13,6 +13,7 @@ import {
 } from '@/src/lib/menu-availability'
 import { getDeliverySettings, getOrderRules, getBusinessHours } from '@/src/services/settings.service'
 import { sanitizeOrderAttribution, clampAttributionField } from '@/src/lib/attribution'
+import { releasePromoUsage } from '@/src/lib/promo-usage'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -86,7 +87,6 @@ interface CanonicalOrderItem extends OrderItem {
 
 interface PromoCodeUsageReservation {
   id: string
-  previousUsedCount: number
 }
 
 interface PromoCodeUsageRow {
@@ -495,20 +495,15 @@ async function reservePromoCodeUsage(
     throw new OrderValidationError('此優惠碼已達使用上限，請重新嘗試')
   }
 
-  return { id: promoCodeRow.id, previousUsedCount }
+  return { id: promoCodeRow.id }
 }
 
 async function rollbackPromoCodeUsage(
   reservation: PromoCodeUsageReservation
 ): Promise<void> {
   const adminClient = createAdminClient()
-  const { error } = await adminClient
-    .from('promo_codes')
-    .update({ used_count: reservation.previousUsedCount })
-    .eq('id', reservation.id)
-
-  if (error) {
-    console.error('優惠碼使用次數回滾失敗:', error)
+  if (!(await releasePromoUsage(adminClient, reservation.id))) {
+    console.error('優惠碼使用次數尚未確認釋放，保留額度等待核對')
   }
 }
 
@@ -580,7 +575,6 @@ export async function createOrder(
     promoCode = input.promo_code.toUpperCase().trim()
     discountAmount = promoValidation.discount_amount
     finalPrice = promoValidation.final_amount + deliveryFee
-    promoUsageReservation = await reservePromoCodeUsage(promoCode)
   }
 
   const originalPrice = subtotal
@@ -614,7 +608,7 @@ export async function createOrder(
     final_price: finalPrice,
     discount_amount: discountAmount,
     promo_code: promoCode,
-    payment_date: input.payment_date ?? null,
+    payment_date: null,
     linepay_transaction_id: null,
     delivery_method: normalizedDeliveryMethod,
     delivery_address: input.delivery_address ?? null,
@@ -636,10 +630,13 @@ export async function createOrder(
   // ── 寫入邊界：從 insertOrder 被呼叫起，任何失敗都不能斷言「訂單沒成立」 ──
   // RPC 可能已提交、只是回應失敗；唯一能確定「沒寫入」的是 P0001（函式內 raise exception，交易已回滾）。
   let createdOrder: Awaited<ReturnType<typeof insertOrder>>
+  if (promoCode) promoUsageReservation = await reservePromoCodeUsage(promoCode)
   try {
     createdOrder = await insertOrder(orderData)
   } catch (error) {
-    if (promoUsageReservation) {
+    const definitelyRolledBack = !!error && typeof error === 'object' &&
+      'code' in error && error.code === 'P0001'
+    if (promoUsageReservation && definitelyRolledBack) {
       // 回滾本身不得蓋掉原始錯誤的分類（否則寫入結果不明會被誤報成「尚未成立」）
       try {
         await rollbackPromoCodeUsage(promoUsageReservation)
@@ -647,12 +644,7 @@ export async function createOrder(
         console.error('優惠碼使用次數回滾失敗:', rollbackError)
       }
     }
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      error.code === 'P0001'
-    ) {
+    if (definitelyRolledBack) {
       throw new OrderValidationError(
         '當日已無可預訂名額，請選擇其他日期。'
       )
