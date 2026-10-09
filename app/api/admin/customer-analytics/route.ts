@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
     try {
-        if (!(await ensureAdmin())) {
+        if (!(await ensureAdmin(req))) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

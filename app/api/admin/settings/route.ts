@@ -24,7 +24,7 @@ export async function GET() {
 
 // PUT - 更新單一營業設定
 export async function PUT(request: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(request))) return unauthorized()
   try {
     const { setting_key, setting_value } = await request.json()
     if (!setting_key) {

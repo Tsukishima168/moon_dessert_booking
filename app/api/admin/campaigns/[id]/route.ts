@@ -36,7 +36,7 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        if (!(await ensureAdmin())) {
+        if (!(await ensureAdmin(req))) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -94,7 +94,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        if (!(await ensureAdmin())) {
+        if (!(await ensureAdmin(req))) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

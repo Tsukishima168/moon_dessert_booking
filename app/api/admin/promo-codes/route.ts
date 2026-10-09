@@ -26,7 +26,7 @@ export async function GET() {
 
 // POST - 新增優惠碼
 export async function POST(request: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(request))) return unauthorized()
   try {
     const body = await request.json()
     if (!body.code || !body.discount_type || body.discount_value === undefined) {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
 // PUT - 更新優惠碼
 export async function PUT(request: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(request))) return unauthorized()
   try {
     const body = await request.json()
     if (!body.id) {
@@ -64,7 +64,7 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - 刪除優惠碼
 export async function DELETE(request: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(request))) return unauthorized()
   try {
     const id = new URL(request.url).searchParams.get('id')
     if (!id) {

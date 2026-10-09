@@ -56,7 +56,7 @@ export async function GET() {
 
 // POST - 建立新菜單品項
 export async function POST(req: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(req))) return unauthorized()
   try {
     const body = await req.json()
     const hasCategory = Boolean(body.category || body.category_id)
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
 
 // PUT - 更新菜單品項
 export async function PUT(req: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(req))) return unauthorized()
   try {
     const body = await req.json()
     if (!body.id) {
@@ -99,7 +99,7 @@ export async function PUT(req: NextRequest) {
 
 // DELETE - 刪除菜單品項
 export async function DELETE(req: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(req))) return unauthorized()
   try {
     const id = new URL(req.url).searchParams.get('id')
     if (!id) {

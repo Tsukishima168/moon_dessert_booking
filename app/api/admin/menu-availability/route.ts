@@ -4,7 +4,7 @@ import { ensureAdmin } from '../_utils/ensureAdmin';
 
 export async function GET(req: NextRequest) {
   try {
-    if (!(await ensureAdmin())) {
+    if (!(await ensureAdmin(req))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!(await ensureAdmin())) {
+    if (!(await ensureAdmin(req))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

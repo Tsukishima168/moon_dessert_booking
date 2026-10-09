@@ -1,7 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isSameOriginMutation } from '@/src/lib/request-origin';
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const cookieWrite = path.startsWith('/api/admin/') || path.startsWith('/api/user/') ||
+    path === '/api/auth/set-session' || path === '/api/order' || path === '/api/payment/linepay/request';
+  // An arbitrary RSC header must not bypass the write guard.
+  if (cookieWrite && !isSameOriginMutation(request)) {
+    return NextResponse.json({ success: false, message: '請從本站重新操作。' }, { status: 403 });
+  }
   // 跳過 Next.js 內部 RSC 導航請求，避免攔截造成 "access control checks" 錯誤
   if (request.headers.get('rsc') === '1') {
     return NextResponse.next({ request });

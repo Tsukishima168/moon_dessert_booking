@@ -26,7 +26,7 @@ export async function GET() {
 
 // POST - 新增 Banner
 export async function POST(request: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(request))) return unauthorized()
   try {
     const body = await request.json()
     const data = await createBanner(body)
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
 // PUT - 更新 Banner
 export async function PUT(request: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(request))) return unauthorized()
   try {
     const { id, ...updateData } = await request.json()
     if (!id) {
@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - 刪除 Banner
 export async function DELETE(request: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(request))) return unauthorized()
   try {
     const id = new URL(request.url).searchParams.get('id')
     if (!id) {

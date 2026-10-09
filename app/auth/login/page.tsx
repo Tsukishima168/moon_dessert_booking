@@ -45,7 +45,7 @@ function LoginPageContent() {
 
         setMessage({
             type: 'error',
-            text: errorMessages[authError] || decodeURIComponent(authError),
+            text: errorMessages[authError] || '登入未完成，請稍後重新登入。',
         });
     }, [authError]);
 

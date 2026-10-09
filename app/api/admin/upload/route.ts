@@ -8,7 +8,7 @@ import { ensureAdmin } from '../_utils/ensureAdmin';
  * Returns: { url: string, public_id: string }
  */
 export async function POST(request: NextRequest) {
-  const isAdmin = await ensureAdmin();
+  const isAdmin = await ensureAdmin(request);
   if (!isAdmin) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
  * Body: { public_id: string }
  */
 export async function DELETE(request: NextRequest) {
-  const isAdmin = await ensureAdmin();
+  const isAdmin = await ensureAdmin(request);
   if (!isAdmin) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }

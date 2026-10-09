@@ -4,7 +4,7 @@ import { findOrders } from '@/src/repositories/order.repository'
 
 // GET /api/admin/orders?status=pending&limit=100
 export async function GET(request: NextRequest) {
-  const isAdmin = await ensureAdmin()
+  const isAdmin = await ensureAdmin(request)
   if (!isAdmin) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   }

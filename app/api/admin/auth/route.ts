@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { createHash, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { isSameOriginMutation } from '@/src/lib/request-origin';
 import { createAdminClient } from '@/lib/supabase-admin';
 import {
     clearAuthFailures,
@@ -23,6 +24,7 @@ function hashSessionToken(token: string): string {
 
 // POST /api/admin/auth - 驗證後台密碼
 export async function POST(request: NextRequest) {
+    if (!isSameOriginMutation(request)) return NextResponse.json({ success: false }, { status: 403 });
     try {
         const clientId = getClientIdentity(request);
         const lockStatus = await getLockStatus(clientId);
@@ -127,6 +129,7 @@ export async function POST(request: NextRequest) {
 
 // DELETE /api/admin/auth - 登出，撤銷 session token
 export async function DELETE(request: NextRequest) {
+    if (!isSameOriginMutation(request)) return NextResponse.json({ success: false }, { status: 403 });
     const token = request.cookies.get('admin_token')?.value;
 
     if (token) {
