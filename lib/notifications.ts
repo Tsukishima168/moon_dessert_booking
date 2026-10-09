@@ -1,7 +1,7 @@
 import { OrderItem } from './supabase';
 import { createAdminClient } from './supabase-admin';
 import { sendEmail } from './email/resend';
-import { escapeEmailText } from './email/html';
+import { escapeEmailText, renderEmailTextTemplate } from './email/html';
 import { orderReadyTemplate } from './email/templates/order-ready';
 import { orderCancelledTemplate } from './email/templates/order-cancelled';
 import { fetchBusinessSettings } from '@/src/repositories/settings.repository';
@@ -287,12 +287,12 @@ export async function sendOrderStatusNotification(data: {
     if (tpl) {
       subject = tpl.subject;
       const fields: Record<string, string> = {
-        customer_name: escapeEmailText(data.customerName),
-        order_id: escapeEmailText(data.orderId),
-        pickup_time: escapeEmailText(data.pickupTime),
+        customer_name: data.customerName ?? '',
+        order_id: data.orderId ?? '',
+        pickup_time: data.pickupTime ?? '',
       };
       // Keep merchant markup; a single callback pass preserves literal $& and field-like text.
-      html = tpl.html_content.replace(/\{(customer_name|order_id|pickup_time)\}/g, (_, key: string) => fields[key]);
+      html = renderEmailTextTemplate(tpl.html_content, fields);
     } else if (data.newStatus === 'ready') {
       ({ subject, html } = orderReadyTemplate({
         customerName: data.customerName,

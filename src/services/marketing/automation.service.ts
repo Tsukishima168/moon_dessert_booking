@@ -7,6 +7,7 @@ import {
   type MarketingRule,
 } from '@/src/repositories/marketing.repository'
 import { renderTemplate, sendViaChannel } from './dispatcher'
+import { isMarketingDispatchEnabled } from '@/src/lib/marketing-dispatch-policy'
 
 /**
  * 行銷自動化引擎（Service 層）
@@ -27,6 +28,7 @@ export async function runOrderAutomation(
   email: string,
   vars: Record<string, string>
 ): Promise<void> {
+  if (!isMarketingDispatchEnabled()) return
   if (!email) return
   const rules = await fetchActiveRules('order')
   if (rules.length === 0) return

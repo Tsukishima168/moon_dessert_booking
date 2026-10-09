@@ -1,4 +1,6 @@
 import { sendEmail } from '@/lib/email/resend'
+import { escapeEmailText, renderEmailTextTemplate } from '@/lib/email/html'
+import { isMarketingDispatchEnabled } from '@/src/lib/marketing-dispatch-policy'
 import type { PushTemplate } from '@/src/repositories/marketing.repository'
 
 /**
@@ -27,15 +29,18 @@ export function renderTemplate(
   template: Pick<PushTemplate, 'title' | 'message'>,
   vars: Record<string, string> = {}
 ): RenderedMessage {
-  const apply = (s: string) => s.replace(/\{([a-zA-Z_]+)\}/g, (_, k: string) => vars[k] ?? '')
+  const apply = (s: string) => s.replace(/\{([a-zA-Z_]+)\}/g, (_, k: string) => {
+    const value = Object.hasOwn(vars, k) && typeof vars[k] === 'string' ? vars[k] : ''
+    return value.replace(/[\r\n]/g, ' ')
+  })
   return {
     subject: apply(template.title ?? '月島甜點'),
-    html: apply(template.message ?? ''),
+    html: renderEmailTextTemplate(template.message ?? '', vars),
   }
 }
 
 function withUnsubscribeFooter(html: string, unsubscribeToken: string): string {
-  const url = `${BASE_URL}/api/unsubscribe?token=${unsubscribeToken}`
+  const url = escapeEmailText(`${BASE_URL}/api/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`)
   return `${html}
     <hr style="margin-top:32px;border:none;border-top:1px solid #ccc"/>
     <p style="font-size:11px;color:#888;text-align:center;line-height:1.6">
@@ -54,6 +59,7 @@ export async function sendViaChannel(
   rendered: RenderedMessage,
   opts: { unsubscribeToken: string }
 ): Promise<DispatchResult> {
+  if (!isMarketingDispatchEnabled()) return { ok: false, channel, reason: 'marketing_disabled' }
   if (channel === 'email') {
     // 真顧客（已同意）一定有 token → 附退訂頁尾；測試信無 token → 不附
     const html = opts.unsubscribeToken
