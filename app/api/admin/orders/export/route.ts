@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureAdmin } from '../../_utils/ensureAdmin'
+import { csvEscape } from '@/src/lib/csv-cell'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope'
 
@@ -24,14 +25,6 @@ interface ExportOrder {
   admin_notes: string | null
 }
 
-function csvEscape(value: unknown): string {
-  const str = value == null ? '' : String(value)
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-  return str
-}
-
 function buildItemsSummary(items: ExportOrderItem[]): string {
   return items
     .map(item => {
@@ -43,7 +36,7 @@ function buildItemsSummary(items: ExportOrderItem[]): string {
 
 // GET /api/admin/orders/export?status=paid&date_from=2024-01-01&date_to=2024-01-31
 export async function GET(request: NextRequest) {
-  const isAdmin = await ensureAdmin()
+  const isAdmin = await ensureAdmin(request)
   if (!isAdmin) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
   }
