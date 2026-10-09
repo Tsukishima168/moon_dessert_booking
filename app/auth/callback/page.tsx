@@ -44,15 +44,16 @@ export default function AuthCallbackPage() {
 
             if (providerError) {
                 await clearServerSession();
-                router.replace(`/auth/login?redirect=${encodeURIComponent(redirect)}&error=${encodeURIComponent(providerError)}`);
+                router.replace(`/auth/login?redirect=${encodeURIComponent(redirect)}&error=provider_error`);
                 return;
             }
 
-            // 嘗試手動 exchange（若 detectSessionInUrl 已自動消耗則會失敗，屬正常）
+            // Only locally initiated PKCE codes can establish a session.
             if (code) {
                 const { error } = await supabase.auth.exchangeCodeForSession(code);
                 if (error) {
-                    console.warn('[callback] exchangeCodeForSession:', error.message);
+                    router.replace(`/auth/login?redirect=${encodeURIComponent(redirect)}&error=provider_error`);
+                    return;
                 }
             }
 

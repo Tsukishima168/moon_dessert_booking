@@ -26,7 +26,9 @@ function getSupabaseClient(): SupabaseClient {
   _supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: isBrowser,
-      detectSessionInUrl: isBrowser,
+      // Passport supplies a verified session; direct OAuth callbacks explicitly exchange PKCE codes.
+      detectSessionInUrl: false,
+      flowType: 'pkce',
       autoRefreshToken: isBrowser,
       storage: isBrowser ? createSharedAuthStorage() : undefined,
     },

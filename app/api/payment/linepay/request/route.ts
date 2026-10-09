@@ -15,6 +15,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase-server';
+import { isSameOriginMutation } from '@/src/lib/request-origin';
+import { orderPaymentCookieName, verifyOrderPaymentToken } from '@/src/lib/order-payment-token';
 import { getLinePayClient, type LinePayRequestBody } from '@/lib/linepay';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope';
@@ -50,6 +53,9 @@ function isValidRequestItem(item: unknown): item is RequestItem {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginMutation(request)) {
+    return NextResponse.json({ success: false, message: '請從本站重新操作。' }, { status: 403 });
+  }
   if (!process.env.LINEPAY_CHANNEL_ID || !process.env.LINEPAY_CHANNEL_SECRET) {
     return NextResponse.json(
       { success: false, message: '目前未開放線上 LINE Pay，請使用結帳頁提供的銀行轉帳付款。' },
@@ -60,7 +66,7 @@ export async function POST(request: NextRequest) {
   try {
     const [paymentSettings, isAdmin] = await Promise.all([
       getPaymentSettings(),
-      ensureAdmin(),
+      ensureAdmin(request),
     ]);
 
     if (!canUseLinePay(paymentSettings, isAdmin)) {
@@ -76,7 +82,7 @@ export async function POST(request: NextRequest) {
       amount?: number;
     };
 
-    if (!orderId) {
+    if (typeof orderId !== 'string' || !/^ORD[A-Za-z0-9-]{1,64}$/.test(orderId)) {
       return NextResponse.json(
         { success: false, message: '缺少必要欄位：orderId' },
         { status: 400 }
@@ -94,7 +100,7 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, order_id, final_price, total_price, payment_method, status, items, linepay_transaction_id')
+      .select('id, order_id, user_id, final_price, total_price, payment_method, status, items, linepay_transaction_id')
       .eq('order_id', orderId)
       .eq('checkout_site', SHOP_CHECKOUT_SITE)
       .single();
@@ -104,6 +110,17 @@ export async function POST(request: NextRequest) {
         { success: false, message: '找不到訂單' },
         { status: 404 }
       );
+    }
+
+    const guestAuthorized = verifyOrderPaymentToken(orderId, request.cookies.get(orderPaymentCookieName(orderId))?.value);
+    let ownerAuthorized = false;
+    if (!guestAuthorized && order.user_id) {
+      const auth = await createClient();
+      const { data: { user }, error } = await auth.auth.getUser();
+      ownerAuthorized = !error && !!user && user.id === order.user_id;
+    }
+    if (!guestAuthorized && !ownerAuthorized) {
+      return NextResponse.json({ success: false, message: '請從原下單瀏覽器或訂單所屬會員帳號開啟；若連結已過期，請聯繫我們確認。' }, { status: 403 });
     }
 
     if (['paid', 'ready', 'completed'].includes(order.status)) {
@@ -117,6 +134,10 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    if (order.status !== 'pending') {
+      return NextResponse.json({ success: false, message: '此訂單目前無法付款，請聯繫我們確認狀態。' }, { status: 422 });
     }
 
     const expectedAmount = Math.round(

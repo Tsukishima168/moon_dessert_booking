@@ -10,7 +10,7 @@ interface ReorderItem {
 // PATCH /api/admin/menu/reorder
 // body: { items: [{ id: string, sort_order: number }] }
 export async function PATCH(req: NextRequest) {
-  if (!(await ensureAdmin())) {
+  if (!(await ensureAdmin(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -9,7 +9,7 @@ const VALID_RANGES = new Set(['7d', '28d', '90d']);
 
 export async function GET(req: NextRequest) {
   try {
-    if (!(await ensureAdmin())) {
+    if (!(await ensureAdmin(req))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

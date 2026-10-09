@@ -6,9 +6,13 @@ import {
   OrderValidationError,
 } from '@/src/services/order.service'
 import { setConsent } from '@/src/repositories/marketing.repository'
+import { generateOrderPaymentToken, orderPaymentCookieName, ORDER_PAYMENT_TOKEN_TTL_S } from '@/src/lib/order-payment-token'
+import { isSameOriginMutation } from '@/src/lib/request-origin'
 
 // POST /api/order - 建立新訂單
 export async function POST(request: NextRequest) {
+  if (!isSameOriginMutation(request)) return NextResponse.json({ success: false, message: '請從本站重新操作。' }, { status: 403 })
+  let orderCreated = false
   try {
     const body = await request.json()
 
@@ -61,6 +65,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const { orderId, finalPrice } = await createOrder(body, user?.id ?? null)
+    orderCreated = true
 
     // 行銷 opt-in：結帳勾選「接收優惠資訊」→ 寫入同意（綁真實訂單 email，非阻斷）
     if (body.marketing_consent === true && typeof body.email === 'string' && body.email) {
@@ -71,23 +76,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       order_id: orderId,
       final_price: finalPrice,
       finalPrice,
       message: '訂單建立成功！我們已收到您的預訂。',
     })
+    const paymentToken = generateOrderPaymentToken(orderId)
+    if (paymentToken) {
+      response.cookies.set(orderPaymentCookieName(orderId), paymentToken, {
+        httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict',
+        path: '/api/payment/linepay/request', maxAge: ORDER_PAYMENT_TOKEN_TTL_S,
+      })
+    }
+    return response
   } catch (error) {
     console.error('API 錯誤 - 建立訂單:', error)
 
     // 驗證類錯誤：訂單一定沒成立，回原始提示讓顧客修正
-    if (error instanceof OrderValidationError) {
+    if (!orderCreated && error instanceof OrderValidationError) {
       return NextResponse.json({ success: false, message: error.message }, { status: 400 })
     }
 
     // 寫入結果不明（insertOrder 已被呼叫）：訂單可能已成立，絕不能說「尚未成立」，避免顧客重複下單
-    if (error instanceof OrderPersistenceUncertainError) {
+    if (orderCreated || error instanceof OrderPersistenceUncertainError) {
       return NextResponse.json(
         {
           success: false,

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
+import { isSameOriginMutation } from '@/src/lib/request-origin';
 
 /**
  * POST /api/auth/set-session
@@ -11,10 +12,11 @@ import { NextRequest, NextResponse } from 'next/server';
  * 這個 API 純粹是為了讓 Server Components (admin layout 等) 也能看到 session。
  */
 export async function POST(request: NextRequest) {
+    if (!isSameOriginMutation(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     try {
         const { access_token, refresh_token } = await request.json();
 
-        if (!access_token || !refresh_token) {
+        if (typeof access_token !== 'string' || !access_token || typeof refresh_token !== 'string' || !refresh_token) {
             return NextResponse.json({ error: 'Missing tokens' }, { status: 400 });
         }
 
@@ -44,7 +46,11 @@ export async function POST(request: NextRequest) {
         );
 
         // 設定 session → supabase SSR 會自動將 token 寫入 response cookies
-        await supabase.auth.setSession({ access_token, refresh_token });
+        const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error || !data.user || !data.session) {
+            // Discard provisional cookies if verification failed.
+            return NextResponse.json({ error: 'Unable to verify session' }, { status: 401 });
+        }
 
         return response;
     } catch (error) {
@@ -54,6 +60,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+    if (!isSameOriginMutation(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const response = NextResponse.json({ success: true });
     const hostname = request.nextUrl.hostname;
     const shouldShareAcrossSubdomains =

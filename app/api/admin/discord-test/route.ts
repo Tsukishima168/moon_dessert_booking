@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase-admin';
 // POST - 發送測試通知到 Discord
 export async function POST(req: NextRequest) {
     try {
-        if (!(await ensureAdmin())) {
+        if (!(await ensureAdmin(req))) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

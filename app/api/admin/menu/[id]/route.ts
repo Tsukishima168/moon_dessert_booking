@@ -34,7 +34,7 @@ async function updateMenuItemFromRequest(
 ) {
     try {
         // 檢查認證
-        if (!(await ensureAdmin())) {
+        if (!(await ensureAdmin(req))) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -83,7 +83,7 @@ export async function DELETE(
 ) {
     try {
         // 檢查認證
-        if (!(await ensureAdmin())) {
+        if (!(await ensureAdmin(req))) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

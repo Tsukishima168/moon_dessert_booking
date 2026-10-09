@@ -48,7 +48,7 @@ export const EventBus = {
     }
 
     const results = await Promise.allSettled(
-      eventHandlers.map((h) => h(payload))
+      eventHandlers.map((h) => Promise.resolve().then(() => h(payload)))
     );
 
     // 記錄失敗的 handler，但不中斷流程

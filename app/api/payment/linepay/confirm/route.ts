@@ -79,6 +79,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${siteUrl}/order/error?reason=transaction_mismatch`);
     }
 
+    if (order.status !== 'pending') {
+      return NextResponse.redirect(`${siteUrl}/order/error?reason=payment_not_verified`);
+    }
+
     const amount = Math.round(
       parseFloat(String(order.final_price ?? order.total_price ?? 0))
     );

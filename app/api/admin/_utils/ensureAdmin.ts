@@ -1,12 +1,14 @@
 import { cookies } from 'next/headers';
 import { createHash } from 'crypto';
 import { createAdminClient } from '@/lib/supabase-admin';
+import { isSameOriginMutation } from '@/src/lib/request-origin';
 
 function hashSessionToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
 }
 
-export async function ensureAdmin(): Promise<boolean> {
+export async function ensureAdmin(request?: Request): Promise<boolean> {
+    if (request && !isSameOriginMutation(request)) return false;
     const cookieStore = await cookies();
     const token = cookieStore.get('admin_token')?.value;
     if (!token) return false;

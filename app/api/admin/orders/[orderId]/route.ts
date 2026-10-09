@@ -42,7 +42,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  if (!(await ensureAdmin())) {
+  if (!(await ensureAdmin(request))) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 

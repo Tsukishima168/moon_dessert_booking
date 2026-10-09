@@ -11,6 +11,7 @@ import {
   type Campaign,
 } from '@/src/repositories/marketing.repository'
 import { renderTemplate, sendViaChannel } from './dispatcher'
+import { isMarketingDispatchEnabled } from '@/src/lib/marketing-dispatch-policy'
 
 /**
  * 行銷活動引擎（Service 層）
@@ -45,6 +46,7 @@ export async function runCampaign(
   c: Campaign,
   opts?: { testEmail?: string }
 ): Promise<CampaignRunResult> {
+  if (!isMarketingDispatchEnabled()) throw new Error('行銷寄送暫停，請先完成安全設定與內容核對。')
   if (!opts?.testEmail && !isSupportedTargetAudience(c.target_audience)) {
     console.warn(
       `[marketing/campaign] Campaign ${c.id} has unsupported target_audience="${c.target_audience}". Skipping send.`
@@ -109,7 +111,8 @@ export async function runCampaign(
 }
 
 /** Cron 入口：跑所有到期的 email 活動 */
-export async function runDueCampaigns(): Promise<{ campaigns: number; sent: number }> {
+export async function runDueCampaigns(): Promise<{ campaigns: number; sent: number; disabled?: boolean }> {
+  if (!isMarketingDispatchEnabled()) return { campaigns: 0, sent: 0, disabled: true }
   const due = await fetchDueEmailCampaigns()
   let totalSent = 0
   for (const c of due) {

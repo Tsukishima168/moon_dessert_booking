@@ -21,7 +21,7 @@ export async function GET() {
 
 // POST - 驗證並儲存 Discord Webhook URL
 export async function POST(req: NextRequest) {
-  if (!(await ensureAdmin())) return unauthorized()
+  if (!(await ensureAdmin(req))) return unauthorized()
   try {
     const { webhookUrl } = await req.json()
     await saveDiscordWebhook(webhookUrl)
