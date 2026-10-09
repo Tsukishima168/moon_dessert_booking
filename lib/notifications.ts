@@ -5,6 +5,7 @@ import { escapeEmailText, renderEmailTextTemplate } from './email/html';
 import { orderReadyTemplate } from './email/templates/order-ready';
 import { orderCancelledTemplate } from './email/templates/order-cancelled';
 import { fetchBusinessSettings } from '@/src/repositories/settings.repository';
+import { MBTI_PATTERN } from '@/src/lib/attribution';
 import {
   getStoreInfo,
   getPaymentSettings,
@@ -75,6 +76,7 @@ export async function sendDiscordNotify(message: string, embed?: unknown): Promi
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
@@ -149,7 +151,7 @@ export async function notifyNewOrder(data: {
   pickupTime: string; items: OrderItem[]; promoCode?: string; discountAmount?: number;
   originalPrice?: number; paymentDate?: string; deliveryMethod?: 'pickup' | 'delivery';
   deliveryAddress?: string; deliveryFee?: number; deliveryNotes?: string;
-  orderSource?: string; utmSource?: string;
+  orderSource?: string; utmSource?: string; mbtiType?: string;
 }): Promise<boolean> {
   // 通知開關：店家可在後台關閉新訂單 Discord 通知（預設開，行為不變）
   const ns = await getNotificationSettings();
@@ -158,23 +160,27 @@ export async function notifyNewOrder(data: {
     return false;
   }
   const isDelivery = data.deliveryMethod === 'delivery';
-  const sourceMap: Record<string, string> = { map: '月島地圖 🗺️', passport: '甜點護照 🎫', gacha: '扭蛋 🎰', direct: '直接訪問' };
+  const sourceMap: Record<string, string> = { map: '月島地圖 🗺️', passport: '甜點護照 🎫', gacha: '扭蛋 🎰', mbti: '人格測驗 MBTI', direct: '直接訪問' };
   const sourceLabel = data.orderSource ? (sourceMap[data.orderSource] || data.orderSource) : '直接訪問';
+  const mbtiType = typeof data.mbtiType === 'string' && MBTI_PATTERN.test(data.mbtiType) ? data.mbtiType : null;
+  // Discord field 上限 1024 字；長備註或商品清單不能讓整則通知被拒絕。
+  const fieldText = (value: string, limit = 1024) => value.length > limit ? `${value.slice(0, limit - 1)}…` : value || '無';
   const embed = {
     title: '🔔 新訂單通知 (New Order)',
-    description: `訂單編號: **${data.orderId}**\n來源：${sourceLabel}`,
+    description: fieldText(`訂單編號: **${data.orderId}**\n來源：${sourceLabel}`, 256),
     color: 0xd4a574,
     fields: [
-      { name: '👤 客戶資訊', value: `${data.customerName}\n${data.phone}`, inline: true },
-      { name: '💰 訂單金額', value: `$${data.totalPrice} ${data.promoCode ? `(已折抵 $${data.discountAmount})` : ''}`, inline: true },
+      { name: '👤 客戶資訊', value: fieldText(`${data.customerName}\n${data.phone}`), inline: true },
+      { name: '💰 訂單金額', value: fieldText(`$${data.totalPrice} ${data.promoCode ? `(已折抵 $${data.discountAmount})` : ''}`), inline: true },
+      ...(mbtiType ? [{ name: '🧭 MBTI 型別', value: mbtiType, inline: true }] : []),
       { name: '\u200b', value: '\u200b', inline: false },
-      { name: isDelivery ? '🚚 配送資訊' : '🏪 自取資訊', value: isDelivery ? `地址: ${data.deliveryAddress}\n備註: ${data.deliveryNotes || '無'}` : '門市自取', inline: true },
-      { name: '📅 時間', value: data.pickupTime, inline: true },
+      { name: isDelivery ? '🚚 配送資訊' : '🏪 自取資訊', value: fieldText(isDelivery ? `地址: ${data.deliveryAddress}\n備註: ${data.deliveryNotes || '無'}` : '門市自取'), inline: true },
+      { name: '📅 時間', value: fieldText(data.pickupTime), inline: true },
       { name: '\u200b', value: '\u200b', inline: false },
-      { name: '訂購商品', value: data.items.map((i) => `• ${i.name} x${i.quantity}`).join('\n') },
+      { name: '訂購商品', value: fieldText(data.items.map((i) => `• ${i.name} x${i.quantity}`).join('\n')) },
     ],
     timestamp: new Date().toISOString(),
-    footer: { text: `Moon Moon Dessert | ${data.utmSource || 'shop.kiwimu.com'}` },
+    footer: { text: fieldText(`Moon Moon Dessert | ${data.utmSource || 'shop.kiwimu.com'}`, 128) },
   };
   return sendDiscordNotify('老闆，有新訂單來囉！🎉', embed);
 }

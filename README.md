@@ -278,6 +278,8 @@ MIT License
 - 訪客付款需要下單時簽發的 HttpOnly cookie，有效期 24 小時且只送到付款 request 路徑，沿用 `ORDER_SUCCESS_TOKEN_SECRET`。已登入會員可透過訂單 `user_id` 驗證本人。簽章設定缺漏、舊匿名訂單或過期憑證會拒絕付款入口；請聯繫店家確認原訂單，不能只憑訂單編號補發憑證或要求重新下單。
 - 所有後台寫入與登入同步必須帶精確同源的 Origin；本機與 preview 比對實際請求網址。後台 FormData 上傳仍可用。外部工具不能直接重放 cookie 請求。
 - Email 模板中的變數只可出現在一般文字節點，不能放入 HTML 標籤、屬性、URL、script、style 或其他原始文字區塊；不符合的自訂模板會拒絕寄送，需店家修正。靜態 HTML 排版保留。
+- 訂單事件透過 Next.js `after()` 延長回應後的工作生命週期；不支援該 context 的呼叫端等待派送完成。任一處理器同步拋錯或通知供應商拒絕，不會阻止其他處理器或讓已成立的訂單回報為未成立。Discord 使用既有 bot／webhook 設定，禁用提及、限制長文字並設 10 秒逾時；新訂單通知帶上驗證格式後的 MBTI 型別。MBTI 是來源歸因，不能作為身份或付款權限證明。
+- `test-shop-security.mjs` 也執行已安裝 Next.js 的 `after()`／`waitUntil` 機制，檢查共用 `kw_attr` → 結帳歸因 → 建單 payload → 會員事件／Discord 內容，以及 32 種 A／T 型別、重複初始化、bot／webhook／缺設定／關閉通知與供應商失敗。全部外部依賴與寫入使用記憶體模擬；這不是正式 Discord 寄送簽收，也不提供持久佇列重試保證。
 - 優惠碼只在 DB 明確拒絕建單時釋放一次。寫入或回滾回應不明時保留額度待核對，避免把可能成立的訂單視為失敗。付款日期改由伺服器付款確認設定，忽略客戶自行填入的時間。
 - 未簽收：iPhone Safari／LINE 內建瀏覽器、Passport／OAuth 真人登入、正式 DB 權限及 Email 模板、LINE Pay 並行確認／取消競態。既有 exposed credentials 輪替與 Next 升級也不包含在本 PR；不得宣稱全面安全通過。
 - 回滾：還原本 PR 的程式 commit，但保持行銷寄送停用。不要恢復 campaigns 的公開權限，不要合併既有 Shop #26 來替代本次修補。

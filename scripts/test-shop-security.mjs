@@ -8,8 +8,8 @@ import ts from 'typescript';
 // Run source with in-memory dependencies only: no database, provider, email or login.
 const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const nativeRequire = createRequire(import.meta.url);
-const quiet = { log() {}, warn() {}, error() {} };
-function load(file, stubs = {}, env = {}, cache = new Map()) {
+const quiet = { log() {}, info() {}, warn() {}, error() {} };
+function load(file, stubs = {}, env = {}, cache = new Map(), globals = {}) {
   const path = resolve(root, file);
   if (cache.has(path)) return cache.get(path);
   const module = { exports: {} };
@@ -20,7 +20,7 @@ function load(file, stubs = {}, env = {}, cache = new Map()) {
   } });
   vm.runInNewContext(outputText, {
     module, exports: module.exports, process: { env }, console: quiet,
-    Buffer, URL, URLSearchParams, Date, Object, Request, Response,
+    Buffer, URL, URLSearchParams, Date, Object, Request, Response, AbortSignal, ...globals,
     require: name => {
       if (Object.hasOwn(stubs, name)) return stubs[name];
       if (['crypto', 'node:crypto', 'parse5'].includes(name)) return nativeRequire(name);
@@ -28,7 +28,7 @@ function load(file, stubs = {}, env = {}, cache = new Map()) {
         const target = name.startsWith('@/') ? resolve(root, name.slice(2)) : resolve(dirname(path), name);
         const alias = `@/${target.slice(root.length + 1)}`;
         if (Object.hasOwn(stubs, alias)) return stubs[alias];
-        return load(`${target}.ts`, stubs, env, cache);
+        return load(`${target}.ts`, stubs, env, cache, globals);
       }
       throw new Error(`Unexpected external dependency: ${name}`);
     },
@@ -231,7 +231,8 @@ const serviceDb = {
   },
   rpc: async name => ({ data: [name === 'validate_reservation' ? { valid: true } : { available: true }], error: null }),
 };
-const service = load('src/services/order.service.ts', {
+const serviceStubs = {
+  'next/server': { after() { throw new Error('No request context in fixture'); } },
   '@/lib/supabase-admin': { createAdminClient: () => serviceDb },
   '@/src/repositories/order.repository': { insertOrder: async payload => {
     persisted = payload;
@@ -246,7 +247,8 @@ const service = load('src/services/order.service.ts', {
     getOrderRules: async () => ({ minimum_order_amount: 0 }),
     getBusinessHours: async () => ({ closed_days: [], special_closures: [] }),
   },
-});
+};
+const service = load('src/services/order.service.ts', serviceStubs);
 const orderInput = { customer_name: 'fixture customer', phone: '1234567890', pickup_time: '2099-01-02 12:00',
   items: [{ id: 'menu-variant', name: 'fixture-dessert', quantity: 1, price: 1 }],
   promo_code: 'FIXTURE', total_price: 1, payment_date: '2099-01-01' };
@@ -289,6 +291,126 @@ const postWriteErrorRoute = load('app/api/order/route.ts', {
 response = await postWriteErrorRoute.POST(request('/api/order', 'POST', orderInput));
 assert.equal(response.status, 500);
 assert.ok((await response.json()).message.includes('避免重複下單'));
+
+// MBTI cookie -> checkout attribution -> persisted order -> registered Discord handler.
+// Use the installed Next.js after()/AfterContext implementation, not a pretend timer.
+nativeRequire('next/dist/server/node-environment');
+const { after } = nativeRequire('next/server');
+const { AfterContext } = nativeRequire('next/dist/server/after/after-context');
+const { workAsyncStorage } = nativeRequire('next/dist/server/app-render/work-async-storage.external');
+const linkageCache = new Map(), sharedGlobals = {}, discordRequests = [], memberEvents = [];
+let emailEvents = 0, discordMode = 'ok';
+const linkageEnv = { ...env, DISCORD_TOKEN: 'offline-only-fixture-token', DISCORD_ORDER_CHANNEL_ID: 'fixture-channel' };
+const linkageStubs = {
+  ...serviceStubs,
+  'next/server': { ...next, after },
+  '@/lib/supabase-admin': { createAdminClient: () => ({ ...serviceDb, rpc: async (...args) => {
+    if (args[0] !== 'insert_user_event_for_user') return serviceDb.rpc(...args);
+    memberEvents.push(args); return { error: null };
+  } }) },
+  '@/lib/email/resend': { sendEmail: async () => { throw new Error('Unexpected direct email send'); } },
+  '@/src/repositories/settings.repository': { fetchBusinessSettings: async () => ({}) },
+  '@/src/services/settings.service': { ...serviceStubs['@/src/services/settings.service'],
+    getNotificationSettings: async () => ({ order_created: { discord: true } }),
+  },
+  '@/src/handlers/reward.handler': { handleOrderCreated: async () => {} },
+  '@/src/modules/notifications/n8n.handler': { handleOrderCreatedN8n() { throw new Error('Fixture synchronous handler failure'); } },
+  '@/src/modules/notifications/email.handler': { handleOrderCreatedEmail: async () => { emailEvents++; }, handleOrderStatusUpdatedEmail: async () => {} },
+  '@/src/modules/marketing/automation.handler': { handleOrderCreatedAutomation: async () => {} },
+};
+delete linkageStubs['@/src/lib/event-bus'];
+const globals = { globalThis: sharedGlobals, fetch: async (url, options) => {
+  assert.equal(url, 'https://discord.com/api/v10/channels/fixture-channel/messages');
+  assert.equal(options.method, 'POST');
+  assert.equal(options.headers.Authorization, 'Bot offline-only-fixture-token');
+  assert.ok(options.signal instanceof AbortSignal);
+  discordRequests.push(JSON.parse(options.body));
+  if (discordMode === 'network') throw new Error('Fixture provider network failure');
+  return new Response('', { status: discordMode === 'reject' ? 429 : 200 });
+} };
+const linkedService = load('src/services/order.service.ts', linkageStubs, linkageEnv, linkageCache, globals);
+const registry = load('src/lib/event-registry.ts', linkageStubs, linkageEnv, linkageCache, globals);
+registry.registerAllEventHandlers();
+registry.registerAllEventHandlers(); // must not duplicate merchant notifications
+const attr = load('src/lib/attribution.ts');
+const mbtiCookie = attr.serializeKwAttrCookie({ mbti: 'ESTJ-A', src: 'fixture-first-touch', cmp: 'fixture-campaign', from: 'mbti' });
+const analytics = load('lib/shop-analytics.ts', {}, {}, new Map(), {
+  window: { localStorage: { getItem: () => JSON.stringify({ mbti: 'INFP-T', utm_source: 'old', utm_medium: 'must-not-mix' }) } },
+  document: { cookie: `kw_attr=${mbtiCookie}` },
+});
+const attribution = analytics.readShopAttribution();
+assert.equal(attribution.mbti, 'ESTJ-A');
+assert.equal(attribution.utm_source, 'fixture-first-touch');
+assert.equal(attribution.utm_medium, null);
+const linkedRoute = load('app/api/order/route.ts', {
+  ...linkageStubs,
+  '@/src/services/order.service': linkedService,
+  '@/lib/supabase-server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'fixture-owner' } } }) } }) },
+  '@/src/repositories/marketing.repository': { setConsent: async () => {} },
+}, linkageEnv, new Map(), globals);
+let closeResponse;
+const pendingTasks = [], taskErrors = [];
+const afterContext = new AfterContext({ waitUntil: task => pendingTasks.push(task), onClose: fn => { closeResponse = fn; }, onTaskError: error => taskErrors.push(error) });
+response = await workAsyncStorage.run({ afterContext }, () => linkedRoute.POST(request('/api/order', 'POST', {
+  ...orderInput, mbti_type: attribution.mbti, source_from: attribution.from, utm_source: attribution.utm_source,
+})));
+assert.equal(response.status, 200);
+assert.equal(persisted.mbti_type, 'ESTJ-A');
+assert.equal(persisted.from_mbti_test, true);
+assert.equal(discordRequests.length, 0); // runs after the HTTP response closes
+assert.equal(pendingTasks.length, 1); // actual Next waitUntil promise is registered
+closeResponse();
+await Promise.all(pendingTasks);
+assert.equal(taskErrors.length, 0);
+assert.equal(discordRequests.length, 1);
+assert.equal(emailEvents, 1); // synchronous failure in another handler is isolated
+assert.equal(memberEvents[0][1].p_metadata.mbti_type, 'ESTJ-A');
+assert.deepEqual(discordRequests[0].allowed_mentions, { parse: [] });
+assert.equal(discordRequests[0].embeds[0].fields.find(field => field.name.includes('MBTI')).value, 'ESTJ-A');
+const notifications = load('lib/notifications.ts', linkageStubs, linkageEnv, linkageCache, globals);
+const baseNotice = { orderId: 'ORD-FIXTURE', customerName: '@everyone fixture', phone: 'fixture', totalPrice: 99,
+  pickupTime: '2099-01-02 12:00', items: [{ name: 'fixture', quantity: 1, price: 99 }], orderSource: 'mbti' };
+const types = ['I','E'].flatMap(a => ['N','S'].flatMap(b => ['T','F'].flatMap(c => ['J','P'].map(d => a+b+c+d))));
+for (const type of types) for (const variant of ['A','T']) {
+  const mbtiType = `${type}-${variant}`;
+  assert.equal(attr.sanitizeOrderAttribution({ mbti_type: mbtiType }).mbti_type, mbtiType);
+  assert.equal(await notifications.notifyNewOrder({ ...baseNotice, mbtiType }), true);
+  assert.equal(discordRequests.at(-1).embeds[0].fields.find(field => field.name.includes('MBTI')).value, mbtiType);
+}
+for (const mbtiType of ['UNKNOWN', '<img>', 'ESTJ-A@everyone', '', null]) {
+  assert.equal(await notifications.notifyNewOrder({ ...baseNotice, mbtiType }), true);
+  assert.equal(discordRequests.at(-1).embeds[0].fields.some(field => field.name.includes('MBTI')), false);
+}
+await notifications.notifyNewOrder({ ...baseNotice, customerName: 'x'.repeat(5000), deliveryMethod: 'delivery',
+  deliveryNotes: 'x'.repeat(5000), items: Array(200).fill({ name: 'x'.repeat(100), quantity: 1 }), mbtiType: 'ESTJ-A' });
+assert.ok(discordRequests.at(-1).embeds[0].fields.every(field => field.value.length <= 1024));
+for (const mode of ['reject', 'network']) {
+  discordMode = mode;
+  // Outside a Next request the fallback awaits notification work; failed delivery still leaves the order successful.
+  const beforeSend = discordRequests.length;
+  assert.equal((await linkedService.createOrder(orderInput, null)).finalPrice, 89);
+  assert.equal(discordRequests.length, beforeSend + 1);
+}
+const noDiscord = load('lib/notifications.ts', linkageStubs, {}, new Map(), { fetch() { throw new Error('Must not send without configuration'); } });
+assert.equal(noDiscord.isDiscordConfigured(), false);
+assert.equal(await noDiscord.sendDiscordNotify('fixture'), false);
+const disabledDiscord = load('lib/notifications.ts', {
+  ...linkageStubs,
+  '@/src/services/settings.service': { getNotificationSettings: async () => ({ order_created: { discord: false } }) },
+}, linkageEnv, new Map(), { fetch() { throw new Error('Disabled notification must not send'); } });
+assert.equal(await disabledDiscord.notifyNewOrder(baseNotice), false);
+let webhookSends = 0;
+const webhookDiscord = load('lib/notifications.ts', linkageStubs, { DISCORD_WEBHOOK_URL: 'https://discord.com/api/webhooks/fixture/token' }, new Map(), {
+  fetch: async (url, options) => {
+    assert.equal(url, 'https://discord.com/api/webhooks/fixture/token');
+    assert.equal(options.headers.Authorization, undefined);
+    assert.deepEqual(JSON.parse(options.body).allowed_mentions, { parse: [] });
+    webhookSends++; return new Response(null, { status: 204 });
+  },
+});
+assert.equal(await webhookDiscord.notifyNewOrder({ ...baseNotice, mbtiType: 'ESTJ-A' }), true);
+assert.equal(webhookSends, 1);
+console.log('PASS: real Next after()/waitUntil lifecycle; shared MBTI cookie -> order -> Discord/member event; 32 A/T types; no duplicate registry; handler isolation; provider rejection/network failure; all writes/provider calls are in-memory fixtures.');
 
 // Verify every local admin write entry has a Request-aware auth or delegates to one.
 function routes(dir) { return readdirSync(dir, { withFileTypes: true }).flatMap(x => x.isDirectory() ? routes(resolve(dir, x.name)) : x.name === 'route.ts' ? [resolve(dir, x.name)] : []); }

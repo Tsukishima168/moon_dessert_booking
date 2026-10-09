@@ -27,6 +27,7 @@ type OrderCreatedPayload = {
     delivery_notes?: string | null
     source_from?: string | null
     utm_source?: string | null
+    mbti_type?: string | null
   }
 }
 
@@ -66,6 +67,7 @@ export async function handleOrderCreatedNotifications(
       deliveryNotes: order.delivery_notes ?? undefined,
       orderSource: order.source_from ?? undefined,
       utmSource: order.utm_source ?? undefined,
+      mbtiType: order.mbti_type ?? undefined,
     }),
   ]
 

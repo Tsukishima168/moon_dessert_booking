@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import type { OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
 import { EventBus } from '@/src/lib/event-bus'
+import { after } from 'next/server'
 import { isSeasonallyDisabledMenuItemName } from '@/src/lib/seasonal-menu'
 import { SHOP_CHECKOUT_SITE } from '@/src/lib/order-scope'
 import {
@@ -657,16 +658,26 @@ export async function createOrder(
 
     // Phase 2: emit("order.created") event bus
     // 所有後續副作用（加點、通知、integration）都由 event handlers 處理
-    // 此處改為 fire-and-forget emit，不阻塞回應
-    EventBus.emit('order.created', {
-      order: createdOrder,
-      metadata: {
-        createdAt: new Date().toISOString(),
-        source: createdOrder.source_from ?? 'shop',
-      },
-    }).catch((error) => {
-      console.error('事件發送錯誤（不影響訂單）:', error)
-    })
+    // after 由 Next.js 延長請求生命週期，避免回應後 serverless 中止通知。
+    // 沒有 after context 的呼叫端改為等待；通知失敗不改變已成立的訂單。
+    const dispatch = async () => {
+      try {
+        await EventBus.emit('order.created', {
+          order: createdOrder,
+          metadata: {
+            createdAt: new Date().toISOString(),
+            source: createdOrder.source_from ?? 'shop',
+          },
+        })
+      } catch (error) {
+        console.error('事件發送錯誤（不影響訂單）:', error)
+      }
+    }
+    try {
+      after(dispatch)
+    } catch {
+      await dispatch()
+    }
 
     return { orderId: createdOrder.order_id, finalPrice }
   } catch (error) {
