@@ -128,7 +128,7 @@
 .ku-universe-rail__link:hover, .ku-universe-rail__more:hover { background: rgba(245,240,232,.05); color: var(--ku-nav-paper); }
 .ku-universe-rail__link.is-current, .ku-universe-rail__more.is-current { color: var(--ku-nav-gold); background: rgba(215,198,120,.06); }
 .ku-universe-rail__link.is-current::after, .ku-universe-rail__more.is-current::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 2px; background: var(--ku-nav-gold); }
-.ku-universe-rail__more { display: none; gap: 6px; }
+.ku-universe-rail__more { display: none; gap: 6px; flex-wrap: wrap; }
 .ku-universe-rail__showcase { gap: 6px; }
 .ku-universe-rail__more-panel {
   position: absolute; top: calc(100% + 8px); right: 12px;
