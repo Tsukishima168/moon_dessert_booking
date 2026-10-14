@@ -220,7 +220,7 @@ assert.equal(await releasePromoUsage(ambiguousDb, 'fixture'), false);
 assert.equal(uncertainUpdates, 1);
 
 let released = 0, insertMode = 'unknown', persisted;
-const fixturePromo = { id: 'fixture-promo', used_count: 1, max_uses: 20, is_active: true,
+const fixturePromo = { id: 'fixture-promo', code: 'FIXTURE', member_only: false, per_member_limit: null, description: null, used_count: 1, max_uses: 20, is_active: true,
   valid_from: null, valid_until: null, discount_type: 'fixed', discount_value: 10, min_order_amount: 0 };
 const serviceDb = {
   from: table => {
@@ -229,7 +229,11 @@ const serviceDb = {
     assert.equal(table, 'promo_codes');
     return { ...query({ data: fixturePromo, error: null }), update: () => query({ data: { id: fixturePromo.id }, error: null }) };
   },
-  rpc: async name => ({ data: [name === 'validate_reservation' ? { valid: true } : { available: true }], error: null }),
+  rpc: async (name, args) => {
+    if (name === 'reserve_shop_promo_usage') { assert.equal(args.p_expected_discount, 10); return { data: { ok: true, id: 'fixture-usage' }, error: null }; }
+    if (name === 'release_shop_promo_usage') { assert.equal(args.p_id, 'fixture-usage'); released++; return { data: true, error: null }; }
+    return { data: [name === 'validate_reservation' ? { valid: true } : { available: true }], error: null };
+  },
 };
 const serviceStubs = {
   'next/server': { after() { throw new Error('No request context in fixture'); } },
@@ -240,7 +244,6 @@ const serviceStubs = {
     if (insertMode === 'rejected') throw { code: 'P0001' };
     return payload;
   } },
-  '@/src/lib/promo-usage': { releasePromoUsage: async () => { released++; return true; } },
   '@/src/lib/event-bus': { EventBus: { emit: async () => {} } },
   '@/src/services/settings.service': {
     getDeliverySettings: async () => ({ pickup_available: true, delivery_available: true, delivery_fee: 150, free_delivery_threshold: 2000 }),

@@ -7,6 +7,8 @@ import {
   removeBanner,
 } from '@/src/services/banner.service'
 
+import { PromotionInputError } from '@/src/lib/promotion-config'
+
 export const dynamic = 'force-dynamic'
 
 const unauthorized = () =>
@@ -19,6 +21,7 @@ export async function GET() {
     const data = await listBanners()
     return NextResponse.json(data)
   } catch (error) {
+    if (error instanceof PromotionInputError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('API 錯誤 - 取得 Banner (admin):', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
@@ -32,6 +35,7 @@ export async function POST(request: NextRequest) {
     const data = await createBanner(body)
     return NextResponse.json(data)
   } catch (error) {
+    if (error instanceof PromotionInputError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('API 錯誤 - 新增 Banner:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
@@ -48,6 +52,7 @@ export async function PUT(request: NextRequest) {
     const data = await editBanner(id, updateData)
     return NextResponse.json(data)
   } catch (error) {
+    if (error instanceof PromotionInputError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('API 錯誤 - 更新 Banner:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
@@ -64,6 +69,7 @@ export async function DELETE(request: NextRequest) {
     await removeBanner(id)
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof PromotionInputError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('API 錯誤 - 刪除 Banner:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }

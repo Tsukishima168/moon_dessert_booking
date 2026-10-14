@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase-admin'
+import type { PromoConfig } from '@/src/lib/promotion-config'
 
 export interface PromoCodeRow {
   id: string
@@ -11,19 +12,28 @@ export interface PromoCodeRow {
   valid_from: string
   valid_until: string | null
   is_active: boolean
+  member_only: boolean
+  per_member_limit: number | null
+  used_count: number
   [key: string]: unknown
 }
 
-export interface InsertPromoCodePayload {
-  code: string
-  description: string | null
-  discount_type: 'percentage' | 'fixed'
-  discount_value: number
-  min_order_amount: number
-  max_uses: number | null
-  valid_from: string
-  valid_until: string | null
-  is_active: boolean
+export type InsertPromoCodePayload = PromoConfig
+
+export async function findPromoCodeById(id: string): Promise<PromoCodeRow | null> {
+  const { data, error } = await createAdminClient().from('promo_codes').select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  return data as PromoCodeRow | null
+}
+export async function hasPromoHistory(id: string, code: string): Promise<boolean> {
+  const db = createAdminClient()
+  const [usage, orders] = await Promise.all([
+    db.from('shop_promo_usages').select('id').eq('promo_code_id', id).limit(1),
+    db.from('orders').select('order_id').eq('promo_code', code).eq('checkout_site', 'shop').limit(1),
+  ])
+  if (usage.error) throw usage.error
+  if (orders.error) throw orders.error
+  return !!(usage.data?.length || orders.data?.length)
 }
 
 /**
@@ -68,7 +78,7 @@ export async function insertPromoCode(
  */
 export async function updatePromoCode(
   id: string,
-  updateData: Partial<PromoCodeRow>
+  updateData: Partial<PromoConfig>
 ): Promise<PromoCodeRow> {
   const adminClient = createAdminClient()
   const { data, error } = await adminClient

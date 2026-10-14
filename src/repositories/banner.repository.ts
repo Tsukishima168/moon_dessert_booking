@@ -6,6 +6,8 @@ export interface BannerRow {
   description: string | null
   image_url: string | null
   link_url: string | null
+  details?: string | null
+  promo_code?: string | null
   link_text?: string
   background_color: string
   text_color: string
@@ -22,6 +24,9 @@ export interface InsertBannerPayload {
   description: string | null
   image_url: string | null
   link_url: string | null
+  link_text: string
+  details: string | null
+  promo_code: string | null
   background_color: string
   text_color: string
   is_active: boolean
@@ -96,4 +101,10 @@ export async function deleteBanner(id: string): Promise<void> {
     .delete()
     .eq('id', id)
   if (error) throw error
+}
+
+export async function findBannerById(id: string): Promise<BannerRow | null> {
+  const { data, error } = await createAdminClient().from('banners').select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  return data as BannerRow | null
 }

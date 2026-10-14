@@ -1,323 +1,100 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Tag, Percent, DollarSign, AlertCircle } from 'lucide-react';
-import { EmptyState } from '@/components/shared/empty-state';
-import { LoadingState } from '@/components/shared/loading-state';
-import { PageHeader } from '@/components/shared/page-header';
-import { SearchFilterBar } from '@/components/shared/search-filter-bar';
-
-interface PromoCode {
-    id: string;
-    code: string;
-    description: string;
-    discount_type: 'percentage' | 'fixed';
-    discount_value: number;
-    min_order_amount: number;
-    max_uses: number | null;
-    used_count: number;
-    is_active: boolean;
-    valid_until: string | null;
-}
-
+'use client'
+import { useEffect, useState } from 'react'
+import { Plus, Edit2, Tag, Trash2 } from 'lucide-react'
+import { EmptyState } from '@/components/shared/empty-state'
+import { LoadingState } from '@/components/shared/loading-state'
+import { PageHeader } from '@/components/shared/page-header'
+import { SearchFilterBar } from '@/components/shared/search-filter-bar'
+import { PromotionDialog } from '@/components/shared/promotion-dialog'
+import { calculatePromoDiscount, formatPromoDiscount, fromTaipeiDateTimeLocal, toTaipeiDateTimeLocal } from '@/src/lib/promotion-config'
+import type { PromoConfig } from '@/src/lib/promotion-config'
+interface PromoCode extends PromoConfig { id: string; used_count: number }
+const empty = (): Partial<PromoCode> => ({ code: '', description: '', discount_type: 'fixed', discount_value: 0, min_order_amount: 0, max_uses: null, valid_from: '', valid_until: null, is_active: true, member_only: false, per_member_limit: null })
 export default function PromoCodesPage() {
-    const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState(false);
-    const [currentCode, setCurrentCode] = useState<Partial<PromoCode>>({});
-    const [error, setError] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-
-    // 載入優惠碼
-    const fetchCodes = async () => {
-        try {
-            const res = await fetch('/api/admin/promo-codes');
-            const data = await res.json();
-            if (Array.isArray(data)) {
-                setPromoCodes(data);
-            }
-        } catch (err) {
-            console.error('Failed to fetch promo codes', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchCodes();
-    }, []);
-
-    // 儲存優惠碼
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-
-        try {
-            const method = currentCode.id ? 'PUT' : 'POST';
-            const res = await fetch('/api/admin/promo-codes', {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(currentCode),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || '儲存失敗');
-            }
-
-            setIsEditing(false);
-            fetchCodes();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : '儲存失敗');
-        }
-    };
-
-    // 刪除優惠碼
-    const handleDelete = async (id: string) => {
-        if (!confirm('確定要刪除此優惠碼嗎？此動作無法復原。')) return;
-
-        try {
-            const res = await fetch(`/api/admin/promo-codes?id=${id}`, {
-                method: 'DELETE',
-            });
-
-            if (!res.ok) throw new Error('刪除失敗');
-
-            fetchCodes();
-        } catch (err) {
-            alert('刪除失敗');
-        }
-    };
-
-    // 開啟編輯
-    const openEdit = (code?: PromoCode) => {
-        if (code) {
-            setCurrentCode(code);
-        } else {
-            setCurrentCode({
-                code: '',
-                discount_type: 'fixed',
-                discount_value: 0,
-                min_order_amount: 0,
-                is_active: true,
-            });
-        }
-        setIsEditing(true);
-        setError('');
-    };
-
-    const filteredPromoCodes = promoCodes.filter((code) => {
-        const matchesSearch = !searchTerm || [
-            code.code,
-            code.description,
-        ].some((value) => value?.toLowerCase().includes(searchTerm.toLowerCase()));
-        const matchesStatus = statusFilter === 'all'
-            || (statusFilter === 'active' && code.is_active)
-            || (statusFilter === 'inactive' && !code.is_active);
-        return matchesSearch && matchesStatus;
-    });
-
-    if (loading) {
-        return <LoadingState fullScreen text="載入優惠碼中..." className="bg-moon-black" />;
-    }
-
-    return (
-        <div className="space-y-6">
-            <PageHeader
-                title="優惠碼管理"
-                description="管理折扣碼、啟用狀態與使用資訊。"
-                icon={<Tag className="w-5 h-5" />}
-                meta={`目前 ${filteredPromoCodes.length} 筆`}
-                action={(
-                    <button
-                        onClick={() => openEdit()}
-                        className="bg-moon-accent text-moon-black px-4 py-2 text-sm tracking-wider hover:bg-white transition-colors flex items-center gap-2"
-                    >
-                        <Plus size={16} />
-                        新增優惠碼
-                    </button>
-                )}
-            />
-
-            <SearchFilterBar
-                searchValue={searchTerm}
-                onSearchChange={setSearchTerm}
-                searchPlaceholder="搜尋優惠碼或描述"
-                filters={[
-                    { value: 'all', label: '全部' },
-                    { value: 'active', label: '啟用中' },
-                    { value: 'inactive', label: '已停用' },
-                ]}
-                activeFilter={statusFilter}
-                onFilterChange={setStatusFilter}
-            />
-
-            {/* 優惠碼列表 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredPromoCodes.map((code) => (
-                    <div
-                        key={code.id}
-                        className={`border ${code.is_active ? 'border-moon-border' : 'border-red-900/30'} bg-moon-dark/50 p-6 relative group transition-all hover:border-moon-border/80`}
-                    >
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="flex flex-col">
-                                <span className={`text-xl font-bold tracking-wider ${code.is_active ? 'text-white' : 'text-moon-muted line-through'}`}>
-                                    {code.code}
-                                </span>
-                                <span className="text-xs text-moon-muted mt-1">{code.description || '無描述'}</span>
-                            </div>
-                            <div className={`px-2 py-1 text-[10px] border ${code.is_active ? 'border-green-500/30 text-green-400' : 'border-red-500/30 text-red-400'}`}>
-                                {code.is_active ? '啟用中' : '已停用'}
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 mb-6">
-                            <div className="flex items-center gap-2 text-moon-accent">
-                                {code.discount_type === 'percentage' ? <Percent size={14} /> : <DollarSign size={14} />}
-                                <span className="text-lg font-light">
-                                    {code.discount_type === 'percentage' ? `${100 - code.discount_value}折` : `折抵 $${code.discount_value}`}
-                                </span>
-                            </div>
-                            <div className="text-xs text-moon-muted">
-                                低消門檻: ${code.min_order_amount}
-                            </div>
-                            <div className="text-xs text-moon-muted">
-                                已使用: {code.used_count} 次
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => openEdit(code)}
-                                className="flex-1 border border-moon-border text-moon-muted hover:text-white py-2 text-xs flex items-center justify-center gap-2"
-                            >
-                                <Edit2 size={12} /> 編輯
-                            </button>
-                            <button
-                                onClick={() => handleDelete(code.id)}
-                                className="w-10 border border-moon-border text-moon-muted hover:text-red-400 py-2 flex items-center justify-center"
-                            >
-                                <Trash2 size={12} />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-
-                {filteredPromoCodes.length === 0 && (
-                    <div className="col-span-full">
-                        <EmptyState
-                            title={promoCodes.length === 0 ? '尚未建立任何優惠碼' : '沒有符合條件的優惠碼'}
-                            description={promoCodes.length === 0 ? '可以先建立第一張折扣碼，之後再逐步擴充活動。' : '換個搜尋字或篩選條件，再試一次。'}
-                            className="border-dashed border-moon-border/30 bg-transparent"
-                        />
-                    </div>
-                )}
-            </div>
-
-            {/* 編輯 Modal */}
-            {isEditing && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-moon-dark border border-moon-border w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-                        <h2 className="text-xl text-moon-accent mb-6">
-                            {currentCode.id ? '編輯優惠碼' : '新增優惠碼'}
-                        </h2>
-
-                        {error && (
-                            <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 text-red-200 text-sm flex items-center gap-2">
-                                <AlertCircle size={14} /> {error}
-                            </div>
-                        )}
-
-                        <form onSubmit={handleSave} className="space-y-4">
-                            <div>
-                                <label className="block text-xs text-moon-muted mb-1">優惠代碼 (自動轉大寫)</label>
-                                <input
-                                    type="text"
-                                    value={currentCode.code}
-                                    onChange={e => setCurrentCode({ ...currentCode, code: e.target.value.toUpperCase() })}
-                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs text-moon-muted mb-1">描述</label>
-                                <input
-                                    type="text"
-                                    value={currentCode.description || ''}
-                                    onChange={e => setCurrentCode({ ...currentCode, description: e.target.value })}
-                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs text-moon-muted mb-1">折扣類型</label>
-                                    <select
-                                        value={currentCode.discount_type}
-                                        onChange={e => setCurrentCode({ ...currentCode, discount_type: e.target.value as any })}
-                                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                                    >
-                                        <option value="fixed">定額折抵 ($)</option>
-                                        <option value="percentage">百分比折扣 (%)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-moon-muted mb-1">
-                                        {currentCode.discount_type === 'fixed' ? '折抵金額' : '折扣數值 (例: 12=88折)'}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={currentCode.discount_value}
-                                        onChange={e => setCurrentCode({ ...currentCode, discount_value: Number(e.target.value) })}
-                                        className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs text-moon-muted mb-1">最低消費金額 (0 為不限)</label>
-                                <input
-                                    type="number"
-                                    value={currentCode.min_order_amount}
-                                    onChange={e => setCurrentCode({ ...currentCode, min_order_amount: Number(e.target.value) })}
-                                    className="w-full bg-moon-black border border-moon-border px-3 py-2 text-white focus:border-moon-accent outline-none"
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-2">
-                                <input
-                                    type="checkbox"
-                                    id="isActive"
-                                    checked={currentCode.is_active}
-                                    onChange={e => setCurrentCode({ ...currentCode, is_active: e.target.checked })}
-                                    className="w-4 h-4"
-                                />
-                                <label htmlFor="isActive" className="text-sm text-white">啟用此優惠碼</label>
-                            </div>
-
-                            <div className="flex gap-3 pt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEditing(false)}
-                                    className="flex-1 border border-moon-border text-moon-muted py-2 hover:bg-moon-border/20 transition-colors"
-                                >
-                                    取消
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 bg-moon-accent text-moon-black py-2 hover:bg-white transition-colors"
-                                >
-                                    儲存
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+  const [codes, setCodes] = useState<PromoCode[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<Partial<PromoCode>>(empty)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
+  const [sampleAmount, setSampleAmount] = useState(600)
+  async function load() {
+    try {
+      const response = await fetch('/api/admin/promo-codes', { cache: 'no-store' })
+      const data = await response.json()
+      if (!response.ok || !Array.isArray(data)) throw new Error('目前無法載入優惠碼，請重新整理或確認後台登入。')
+      setCodes(data)
+    } catch (e) { setError(e instanceof Error ? e.message : '載入失敗。') }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { void load() }, [])
+  function edit(code?: PromoCode) { setDraft(code ? { ...code } : empty()); setError(''); setEditing(true) }
+  async function save(event: React.FormEvent) {
+    event.preventDefault(); if (saving) return; setSaving(true); setError('')
+    try {
+      const response = await fetch('/api/admin/promo-codes', { method: draft.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || '儲存失敗，請稍後再試。')
+      setEditing(false); await load()
+    } catch (e) { setError(e instanceof Error ? e.message : '儲存失敗。') }
+    finally { setSaving(false) }
+  }
+  async function remove(code: PromoCode) {
+    if (!confirm(`刪除未使用的優惠碼「${code.code}」？此動作無法復原。`)) return
+    try {
+      const response = await fetch(`/api/admin/promo-codes?id=${encodeURIComponent(code.id)}`, { method: 'DELETE' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || '刪除失敗。')
+      await load()
+    } catch (e) { setError((e as Error).message) }
+  }
+  const filtered = codes.filter(c => (!search || `${c.code} ${c.description ?? ''}`.toLowerCase().includes(search.toLowerCase())) && (filter === 'all' || (filter === 'active' ? c.is_active : !c.is_active)))
+  let preview = '先填寫折扣，這裡會顯示試算。'
+  try {
+    const discount = calculatePromoDiscount(draft.discount_type ?? 'fixed', Number(draft.discount_value), sampleAmount)
+    preview = sampleAmount < Number(draft.min_order_amount ?? 0) ? '這個金額尚未達到最低消費。' : `商品 NT$ ${sampleAmount.toLocaleString()}，折抵 NT$ ${discount.toLocaleString()}，折後 NT$ ${(sampleAmount - discount).toLocaleString()}。`
+  } catch {}
+  if (loading) return <LoadingState fullScreen text="載入優惠碼中…" className="bg-moon-black" />
+  return <div className="space-y-6 p-4 sm:p-6">
+    <PageHeader title="優惠碼管理" description="設定折扣、活動時間與使用限制。" icon={<Tag className="size-5" />} meta={`${filtered.length} 筆`} action={<button type="button" onClick={() => edit()} className="shop-primary min-h-11 gap-2 rounded-xl"><Plus size={18} />新增優惠碼</button>} />
+    {!editing && error && <p role="alert" className="rounded-xl border border-red-300 p-4 text-sm">{error}</p>}
+    <SearchFilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="找優惠碼或活動說明" filters={[{ value: 'all', label: '全部' }, { value: 'active', label: '啟用中' }, { value: 'inactive', label: '已停用' }]} activeFilter={filter} onFilterChange={setFilter} />
+    <p className="text-sm leading-relaxed text-moon-muted">使用量在訂單成立時占用，包含待付款訂單。它不是付款筆數；取消訂單不會自動恢復名額，需先核對。</p>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filtered.map(code => <article key={code.id} className="rounded-xl border border-moon-border bg-moon-dark p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="break-all text-xl font-semibold">{code.code}</h2><span className="text-sm text-moon-muted">{code.is_active ? '啟用中' : '已停用'}</span></div>
+      <p className="mt-2 text-sm text-moon-muted">{code.description || '未填活動說明'}</p>
+      <p className="mt-4 text-lg text-moon-accent">{formatPromoDiscount(code.discount_type, code.discount_value)}</p>
+      <div className="mt-3 space-y-2 text-sm leading-relaxed text-moon-muted">
+        <p>商品最低消費 NT$ {code.min_order_amount.toLocaleString()}</p>
+        <p>已占用 {code.used_count ?? 0} 次 ／ {code.max_uses == null ? '總量不限' : `總上限 ${code.max_uses} 次`}</p>
+        <p>{code.member_only ? `會員限定${code.per_member_limit ? `，每人 ${code.per_member_limit} 次` : ''}` : '一般活動碼，不限會員'}</p>
+        <p>{code.valid_until ? `截止：${toTaipeiDateTimeLocal(code.valid_until).replace('T', ' ')}（台灣時間）` : '沒有設定結束時間'}</p>
+      </div>
+      <button type="button" onClick={() => edit(code)} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-moon-border px-4 text-sm"><Edit2 size={16} />編輯活動</button>
+      {!Number(code.used_count) && <button type="button" onClick={() => remove(code)} aria-label={`刪除未使用優惠碼 ${code.code}`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm text-moon-muted"><Trash2 size={16} />刪除未使用活動</button>}
+    </article>)}</div>
+    {!filtered.length && <EmptyState title="目前沒有符合的優惠碼" description="建立一個活動碼，設定折扣與期限，再確認前台顯示。" />}
+    {editing && <PromotionDialog title={draft.id ? '編輯優惠碼' : '新增優惠碼'} description="時間以台灣時間設定；優惠只折抵商品金額，運費另計。" onClose={() => setEditing(false)} busy={saving}>
+      <form onSubmit={save} className="promotion-form space-y-5">
+        {error && <p role="alert" className="promotion-error">{error}</p>}
+        <label>優惠代碼<input readOnly={!!draft.id} value={draft.code ?? ''} onChange={e => setDraft({ ...draft, code: e.target.value.toUpperCase() })} required minLength={3} maxLength={32} pattern="[A-Z0-9_-]+" autoComplete="off" /><small>{draft.id ? '已建立的代碼保留原名；新活動請另建優惠碼。' : '3–32 個英文字母、數字、底線或連字號。'}</small></label>
+        <label>活動說明<input value={draft.description ?? ''} onChange={e => setDraft({ ...draft, description: e.target.value })} maxLength={500} /></label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label>折扣方式<select value={draft.discount_type} onChange={e => setDraft({ ...draft, discount_type: e.target.value as 'fixed' | 'percentage', discount_value: 0 })}><option value="fixed">定額折抵</option><option value="percentage">減少商品金額的百分比</option></select></label>
+          <label>{draft.discount_type === 'percentage' ? '減少百分比（例如 12＝8.8 折）' : '折抵金額（元）'}<input type="number" required min={draft.discount_type === 'percentage' ? 0.01 : 1} max={draft.discount_type === 'percentage' ? 100 : 100000000} step={draft.discount_type === 'percentage' ? 0.01 : 1} value={draft.discount_value ?? ''} onChange={e => setDraft({ ...draft, discount_value: Number(e.target.value) })} /></label>
+          <label>商品最低消費（元）<input type="number" min={0} step={1} max={100000000} value={draft.min_order_amount ?? 0} onChange={e => setDraft({ ...draft, min_order_amount: Number(e.target.value) })} /></label>
+          <label>總使用上限<input type="number" min={Math.max(1, Number(draft.used_count ?? 0))} step={1} max={1000000} value={draft.max_uses ?? ''} onChange={e => setDraft({ ...draft, max_uses: e.target.value === '' ? null : Number(e.target.value) })} /><small>留空表示不限總次數。</small></label>
+          <label>開始時間<input type="datetime-local" value={toTaipeiDateTimeLocal(draft.valid_from)} onChange={e => { try { setDraft({ ...draft, valid_from: fromTaipeiDateTimeLocal(e.target.value) ?? '' }) } catch (error) { setError((error as Error).message) } }} /><small>留空表示儲存後立即開始。</small></label>
+          <label>結束時間<input type="datetime-local" value={toTaipeiDateTimeLocal(draft.valid_until)} onChange={e => { try { setDraft({ ...draft, valid_until: fromTaipeiDateTimeLocal(e.target.value) }) } catch (error) { setError((error as Error).message) } }} /><small>留空表示沒有期限。</small></label>
         </div>
-    );
+        <label className="promotion-check"><input type="checkbox" checked={draft.member_only ?? false} onChange={e => setDraft({ ...draft, member_only: e.target.checked, per_member_limit: e.target.checked ? 1 : null })} />會員限定，使用時必須登入</label>
+        {draft.member_only && <label>每位會員可用幾次<input type="number" min={1} step={1} max={1000000} value={draft.per_member_limit ?? ''} onChange={e => setDraft({ ...draft, per_member_limit: e.target.value === '' ? null : Number(e.target.value) })} /><small>預設一次；留空表示不限每人次數。</small></label>}
+        <label className="promotion-check"><input type="checkbox" checked={draft.is_active ?? false} onChange={e => setDraft({ ...draft, is_active: e.target.checked })} />啟用此活動</label>
+        <aside className="promotion-preview"><label>試算商品小計<input type="number" min={1} step={1} max={100000000} value={sampleAmount} onChange={e => setSampleAmount(Number(e.target.value))} /></label><p className="mt-3 text-sm" aria-live="polite">{preview}</p></aside>
+        <div className="flex flex-wrap gap-3"><button type="button" className="promotion-secondary flex-1" onClick={() => setEditing(false)} disabled={saving}>取消</button><button type="submit" className="promotion-primary flex-1" disabled={saving}>{saving ? '儲存中…' : '儲存活動'}</button></div>
+      </form>
+    </PromotionDialog>}
+  </div>
 }

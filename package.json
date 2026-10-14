@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "test:security": "node scripts/test-shop-security.mjs",
+    "test:promotions": "node scripts/test-shop-promotions.mjs",
+    "test:promotions:db": "python3 scripts/test-shop-promotions-db.py",
     "setup:discord": "bash scripts/setup-discord-env.sh",
     "export:menu": "node scripts/export-menu-to-csv.mjs",
     "verify:analytics-seo": "node scripts/verify-analytics-seo.mjs"

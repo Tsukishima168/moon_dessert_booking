@@ -7,6 +7,8 @@ import {
   removePromoCode,
 } from '@/src/services/promo-code.service'
 
+import { PromotionInputError } from '@/src/lib/promotion-config'
+
 export const dynamic = 'force-dynamic'
 
 const unauthorized = () =>
@@ -19,6 +21,7 @@ export async function GET() {
     const data = await listPromoCodes()
     return NextResponse.json(data)
   } catch (error) {
+    if (error instanceof PromotionInputError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('API 錯誤 - 取得優惠碼 (admin):', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
@@ -35,9 +38,10 @@ export async function POST(request: NextRequest) {
     const data = await createPromoCode(body)
     return NextResponse.json(data)
   } catch (error) {
-    if (error instanceof Error && error.message === '優惠碼已存在') {
-      return NextResponse.json({ error: '優惠碼已存在' }, { status: 409 })
+    if (error instanceof PromotionInputError && error.message === '優惠碼已存在。') {
+      return NextResponse.json({ error: error.message }, { status: 409 })
     }
+    if (error instanceof PromotionInputError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('API 錯誤 - 新增優惠碼:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
@@ -54,9 +58,10 @@ export async function PUT(request: NextRequest) {
     const data = await editPromoCode(body)
     return NextResponse.json(data)
   } catch (error) {
-    if (error instanceof Error && error.message === '優惠碼已存在') {
-      return NextResponse.json({ error: '優惠碼已存在' }, { status: 409 })
+    if (error instanceof PromotionInputError && error.message === '優惠碼已存在。') {
+      return NextResponse.json({ error: error.message }, { status: 409 })
     }
+    if (error instanceof PromotionInputError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('API 錯誤 - 更新優惠碼:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
@@ -73,6 +78,7 @@ export async function DELETE(request: NextRequest) {
     await removePromoCode(id)
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof PromotionInputError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('API 錯誤 - 刪除優惠碼:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
