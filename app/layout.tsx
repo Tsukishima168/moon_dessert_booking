@@ -12,7 +12,8 @@ import FacebookPixel from '@/components/FacebookPixel';
 import AttributionSync from '@/components/AttributionSync';
 import { serializeJsonLd } from '@/lib/json-ld';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+// Inter 只當西文與數字後備；主字體堆疊（Noto Sans TC 優先）定義在 app/globals.css 的 --font-sans。
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter-latin', display: 'swap' });
 
 // 網站基本資訊（計畫1：安南區・果菜市場・本原街在地）
 const siteConfig = {
@@ -191,11 +192,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-TW" className="font-sans" suppressHydrationWarning>
+    <html lang="zh-TW" className={`${inter.variable} font-sans`} suppressHydrationWarning>
       <head>
         {/* Viewport and theme */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#1F2F1F" />
+
+        {/* Noto Sans TC：shop 自己載入一次（400／500／700）；rail CSS 內的 @import 於 Phase B 移除。 */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* App Router 的 root layout <head> 就是這條規則（本來針對 pages/_document）想要的位置，字體會套用到全站，不是單頁。 */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap"
+        />
 
         {/*
           gtag stub — 定義 window.dataLayer / window.gtag，跟正式網域判斷完全脫鉤。
@@ -284,7 +295,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.variable}>
+      <body>
         {/* Google Analytics */}
         <GoogleAnalytics />
         {/* Facebook Pixel */}

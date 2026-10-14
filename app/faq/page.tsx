@@ -202,7 +202,7 @@ export default function FaqPage() {
           </p>
           <Link
             href="/"
-            className="inline-block bg-moon-accent text-moon-black px-8 py-4 text-xs sm:text-sm tracking-[0.3em] hover:bg-moon-text transition-colors"
+            className="inline-block shop-cta px-8 py-4 text-xs sm:text-sm tracking-[0.3em] transition-colors"
           >
             直接預訂本季甜點
           </Link>

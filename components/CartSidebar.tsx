@@ -343,7 +343,7 @@ export default function CartSidebar() {
                     });
                     closeCart();
                   }}
-                  className="block w-full bg-moon-accent text-moon-black py-3 sm:py-4 text-xs sm:text-sm tracking-widest hover:bg-moon-text transition-colors text-center"
+                  className="block w-full shop-cta py-3 sm:py-4 text-xs sm:text-sm tracking-widest transition-colors text-center"
                 >
                   前往結帳
                 </Link>

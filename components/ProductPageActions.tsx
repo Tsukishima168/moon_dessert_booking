@@ -114,7 +114,7 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
           onClick={handleAddToCart}
           className={`flex-1 flex items-center justify-center gap-2 text-xs sm:text-sm tracking-widest px-4 py-3 transition-all ${added
               ? 'bg-green-500/20 text-green-400 border border-green-500/40'
-              : 'bg-moon-accent text-moon-black hover:bg-moon-text'
+              : 'shop-cta'
             }`}
         >
           <ShoppingCart size={14} />

@@ -85,7 +85,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
     return (
         <div className="shop-product-row group flex items-center gap-5 lg:gap-8 py-4 lg:py-5 px-4 border-b border-moon-border/20 hover:bg-moon-dark/40 transition-all duration-300">
             {/* 序號 */}
-            <span className="text-[10px] text-moon-muted/40 font-mono w-5 shrink-0 group-hover:text-moon-accent/50 transition-colors">
+            <span className="text-xs text-moon-muted/40 font-mono w-5 shrink-0 group-hover:text-moon-accent/50 transition-colors">
                 {serialNo}
             </span>
 
@@ -106,7 +106,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                     </div>
                 )}
                 {item.recommended && (
-                    <div className="absolute top-1 left-1 bg-moon-accent text-moon-black text-[8px] px-1 py-0.5 tracking-wider">
+                    <div className="absolute top-1 left-1 bg-moon-accent text-moon-black text-xs px-1 py-0.5 tracking-wider">
                         薦
                     </div>
                 )}
@@ -125,7 +125,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                     )}
                     {deliveryLabel && (
                         <span
-                            className={`text-[9px] tracking-widest px-1.5 py-0.5 border shrink-0 hidden lg:inline ${isPickupOnly
+                            className={`text-xs tracking-widest px-1.5 py-0.5 border shrink-0 hidden lg:inline ${isPickupOnly
                                     ? 'border-moon-gold text-moon-gold'
                                     : 'border-moon-border/60 text-moon-muted'
                                 }`}
@@ -141,7 +141,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                 )}
                 <Link
                     href={productHref}
-                    className="text-[10px] text-moon-muted/60 hover:text-moon-accent tracking-wider mt-1 inline-block transition-colors"
+                    className="text-xs text-moon-muted/60 hover:text-moon-accent tracking-wider mt-1 inline-block transition-colors"
                 >
                     查看詳情 →
                 </Link>
@@ -157,7 +157,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                                 key={variant.id}
                                 aria-pressed={selectedVariant?.id === variant.id}
                                 onClick={() => setSelectedVariant(variant)}
-                                className={`text-[10px] tracking-wider px-2.5 py-1 border transition-all whitespace-nowrap ${selectedVariant.id === variant.id
+                                className={`text-xs tracking-wider px-2.5 py-1 border transition-all whitespace-nowrap ${selectedVariant.id === variant.id
                                         ? 'border-moon-accent bg-moon-accent text-moon-black'
                                         : 'border-moon-border/60 text-moon-muted hover:border-moon-muted/60'
                                     }`}
@@ -183,7 +183,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
 
                 {/* 操作區 */}
                 {displayOnly ? (
-                    <span className="text-[10px] text-moon-muted/60 tracking-widest hidden lg:inline whitespace-nowrap">
+                    <span className="text-xs text-moon-muted/60 tracking-widest hidden lg:inline whitespace-nowrap">
                         門市供應
                     </span>
                 ) : (
@@ -209,9 +209,9 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                         {/* 加入購物車 */}
                         <button
                             onClick={handleAddToCart}
-                            className={`flex items-center gap-1.5 text-[11px] tracking-widest px-3 py-2 transition-all whitespace-nowrap ${added
+                            className={`flex items-center gap-1.5 text-xs tracking-widest px-3 py-2 transition-all whitespace-nowrap ${added
                                     ? 'bg-green-500/20 text-green-400 border border-green-500/40 animate-added-pop'
-                                    : 'bg-moon-accent text-moon-black hover:bg-moon-text'
+                                    : 'shop-cta'
                                 }`}
                         >
                             <ShoppingCart size={11} />

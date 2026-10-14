@@ -95,7 +95,7 @@ export default function RefundPage() {
         <section className="brand-section border-t border-moon-border/40 text-center">
           <Link
             href="/faq"
-            className="inline-block bg-moon-accent text-moon-black px-8 py-4 text-xs sm:text-sm tracking-[0.3em] hover:bg-moon-text transition-colors"
+            className="inline-block shop-cta px-8 py-4 text-xs sm:text-sm tracking-[0.3em] transition-colors"
           >
             查看常見問題
           </Link>

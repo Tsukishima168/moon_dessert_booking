@@ -76,7 +76,7 @@ export default function MobileCartBar() {
               })),
             });
           }}
-          className="flex-1 flex items-center justify-center bg-moon-accent text-moon-black text-sm tracking-widest font-medium hover:bg-moon-text transition-colors"
+          className="flex-1 flex items-center justify-center shop-cta text-sm tracking-widest font-medium transition-colors"
         >
           前往結帳
         </Link>
