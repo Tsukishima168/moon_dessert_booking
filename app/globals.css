@@ -3,6 +3,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Promotion forms and activity details share one readable surface. */
+.promotion-dialog { background: #f5f0e8; color: #1f2f1f; border: 1px solid #d8d7c4; max-height: 88dvh; box-shadow: 0 18px 64px #0c1a1240; }
+.promotion-form label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 500; }
+.promotion-form input:not([type=checkbox]), .promotion-form select, .promotion-form textarea { width: 100%; min-height: 44px; border: 1px solid #adb6a4; border-radius: 8px; background: #fffdf8; color: #1f2f1f; padding: 10px 12px; font-size: 16px; font-weight: 400; }
+.promotion-form small { color: #5f6856; font-size: 13px; font-weight: 400; line-height: 1.6; }
+.promotion-form .promotion-check { flex-direction: row; align-items: center; min-height: 44px; gap: 12px; }
+.promotion-check input { width: 20px; height: 20px; accent-color: #304f2f; }
+.promotion-primary, .promotion-secondary, .promotion-close { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 12px; padding: 10px 18px; font-size: 14px; line-height: 1.5; }
+.promotion-primary { background: #304f2f; color: #fffdf8; border: 1px solid #304f2f; }
+.promotion-secondary, .promotion-close { border: 1px solid #adb6a4; color: #1f2f1f; background: transparent; }
+.promotion-close { width: 44px; padding: 0; }
+.promotion-dialog :focus-visible { outline: 2px solid #304f2f; outline-offset: 3px; }
+.promotion-dialog button:disabled { opacity: .55; cursor: wait; }
+.promotion-preview { background: #e6e8d9; border-radius: 12px; padding: 16px; }
+.promotion-error { padding: 12px 16px; border: 1px solid #ba775b; border-radius: 8px; color: #763823; font-size: 14px; }
+
 :root {
   --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
   --radius: 0.75rem;

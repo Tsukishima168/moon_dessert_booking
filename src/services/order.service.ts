@@ -14,7 +14,7 @@ import {
 } from '@/src/lib/menu-availability'
 import { getDeliverySettings, getOrderRules, getBusinessHours } from '@/src/services/settings.service'
 import { sanitizeOrderAttribution, clampAttributionField } from '@/src/lib/attribution'
-import { releasePromoUsage } from '@/src/lib/promo-usage'
+import { validateCheckoutPromo, reserveCheckoutPromo, releaseCheckoutPromo, PromotionUnavailableError } from '@/src/services/promo-checkout.service'
 
 export interface CreateOrderInput {
   customer_name: string
@@ -88,18 +88,6 @@ interface CanonicalOrderItem extends OrderItem {
 
 interface PromoCodeUsageReservation {
   id: string
-}
-
-interface PromoCodeUsageRow {
-  id: string
-  used_count: number | null
-  max_uses: number | null
-  is_active: boolean | null
-  valid_from: string | null
-  valid_until: string | null
-  discount_type: 'percentage' | 'fixed' | null
-  discount_value: number | null
-  min_order_amount: number | null
 }
 
 interface ReservationValidationRow {
@@ -385,127 +373,18 @@ async function checkMenuItemAvailabilityForOrder(
 /**
  * Server-side 優惠碼驗證（使用 admin client，不依賴瀏覽器 session）
  */
-async function validatePromoCodeServer(
-  code: string,
-  orderAmount: number
-): Promise<PromoCodeValidation> {
-  const adminClient = createAdminClient()
-  const normalizedCode = code.toUpperCase().trim()
-
-  const { data: promoCode, error } = await adminClient
-    .from('promo_codes')
-    .select('id, discount_type, discount_value, min_order_amount, used_count, max_uses, valid_from, valid_until, is_active')
-    .eq('code', normalizedCode)
-    .eq('is_active', true)
-    .single()
-
-  if (error || !promoCode) {
-    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '找不到此優惠碼' }
-  }
-
-  const row = promoCode as PromoCodeUsageRow
-  const now = new Date()
-  if (row.valid_from && now < new Date(row.valid_from)) {
-    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼尚未生效' }
-  }
-  if (row.valid_until && now > new Date(row.valid_until)) {
-    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼已過期' }
-  }
-  const maxUses = row.max_uses === null ? null : Number(row.max_uses)
-  const usedCount = Number(row.used_count ?? 0)
-  if (maxUses !== null && usedCount >= maxUses) {
-    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: '此優惠碼已達使用上限' }
-  }
-  if (row.min_order_amount && orderAmount < row.min_order_amount) {
-    return { valid: false, discount_amount: 0, final_amount: orderAmount, message: `訂單未達最低消費 $${row.min_order_amount}` }
-  }
-
-  let discountAmount = 0
-  if (row.discount_type === 'percentage') {
-    discountAmount = Math.round((orderAmount * (row.discount_value ?? 0)) / 100)
-  } else {
-    discountAmount = row.discount_value ?? 0
-  }
-  discountAmount = Math.min(discountAmount, orderAmount)
-
-  return {
-    valid: true,
-    discount_amount: discountAmount,
-    final_amount: orderAmount - discountAmount,
-    message: '優惠碼套用成功',
+async function validatePromoCodeServer(code: string, amount: number, userId: string | null = null): Promise<PromoCodeValidation> {
+  return validateCheckoutPromo(code, amount, userId)
+}
+async function reservePromoCodeUsage(code: string, amount: number, userId: string | null, orderId: string, discount: number): Promise<PromoCodeUsageReservation> {
+  try { return await reserveCheckoutPromo(code, amount, userId, orderId, discount) }
+  catch (error) {
+    if (error instanceof PromotionUnavailableError) throw error
+    throw new OrderValidationError(error instanceof Error ? error.message : '優惠碼暫時無法使用。')
   }
 }
-
-async function reservePromoCodeUsage(
-  code: string
-): Promise<PromoCodeUsageReservation> {
-  const adminClient = createAdminClient()
-  const normalizedCode = code.toUpperCase().trim()
-
-  const { data: promoCode, error: promoCodeError } = await adminClient
-    .from('promo_codes')
-    .select('id, used_count, max_uses, is_active, valid_from, valid_until')
-    .eq('code', normalizedCode)
-    .eq('is_active', true)
-    .single()
-
-  if (promoCodeError || !promoCode) {
-    throw new OrderValidationError('找不到此優惠碼')
-  }
-
-  const promoCodeRow = promoCode as PromoCodeUsageRow
-  const previousUsedCount = Number(promoCodeRow.used_count ?? 0)
-  const maxUses =
-    promoCodeRow.max_uses === null ? null : Number(promoCodeRow.max_uses)
-
-  if (maxUses !== null && previousUsedCount >= maxUses) {
-    throw new OrderValidationError('此優惠碼已達使用上限')
-  }
-
-  const now = new Date()
-  const validFrom = promoCodeRow.valid_from
-    ? new Date(promoCodeRow.valid_from)
-    : null
-  const validUntil = promoCodeRow.valid_until
-    ? new Date(promoCodeRow.valid_until)
-    : null
-
-  if (validFrom && now < validFrom) {
-    throw new OrderValidationError('此優惠碼尚未生效')
-  }
-
-  if (validUntil && now > validUntil) {
-    throw new OrderValidationError('此優惠碼已過期')
-  }
-
-  let updateQuery = adminClient
-    .from('promo_codes')
-    .update({ used_count: previousUsedCount + 1 })
-    .eq('id', promoCodeRow.id)
-    .eq('used_count', previousUsedCount)
-
-  if (maxUses !== null) {
-    updateQuery = updateQuery.lt('used_count', maxUses)
-  }
-
-  const { data: updatedPromoCode, error: updateError } = await updateQuery
-    .select('id')
-    .maybeSingle()
-
-  if (updateError || !updatedPromoCode) {
-    throw new OrderValidationError('此優惠碼已達使用上限，請重新嘗試')
-  }
-
-  return { id: promoCodeRow.id }
-}
-
-async function rollbackPromoCodeUsage(
-  reservation: PromoCodeUsageReservation
-): Promise<void> {
-  const adminClient = createAdminClient()
-  if (!(await releasePromoUsage(adminClient, reservation.id))) {
-    console.error('優惠碼使用次數尚未確認釋放，保留額度等待核對')
-  }
+async function rollbackPromoCodeUsage(reservation: PromoCodeUsageReservation): Promise<void> {
+  if (!(await releaseCheckoutPromo(reservation.id))) console.error('優惠名額尚未確認釋放，保留紀錄等待核對')
 }
 
 /**
@@ -569,7 +448,7 @@ export async function createOrder(
   let promoUsageReservation: PromoCodeUsageReservation | null = null
 
   if (input.promo_code) {
-    const promoValidation = await validatePromoCodeServer(input.promo_code, subtotal)
+    const promoValidation = await validatePromoCodeServer(input.promo_code, subtotal, authUserId)
     if (!promoValidation.valid) {
       throw new OrderValidationError(promoValidation.message)
     }
@@ -631,7 +510,7 @@ export async function createOrder(
   // ── 寫入邊界：從 insertOrder 被呼叫起，任何失敗都不能斷言「訂單沒成立」 ──
   // RPC 可能已提交、只是回應失敗；唯一能確定「沒寫入」的是 P0001（函式內 raise exception，交易已回滾）。
   let createdOrder: Awaited<ReturnType<typeof insertOrder>>
-  if (promoCode) promoUsageReservation = await reservePromoCodeUsage(promoCode)
+  if (promoCode) promoUsageReservation = await reservePromoCodeUsage(promoCode, subtotal, authUserId, orderId, discountAmount)
   try {
     createdOrder = await insertOrder(orderData)
   } catch (error) {
@@ -694,7 +573,8 @@ export async function createOrder(
  */
 export async function applyPromoCode(
   code: string,
-  subtotal: number
+  subtotal: number,
+  userId: string | null = null
 ): Promise<PromoCodeValidation> {
-  return validatePromoCodeServer(code, subtotal)
+  return validatePromoCodeServer(code, subtotal, userId)
 }

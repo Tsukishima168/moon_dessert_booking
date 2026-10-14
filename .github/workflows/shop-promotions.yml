@@ -1,0 +1,36 @@
+name: Shop promotions checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit --incremental false --pretty false
+      - run: npm run lint
+      - run: npm run test:security
+      - run: npm run test:promotions
+      - name: Install isolated database test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql
+          pg_config --bindir >> "$GITHUB_PATH"
+      - run: npm run test:promotions:db
+      - name: Build with offline fixtures
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:59998
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: offline-fixture
+          SUPABASE_SERVICE_ROLE_KEY: offline-fixture
+          NEXT_PUBLIC_SITE_URL: https://shop.kiwimu.com
+          NEXT_TELEMETRY_DISABLED: '1'

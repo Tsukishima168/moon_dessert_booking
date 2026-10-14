@@ -1,245 +1,77 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { X } from 'lucide-react';
-
-interface Banner {
-    id: string;
-    title: string;
-    description?: string;
-    image_url?: string;
-    link_url?: string;
-    link_text?: string;
-    background_color: string;
-    text_color: string;
-    display_type: 'hero' | 'announcement';
+'use client'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { Copy, X } from 'lucide-react'
+import { PromotionDialog } from '@/components/shared/promotion-dialog'
+import { copyPromotionCode, readDismissedPromotions, saveDismissedPromotions } from '@/src/lib/promotion-browser'
+interface BannerRow {
+  id: string; title: string; description?: string | null; details?: string | null; promo_code?: string | null;
+  image_url?: string | null; link_url?: string | null; link_text?: string | null;
+  background_color: string; text_color: string; display_type: 'hero' | 'announcement'; updated_at?: string;
 }
-
 export default function Banner() {
-    const [banners, setBanners] = useState<Banner[]>([]);
-    const [dismissedBanners, setDismissedBanners] = useState<Set<string>>(new Set());
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        fetchBanners();
-
-        // 從 localStorage 載入已關閉的 Banner
-        const dismissed = localStorage.getItem('dismissedBanners');
-        if (dismissed) {
-            setDismissedBanners(new Set(JSON.parse(dismissed)));
-        }
-    }, []);
-
-    const fetchBanners = async () => {
-        try {
-            const response = await fetch('/api/banners');
-            if (!response.ok) {
-                setBanners([]);
-                return;
-            }
-
-            const data = await response.json();
-            const list = Array.isArray(data) ? data : [];
-            setBanners(list);
-            list.forEach((b: Banner) => {
-                if (b.id && b.id !== 'demo') trackBannerView(b.id);
-            });
-        } catch (error) {
-            // 表不存在或 API 失敗時，安靜返回不顯示 Banner
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const trackBannerView = async (bannerId: string) => {
-        try {
-            await fetch('/api/banners', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bannerId, action: 'view' }),
-            });
-        } catch (error) {
-            console.error('記錄 Banner 顯示錯誤:', error);
-        }
-    };
-
-    const trackBannerClick = async (bannerId: string) => {
-        try {
-            await fetch('/api/banners', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bannerId, action: 'click' }),
-            });
-        } catch (error) {
-            console.error('記錄 Banner 點擊錯誤:', error);
-        }
-    };
-
-    const dismissBanner = (bannerId: string) => {
-        const newDismissed = new Set(dismissedBanners);
-        newDismissed.add(bannerId);
-        setDismissedBanners(newDismissed);
-        localStorage.setItem('dismissedBanners', JSON.stringify(Array.from(newDismissed)));
-    };
-
-    if (loading) {
-        return null;
-    }
-
-    // 過濾已關閉的 Banner
-    const visibleBanners = banners.filter(banner => !dismissedBanners.has(banner.id));
-
-    if (visibleBanners.length === 0) {
-        return null;
-    }
-
-    // 只顯示第一個 Banner
-    const banner = visibleBanners[0];
-
-    return (
-        <>
-            {banner.display_type === 'hero' ? (
-                <HeroBanner
-                    banner={banner}
-                    onDismiss={() => dismissBanner(banner.id)}
-                    onLinkClick={() => trackBannerClick(banner.id)}
-                />
-            ) : (
-                <AnnouncementBanner
-                    banner={banner}
-                    onDismiss={() => dismissBanner(banner.id)}
-                    onLinkClick={() => trackBannerClick(banner.id)}
-                />
-            )}
-        </>
-    );
-}
-
-// Hero Banner Component (大型橫幅)
-function HeroBanner({
-    banner,
-    onDismiss,
-    onLinkClick
-}: {
-    banner: Banner;
-    onDismiss: () => void;
-    onLinkClick: () => void;
-}) {
-    return (
-        <div
-            className="relative border border-moon-border p-4 sm:p-6 mb-6 sm:mb-8 group w-full overflow-hidden"
-            style={{
-                backgroundColor: `${banner.background_color}10`,
-                borderColor: banner.background_color
-            }}
-        >
-            {/* 關閉按鈕 */}
-            <button
-                onClick={onDismiss}
-                className="absolute top-3 right-3 opacity-60 hover:opacity-100 transition-opacity"
-                style={{ color: banner.text_color }}
-                aria-label="關閉"
-            >
-                <X size={18} />
-            </button>
-
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-6 pr-6">
-                {/* 圖片 */}
-                {banner.image_url && (
-                    <div className="flex-shrink-0">
-                        <img
-                            src={banner.image_url}
-                            alt={banner.title}
-                            className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
-                        />
-                    </div>
-                )}
-
-                {/* 內容 */}
-                <div className="flex-1 text-center sm:text-left">
-                    <h3
-                        className="text-base sm:text-lg tracking-wider mb-1 sm:mb-2 font-light"
-                        style={{ color: banner.text_color }}
-                    >
-                        {banner.title}
-                    </h3>
-
-                    {banner.description && (
-                        <p
-                            className="text-xs sm:text-sm mb-3 sm:mb-4 opacity-90"
-                            style={{ color: banner.text_color }}
-                        >
-                            {banner.description}
-                        </p>
-                    )}
-
-                    {/* 連結按鈕 */}
-                    {banner.link_url && (
-                        <Link
-                            href={banner.link_url}
-                            onClick={(e) => {
-                                onLinkClick();
-                                if (banner.link_url?.startsWith('#')) {
-                                    e.preventDefault();
-                                    document.getElementById(banner.link_url!.slice(1))?.scrollIntoView({ behavior: 'smooth' });
-                                }
-                            }}
-                            className="inline-block px-4 sm:px-6 py-2 border transition-colors text-xs sm:text-sm tracking-wider"
-                            style={{
-                                backgroundColor: banner.background_color,
-                                color: '#ffffff',
-                                borderColor: banner.background_color
-                            }}
-                        >
-                            {banner.link_text || '立即查看'} →
-                        </Link>
-                    )}
-                </div>
-            </div>
+  const [rows, setRows] = useState<BannerRow[]>([])
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [copyMessage, setCopyMessage] = useState('')
+  const root = useRef<HTMLDivElement>(null)
+  const impression = useRef<string | null>(null)
+  const seen = useRef(false)
+  const banner = rows.find(row => !dismissed.has(row.id) && !dismissed.has(`${row.id}:${row.updated_at ?? ''}`))
+  useEffect(() => {
+    setDismissed(readDismissedPromotions())
+    const controller = new AbortController()
+    void fetch('/api/banners', { signal: controller.signal, cache: 'no-store' }).then(async response => {
+      if (response.ok) { const data = await response.json(); setRows(Array.isArray(data) ? data : []) }
+    }).catch(() => {})
+    return () => controller.abort()
+  }, [])
+  const track = (action: 'view' | 'click') => {
+    if (!banner || !impression.current) return
+    void fetch('/api/banners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bannerId: banner.id, impressionId: impression.current, action }) }).catch(() => {})
+  }
+  useEffect(() => {
+    if (!banner || !root.current) return
+    impression.current = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : null
+    seen.current = false
+    const view = () => { if (!seen.current) { seen.current = true; track('view') } }
+    if (typeof IntersectionObserver !== 'function') { view(); return }
+    const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) view() }, { threshold: .25 })
+    observer.observe(root.current)
+    return () => observer.disconnect()
+    // One impression per currently displayed announcement, not per fetched row.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [banner?.id, banner?.updated_at])
+  if (!banner) return null
+  const dismiss = () => {
+    const next = new Set(dismissed); next.add(`${banner.id}:${banner.updated_at ?? ''}`)
+    setDismissed(next); saveDismissedPromotions(next); setDetailsOpen(false); setCopyMessage('')
+  }
+  const copy = async () => { track('click'); setCopyMessage(await copyPromotionCode(banner.promo_code!)) }
+  return <>
+    <div ref={root} className="relative rounded-2xl border border-moon-border p-5 pr-16 sm:p-6 sm:pr-16" style={{ backgroundColor: banner.background_color, color: banner.text_color }}>
+      <button type="button" onClick={dismiss} className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-xl" aria-label="關閉這則公告"><X size={20} /></button>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        {banner.display_type === 'hero' && banner.image_url && <img src={banner.image_url} alt="" className="hidden size-24 shrink-0 rounded-xl object-cover sm:block" />}
+        <div className="min-w-0 flex-1">
+          <h3 className="break-words text-lg font-semibold leading-relaxed">{banner.title}</h3>
+          {banner.description && <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-relaxed">{banner.description}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+            {banner.details && <button type="button" onClick={() => { track('click'); setDetailsOpen(true) }} className="inline-flex min-h-11 items-center rounded-xl border border-current px-4">查看活動詳情</button>}
+            {banner.promo_code && <button type="button" onClick={copy} className="inline-flex min-h-11 max-w-full flex-wrap items-center gap-2 rounded-xl border border-current px-4" aria-label={`複製優惠碼 ${banner.promo_code}`}><Copy size={16} /><span>複製優惠碼</span><code className="break-all">{banner.promo_code}</code></button>}
+            {banner.link_url && <Link href={banner.link_url} onClick={() => track('click')} className="inline-flex min-h-11 max-w-full items-center rounded-xl px-3 py-2 underline underline-offset-4"><span className="min-w-0 break-all">{banner.link_text || '立即查看'} →</span></Link>}
+          </div>
+          {copyMessage && <p className="mt-3 text-sm" role="status">{copyMessage}</p>}
         </div>
-    );
-}
-
-// Announcement Banner Component (頂部公告條)
-function AnnouncementBanner({
-    banner,
-    onDismiss,
-    onLinkClick
-}: {
-    banner: Banner;
-    onDismiss: () => void;
-    onLinkClick: () => void;
-}) {
-    return (
-        <div
-            className="relative px-4 py-3 mb-4 text-center text-sm"
-            style={{
-                backgroundColor: banner.background_color,
-                color: banner.text_color
-            }}
-        >
-            <button
-                onClick={onDismiss}
-                className="absolute right-2 top-1/2 -translate-y-1/2"
-                style={{ color: banner.text_color }}
-                aria-label="關閉"
-            >
-                <X size={16} />
-            </button>
-
-            <span className="mr-2">{banner.title}</span>
-
-            {banner.link_url && (
-                <Link
-                    href={banner.link_url}
-                    onClick={onLinkClick}
-                    className="underline font-medium"
-                    style={{ color: banner.text_color }}
-                >
-                    {banner.link_text || '了解更多'} →
-                </Link>
-            )}
-        </div>
-    );
+      </div>
+    </div>
+    {detailsOpen && <PromotionDialog title={banner.title} description="活動條件與使用方式" onClose={() => setDetailsOpen(false)}>
+      <p className="break-words whitespace-pre-wrap text-base leading-loose">{banner.details}</p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        {banner.promo_code && <button type="button" className="promotion-primary max-w-full flex-wrap gap-2" onClick={copy}>複製優惠碼 <code className="break-all">{banner.promo_code}</code></button>}
+        {banner.link_url && <Link href={banner.link_url} onClick={() => track('click')} className="promotion-secondary max-w-full"><span className="min-w-0 break-all">{banner.link_text || '立即查看'} →</span></Link>}
+      </div>
+      {copyMessage && <p role="status" className="mt-3 text-sm">{copyMessage}</p>}
+    </PromotionDialog>}
+  </>
 }

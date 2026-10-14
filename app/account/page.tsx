@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { clearServerSession, getServerSessionUser } from '@/lib/client-auth';
 import { supabase } from '@/lib/supabase';
 import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
+import { MemberOffers } from '@/components/shared/member-offers';
 
 interface Order {
   id: string;
@@ -127,6 +128,7 @@ export default function AccountPage() {
   }, []);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'offers') setActiveTab('offers');
     void loadAccount();
 
     const handlePassportComplete = () => {
@@ -308,11 +310,12 @@ export default function AccountPage() {
           </div>
         ) : null}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-6">
-          <TabsList className="w-full justify-start gap-2 bg-moon-black/80 p-1 md:w-auto">
-            <TabsTrigger value="overview">總覽</TabsTrigger>
-            <TabsTrigger value="orders">訂單</TabsTrigger>
-            <TabsTrigger value="profile">個人資料</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-col gap-6">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-2 bg-moon-black/80 p-1 md:w-auto">
+            <TabsTrigger value="overview" className="min-h-11 data-[active]:bg-moon-accent data-[active]:text-moon-black">總覽</TabsTrigger>
+            <TabsTrigger value="orders" className="min-h-11 data-[active]:bg-moon-accent data-[active]:text-moon-black">訂單</TabsTrigger>
+            <TabsTrigger value="offers" className="min-h-11 data-[active]:bg-moon-accent data-[active]:text-moon-black">我的優惠</TabsTrigger>
+            <TabsTrigger value="profile" className="min-h-11 data-[active]:bg-moon-accent data-[active]:text-moon-black">個人資料</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -410,6 +413,7 @@ export default function AccountPage() {
             )}
           </TabsContent>
 
+          <TabsContent value="offers"><MemberOffers /></TabsContent>
           <TabsContent value="profile" className="space-y-6">
             <div className="rounded-xl border border-moon-border bg-moon-black p-6">
               <div className="mb-6">

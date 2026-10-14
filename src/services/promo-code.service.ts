@@ -1,109 +1,29 @@
-import {
-  findAllPromoCodes,
-  insertPromoCode,
-  updatePromoCode,
-  deletePromoCode,
-  type PromoCodeRow,
-  type InsertPromoCodePayload,
-} from '@/src/repositories/promo-code.repository'
+import { findAllPromoCodes, findPromoCodeById, hasPromoHistory, insertPromoCode, updatePromoCode, deletePromoCode, type PromoCodeRow } from '@/src/repositories/promo-code.repository'
+import { normalizePromoConfig, PromotionInputError } from '@/src/lib/promotion-config'
 
-const DUPLICATE_CODE_ERROR = '23505'
-
-export interface CreatePromoCodeInput {
-  code: string
-  description?: string
-  discount_type: 'percentage' | 'fixed'
-  discount_value: number
-  min_order_amount?: number
-  max_uses?: number | null
-  valid_from?: string
-  valid_until?: string | null
-  is_active?: boolean
-}
-
-export interface UpdatePromoCodeInput {
-  id: string
-  code?: string
-  [key: string]: unknown
-}
-
-/**
- * 列出所有優惠碼
- */
-export async function listPromoCodes(): Promise<PromoCodeRow[]> {
-  return findAllPromoCodes()
-}
-
-/**
- * 新增優惠碼（code 強制轉大寫）
- * @param input - 優惠碼資料
- * @returns 新建的 PromoCodeRow
- * @throws Error('優惠碼已存在') 若 code 重複
- */
-export async function createPromoCode(
-  input: CreatePromoCodeInput
-): Promise<PromoCodeRow> {
-  const payload: InsertPromoCodePayload = {
-    code: input.code.toUpperCase(),
-    description: input.description ?? null,
-    discount_type: input.discount_type,
-    discount_value: input.discount_value,
-    min_order_amount: input.min_order_amount ?? 0,
-    max_uses: input.max_uses ?? null,
-    valid_from: input.valid_from ?? new Date().toISOString(),
-    valid_until: input.valid_until ?? null,
-    is_active: input.is_active !== undefined ? input.is_active : true,
-  }
-
-  try {
-    return await insertPromoCode(payload)
-  } catch (error) {
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error as { code: string }).code === DUPLICATE_CODE_ERROR
-    ) {
-      throw new Error('優惠碼已存在')
-    }
+export async function listPromoCodes(): Promise<PromoCodeRow[]> { return findAllPromoCodes() }
+async function withDuplicateMessage<T>(work: () => Promise<T>): Promise<T> {
+  try { return await work() } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') throw new PromotionInputError('優惠碼已存在。')
     throw error
   }
 }
-
-/**
- * 更新優惠碼（若有更新 code 則強制轉大寫）
- * @param input - 含 id 的更新資料
- * @returns 更新後的 PromoCodeRow
- * @throws Error('優惠碼已存在') 若 code 重複
- */
-export async function editPromoCode(
-  input: UpdatePromoCodeInput
-): Promise<PromoCodeRow> {
-  const { id, ...updateData } = input
-
-  if (updateData.code && typeof updateData.code === 'string') {
-    updateData.code = updateData.code.toUpperCase()
-  }
-
-  try {
-    return await updatePromoCode(id, updateData as Partial<PromoCodeRow>)
-  } catch (error) {
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error as { code: string }).code === DUPLICATE_CODE_ERROR
-    ) {
-      throw new Error('優惠碼已存在')
-    }
-    throw error
-  }
+export async function createPromoCode(input: Record<string, unknown>): Promise<PromoCodeRow> {
+  const payload = normalizePromoConfig(input)
+  return withDuplicateMessage(() => insertPromoCode(payload))
 }
-
-/**
- * 刪除優惠碼
- * @param id - 優惠碼 UUID
- */
+export async function editPromoCode(input: Record<string, unknown>): Promise<PromoCodeRow> {
+  if (typeof input.id !== 'string') throw new PromotionInputError('缺少優惠碼編號。')
+  const existing = await findPromoCodeById(input.id)
+  if (!existing) throw new PromotionInputError('找不到此優惠碼。')
+  // Persist configuration only. Never accept used_count, owner fields or counters from the browser.
+  const payload = normalizePromoConfig({ ...existing, ...input })
+  if (payload.code !== existing.code && (Number(existing.used_count) > 0 || await hasPromoHistory(existing.id, existing.code))) throw new PromotionInputError('此優惠已有使用紀錄，請保留原代碼並新增活動。')
+  if (payload.max_uses !== null && payload.max_uses < Number(existing.used_count || 0)) throw new PromotionInputError('總上限不能小於目前使用量；如需結束活動，請停用優惠碼。')
+  return withDuplicateMessage(() => updatePromoCode(input.id as string, payload))
+}
 export async function removePromoCode(id: string): Promise<void> {
+  const existing = await findPromoCodeById(id)
+  if (existing && (Number(existing.used_count) > 0 || await hasPromoHistory(existing.id, existing.code))) throw new PromotionInputError('此優惠已有使用紀錄，請改為停用以保留資訊。')
   return deletePromoCode(id)
 }

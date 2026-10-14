@@ -1,0 +1,334 @@
+{
+  "date": "2026-10-14",
+  "method": "作者 CUA；同來源元件與本機記憶體 API；不是正式資料、獨立視覺或 Safari/LINE 實機",
+  "attempts": [
+    {
+      "check": "期限錯誤保留表單",
+      "pass": true
+    },
+    {
+      "check": "修正後儲存回讀總量80／已用3／會員1次",
+      "pass": true
+    },
+    {
+      "check": "Escape 關閉且焦點回原編輯按鈕",
+      "pass": true
+    },
+    {
+      "check": "promo-modal-320",
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minInputFont": 14,
+      "pageOverflow": 0,
+      "pass": false
+    },
+    {
+      "check": "promo-modal-390",
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minInputFont": 14,
+      "pageOverflow": 0,
+      "pass": false
+    },
+    {
+      "check": "promo-modal-768",
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minInputFont": 14,
+      "pageOverflow": 0,
+      "pass": false
+    },
+    {
+      "check": "promo-modal-1280",
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minInputFont": 14,
+      "pageOverflow": 0,
+      "pass": false
+    },
+    {
+      "check": "banner-modal-320",
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minCheckboxLabelHeight": 44,
+      "minTextInputFont": 16,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "banner-modal-390",
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minCheckboxLabelHeight": 44,
+      "minTextInputFont": 16,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "banner-modal-768",
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minCheckboxLabelHeight": 44,
+      "minTextInputFont": 16,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "banner-modal-1280",
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minCheckboxLabelHeight": 44,
+      "minTextInputFont": 16,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "公告編輯視窗24次Tab焦點留在內部",
+      "pass": true
+    },
+    {
+      "check": "promo-modal-editable-controls-320",
+      "checkboxLabelHeight": 44,
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minTextInputFont": 16,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "promo-modal-editable-controls-390",
+      "checkboxLabelHeight": 44,
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minTextInputFont": 16,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "promo-modal-editable-controls-768",
+      "checkboxLabelHeight": 44,
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minTextInputFont": 16,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "promo-modal-editable-controls-1280",
+      "checkboxLabelHeight": 44,
+      "dialogOverflow": 0,
+      "minButtonHeight": 44,
+      "minTextInputFont": 16,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "public-banner-320",
+      "minActionHeight": 44,
+      "overflow": 0,
+      "pass": true
+    },
+    {
+      "check": "public-banner-390",
+      "minActionHeight": 44,
+      "overflow": 0,
+      "pass": true
+    },
+    {
+      "check": "public-banner-768",
+      "minActionHeight": 44,
+      "overflow": 0,
+      "pass": true
+    },
+    {
+      "check": "public-banner-1280",
+      "minActionHeight": 44,
+      "overflow": 0,
+      "pass": true
+    },
+    {
+      "check": "活動詳情分行與複製成功提示",
+      "pass": true
+    },
+    {
+      "check": "詳情Escape回查看活動詳情",
+      "pass": true
+    },
+    {
+      "check": "同次曝光開詳情與複製，後台互動仍為一次",
+      "pass": true
+    },
+    {
+      "check": "自訂按鈕「查看會員活動」儲存回讀",
+      "pass": true
+    },
+    {
+      "check": "member-offers-320",
+      "overflow": 0,
+      "pass": true
+    },
+    {
+      "check": "member-offers-390",
+      "overflow": 0,
+      "pass": true
+    },
+    {
+      "check": "member-offers-768",
+      "overflow": 0,
+      "pass": true
+    },
+    {
+      "check": "member-offers-1280",
+      "overflow": 0,
+      "pass": true
+    },
+    {
+      "check": "會員優惠複製成功提示",
+      "pass": true
+    },
+    {
+      "check": "最長32碼優惠與40字按鈕在320px",
+      "overflow": 0,
+      "overflows": [
+        {
+          "overflow": 0,
+          "text": ""
+        },
+        {
+          "overflow": 0,
+          "text": "查看活動詳情"
+        },
+        {
+          "overflow": 0,
+          "text": "複製優惠碼ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"
+        },
+        {
+          "overflow": 187,
+          "text": "ABCDEFGHIJKLMNOPQRSTUVWX1234567890123456 →"
+        }
+      ],
+      "pass": false
+    },
+    {
+      "check": "最長連續英文字詳情320px",
+      "overflow": 38,
+      "pageOverflow": 0,
+      "pass": false
+    },
+    {
+      "check": "修補後最長詳情320px",
+      "overflow": 0,
+      "pageOverflow": 0,
+      "pass": true
+    },
+    {
+      "check": "修補後最長優惠碼與CTA320px",
+      "overflow": 0,
+      "overflows": [
+        {
+          "overflow": 0,
+          "text": ""
+        },
+        {
+          "overflow": 0,
+          "text": "查看活動詳情"
+        },
+        {
+          "overflow": 0,
+          "text": "複製優惠碼ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"
+        },
+        {
+          "overflow": 0,
+          "text": "ABCDEFGHIJKLMNOPQRSTUVWX1234567890123456 →"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "check": "修補後會員完整排版-320",
+      "direction": "row",
+      "minTabHeight": 1215.25,
+      "overflow": 0,
+      "panelWidth": 98.0390625,
+      "selectedBackground": "rgba(0, 0, 0, 0)",
+      "tabsWidth": 278,
+      "pass": false
+    },
+    {
+      "check": "修補後會員完整排版-390",
+      "direction": "row",
+      "minTabHeight": 1215.25,
+      "overflow": 0,
+      "panelWidth": 98.0390625,
+      "selectedBackground": "rgba(0, 0, 0, 0)",
+      "tabsWidth": 348,
+      "pass": false
+    },
+    {
+      "check": "修補後會員完整排版-768",
+      "direction": "row",
+      "minTabHeight": 499.5,
+      "overflow": 0,
+      "panelWidth": 442.15625,
+      "selectedBackground": "rgba(0, 0, 0, 0)",
+      "tabsWidth": 726,
+      "pass": false
+    },
+    {
+      "check": "修補後會員完整排版-1280",
+      "direction": "row",
+      "minTabHeight": 385.25,
+      "overflow": 0,
+      "panelWidth": 836.15625,
+      "selectedBackground": "rgba(0, 0, 0, 0)",
+      "tabsWidth": 1120,
+      "pass": false
+    },
+    {
+      "check": "乾淨預覽會員排版-320",
+      "direction": "column",
+      "minTabHeight": 44,
+      "overflow": 0,
+      "panelWidth": 278,
+      "selectedBackground": "rgb(245, 240, 232)",
+      "tabsWidth": 278,
+      "pass": true
+    },
+    {
+      "check": "乾淨預覽會員排版-390",
+      "direction": "column",
+      "minTabHeight": 44,
+      "overflow": 0,
+      "panelWidth": 348,
+      "selectedBackground": "rgb(245, 240, 232)",
+      "tabsWidth": 348,
+      "pass": true
+    },
+    {
+      "check": "乾淨預覽會員排版-768",
+      "direction": "column",
+      "minTabHeight": 44,
+      "overflow": 0,
+      "panelWidth": 726,
+      "selectedBackground": "rgb(245, 240, 232)",
+      "tabsWidth": 726,
+      "pass": true
+    },
+    {
+      "check": "乾淨預覽會員排版-1280",
+      "direction": "column",
+      "minTabHeight": 44,
+      "overflow": 0,
+      "panelWidth": 1120,
+      "selectedBackground": "rgb(245, 240, 232)",
+      "tabsWidth": 1120,
+      "pass": true
+    }
+  ],
+  "corrections": [
+    "初次字級量測把核取框14px繼承字級算成文字輸入；真正文字输入16px、label觸碰44px另驗。",
+    "長字串 CTA187px／詳情38px溢出已修，同組內容重驗0。",
+    "原會員pane98.04px屬不可讀；修補後首輪還拿到舊HMR class，重建本機預覽後四尺寸column且panel使用全寬。"
+  ],
+  "productionWrites": 0
+}
