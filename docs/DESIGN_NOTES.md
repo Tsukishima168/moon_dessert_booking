@@ -6,11 +6,11 @@ Penso 已選定 Map／Passport／Gacha 的深綠、奶油白、柔金方向；Sh
 
 - 配色對齊 Map：森林深綠 `#1F2F1F`、Hero `#1F3527`、窗景綠 `#304F2F`、奶油白 `#F5F0E8`、日光金 `#D7C678`。
 - 首頁使用固定品牌奶油白閱讀表面＋深綠Hero，照片與價格卡使用紙白；商品／cart／checkout保留深淺色切換。淺底小字與價格使用深綠或深金 `#795B23`，不使用日光金文字。
-- 主標改用既有 Universe 導覽已載入的 Noto Sans TC，字級／字重對齊 Passport／Gacha，不增加字體來源。後台 `.admin-shell` 原token保持。
+- 主標與全站本文用 Noto Sans TC（2026-10-14 起由 Shop 自己在 layout `<head>` 載入，不再靠 Universe rail CSS 的 `@import`），字級／字重對齊 Passport／Gacha。後台 `.admin-shell` 原token保持。
 - Hero桌機44px／手機32px（320px寬用30px）、section28／24px，內文15–16px，輔助文字至少12px。
 - Hero24／22px圓角、商品卡16px、主要按鈕12px；移除獨立的宋體與大拱角。
 - 主要入口「選購甜點」56px；規格、數量、搜尋清除與次級連結至少44px。手機輸入16px，避免 Safari 自動縮放。
-- 黑色Universe rail與各站active lime仍是共用導覽識別，依Map既有設計契約保持。
+- 森林版Universe rail（深綠`#1F2F1F`、奶油字、目前站點以柔金`#D7C678`標示）仍是共用導覽識別，依Map既有設計契約保持；Shop導覽列疊在rail下方，層級見 2026-10-14 一節。
 
 ## 首頁工作
 
@@ -35,7 +35,18 @@ Penso 已選定 Map／Passport／Gacha 的深綠、奶油白、柔金方向；Sh
 - Shop淺色focus selector排除Universe rail；優惠碼按鈕／狀態文字採可讀的主題顏色、低透明度輔助字恢复完整色值，商品配送徽章至少12px。
 - Email fallback與確認通知採深綠／紙白、無未核定24小時匯款承諾；新版banner建立預設深綠／紙白。商家已有DB顏色與自訂Email模板保留。
 - 公開API一般失敗回客戶用語，保留原HTTP狀態、授權、付款gate與驗證判斷；診斷仍留server log。没有實際發信／付款／下單／DB操作。
-- 主對話CUA已檢查四種寬度的首頁、商品與資訊頁，無水平溢出、可見破圖0；淺色rail鍵盤焦點維持lime。通知HTML動態文字已轉義、商家自訂模板保留。完整地址補齊168號。最終build／typecheck／lint通過（0error／11既有warning）。
+- 主對話CUA已檢查四種寬度的首頁、商品與資訊頁，無水平溢出、可見破圖0；淺色rail鍵盤焦點維持柔金。通知HTML動態文字已轉義、商家自訂模板保留。完整地址補齊168號。最終build／typecheck／lint通過（0error／11既有warning）。
 - 未部署；審查員額度受限，最終patch尚未獨立簽收。真人Safari／LINE、真實通知與結帳未驗。送審Git與hash以同日SSOT及final-manifest回讀為準。
 
 - 商品分類只顯示既有中文名稱；內部slug保留於資料／篩選與URL契約，缺描述不顯示內部準備中文字。
+
+## 2026-10-14：風格升級 Phase A（本機，未部署）
+
+依獨立驗收報告（Shop B+）與共同規則 `common.md`；只改樣式，不碰結帳／付款／訂單邏輯。
+
+- 主行動統一柔金：`.shop-cta`＝`#D7C678` 底、`#1F2F1F` 字（對比 8.24:1），深淺主題一致；套用在商品頁與清單的加入購物車、購物車抽屜與行動購物車列的前往結帳、結帳送出、帳號頁「開始訂購」、頁尾 CTA。與首頁 `.shop-primary` 同色。已選規格這類「目前狀態」晶片維持原樣。
+- 導覽列分層：導覽列在 rail 下方，交界 1px `rgba(215,198,120,.22)`；深色主題導覽列底色 `#243624`（rail 是 `#1F2F1F`）。帳號頁 sticky 標頭用 `--ku-rail-height`＋`--shop-navbar-h` 疊在兩者下方（導覽列高度改動時要同步改 `--shop-navbar-h`）。
+- 字體只有一套：`--font-sans`＝Noto Sans TC 優先、Inter 後備；`<link>` 載入 400／500／700。
+- 焦點環：全域深色面柔金、淺色面 `#304F2F`；頁籤內容、後台編輯器（`.ProseMirror`）補上 focus-visible 環。
+- reduced-motion：全域 catch-all（同 Map），含購物車抽屜。公開頁文字最小 12px。
+- 資訊頁中文大標手機（≤640）字距 0.06em＋`text-wrap: balance`，避免孤字。
