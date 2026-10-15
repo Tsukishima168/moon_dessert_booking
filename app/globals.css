@@ -441,9 +441,14 @@ html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea,
 .shop-hero-detail { margin-top: 8px; color: rgb(var(--moon-muted)); font-size: 14px; line-height: 1.85; }
 .shop-primary { display: inline-flex; align-items: center; justify-content: center; gap: 28px; min-height: 56px; margin-top: 26px; padding: 14px 28px; border-radius: 12px; background: #d7c678; color: #1f2f1f; font-weight: 600; font-size: 15px; transition: background .2s; }
 .shop-primary:hover { background: #e3d58f; }
-/* 全站主行動：柔金底、深綠字（#1F2F1F on #D7C678），深淺主題一致。與 .shop-primary 同色，用於清單、商品頁、購物車、結帳與頁尾 CTA。 */
+/* 全站主行動，依所在表面決定（common.md）：
+   深色面（深色主題的頁面、抽屜、結帳）＝柔金底、深綠字（#1F2F1F on #D7C678，8.24:1），與 .shop-primary 同色；
+   淺色面（淺色主題，以及首頁固定奶油閱讀區 .shop-home，連深色主題也是）＝深綠實心、奶油字（#F5F0E8 on #1F2F1F，12.47:1），hover 中綠 #304F2F。
+   首頁深綠 Hero 的「選購甜點」是 .shop-primary，維持柔金。 */
 .shop-cta { background-color: #d7c678; color: #1f2f1f; border-radius: 12px; }
 .shop-cta:hover:not(:disabled) { background-color: #e3d58f; color: #1f2f1f; }
+html[data-theme='light'] .shop-cta, .shop-home .shop-cta { background-color: #1f2f1f; color: #f5f0e8; }
+html[data-theme='light'] .shop-cta:hover:not(:disabled), .shop-home .shop-cta:hover:not(:disabled) { background-color: #304f2f; color: #f5f0e8; }
 .shop-hero-links { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 16px; }
 .shop-hero-links a { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; font-size: 13px; color: rgb(var(--moon-muted)); }
 .shop-hero-photo { display: block; padding: 10px; background: #f5f0e8; color: #1f2f1f; border-radius: 20px; }
