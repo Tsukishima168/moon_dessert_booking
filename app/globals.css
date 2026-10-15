@@ -528,6 +528,10 @@ html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea,
 .shop-navbar { border-top: 1px solid rgba(215, 198, 120, .22); }
 html[data-theme='dark'] .shop-navbar { background-color: #243624; }
 :root { --shop-navbar-h: 82px; }
+/* Universe rail kit 的站點覆寫：收合時層級 35，讓購物車 overlay（40）與 drawer（50）壓在 rail 之上；展開的「更多」維持 kit 預設 210。 */
+:root { --ku-nav-z: 35; }
+/* 導覽列桌機時貼在 sticky rail 下方（rail ≤640 是 relative，導覽列自己 top-0）。 */
+@media (min-width: 641px) { .ku-universe-rail + .shop-navbar { top: var(--ku-rail-height); } }
 .shop-footer { background: rgb(var(--moon-dark)); margin-top: 0; padding-bottom: 72px; }
 .shop-footer li a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; line-height: 1.7; }
 .shop-footer ul { gap: 0; }
