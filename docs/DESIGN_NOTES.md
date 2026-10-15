@@ -44,9 +44,16 @@ Penso 已選定 Map／Passport／Gacha 的深綠、奶油白、柔金方向；Sh
 
 依獨立驗收報告（Shop B+）與共同規則 `common.md`；只改樣式，不碰結帳／付款／訂單邏輯。
 
-- 主行動統一柔金：`.shop-cta`＝`#D7C678` 底、`#1F2F1F` 字（對比 8.24:1），深淺主題一致；套用在商品頁與清單的加入購物車、購物車抽屜與行動購物車列的前往結帳、結帳送出、帳號頁「開始訂購」、頁尾 CTA。與首頁 `.shop-primary` 同色。已選規格這類「目前狀態」晶片維持原樣。
+- 主行動 `.shop-cta`（Phase B 依表面修訂，見下一節）：套用在商品頁與清單的加入購物車、購物車抽屜與行動購物車列的前往結帳、結帳送出、帳號頁「開始訂購」、頁尾 CTA。與首頁 `.shop-primary` 同色。已選規格這類「目前狀態」晶片維持原樣。
 - 導覽列分層：導覽列在 rail 下方，交界 1px `rgba(215,198,120,.22)`；深色主題導覽列底色 `#243624`（rail 是 `#1F2F1F`）。帳號頁 sticky 標頭用 `--ku-rail-height`＋`--shop-navbar-h` 疊在兩者下方（導覽列高度改動時要同步改 `--shop-navbar-h`）。
-- 字體只有一套：`--font-sans`＝Noto Sans TC 優先、Inter 後備；`<link>` 載入 400／500／700。
+- 字體只有一套：`--font-sans`＝Noto Sans TC 優先、Inter 後備；`<link>` 載入 300／400／500／700（Phase B 補 300，`brand-display` 等細字重才不會落到 400）。
 - 焦點環：全域深色面柔金、淺色面 `#304F2F`；頁籤內容、後台編輯器（`.ProseMirror`）補上 focus-visible 環。
 - reduced-motion：全域 catch-all（同 Map），含購物車抽屜。公開頁文字最小 12px。
 - 資訊頁中文大標手機（≤640）字距 0.06em＋`text-wrap: balance`，避免孤字。
+
+## 2026-10-15：風格升級 Phase B（本機，未部署）
+
+- 共用 rail kit：`components/KiwimuUniverseRail.tsx`、`styles/kiwimu-universe.css` 與 kit byte-identical（sha256 見 kit `SHA256SUMS`），不在 Shop 內改。站點差異只走 props 與 `app/globals.css`：`--ku-nav-z: 35`（收合層級，讓購物車 overlay 40／drawer 50 壓在 rail 上；展開的「更多」用 kit 預設 210）、桌機 `.ku-universe-rail + .shop-navbar { top: var(--ku-rail-height) }`。kit 不載字體，Noto Sans TC 由 layout `<head>` 的 `<link>` 載一次。
+- 主行動規則（依所在表面）：深色面（深色主題的商品頁、購物車抽屜、結帳、資訊頁、行動購物車列）＝柔金底 `#D7C678`＋深綠字 `#1F2F1F`（8.24:1）；淺色面（淺色主題，以及首頁固定奶油閱讀區 `.shop-home`，深色主題也一樣）＝深綠實心 `#1F2F1F`＋奶油字 `#F5F0E8`（12.47:1），hover 中綠 `#304F2F`。首頁深綠 Hero 的「選購甜點」`.shop-primary` 維持柔金。
+- GA4 `universe_nav_click`（Shop）：rail 每個連結點擊（含森林展覽、本站連結、「更多」面板內連結）都送，經 `lib/shop-analytics.ts` 的 `trackShopEvent` → `gtag('event', …)`；非正式網域（`__KW_GA_ENABLED !== true`）不送。參數 12 欄＋Shop 脈絡：
+  `source_site`（`shop`）、`target_site`（`kiwimu`／`passport`／`map`／`gacha`／`shop`／`canopy`）、`viewport`（如 `390x844`）、`viewport_width`、`viewport_height`、`viewport_category`（≤640 `mobile`／≤1024 `tablet`／其餘 `desktop`）、`login_status`（`authenticated`／`anonymous`／`unknown`，掛載時讀一次 `supabase.auth.getSession()`，不走 `getResolvedUser`）、`surface`＝`entry_surface`（`universe_rail`）、`link_name`（`MBTI`／`Passport`／`Map`／`Gacha`／`Shop`／`Canopy`）、`destination_type`（站內 `cross_site_nav`、森林展覽 `external`）、`transport_type`（`beacon`）；`trackShopEvent` 另加 `site_id`（`shop`）與 attribution／UTM。分析時請用 `source_site != target_site` 過濾（本站連結也會送）。新欄位要在 GA4 報表出現，需另外登錄自訂維度。
