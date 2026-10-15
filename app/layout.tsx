@@ -198,14 +198,14 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#1F2F1F" />
 
-        {/* Noto Sans TC：shop 自己載入一次（400／500／700）；rail CSS 內的 @import 於 Phase B 移除。 */}
+        {/* Noto Sans TC：shop 自己載入一次（300／400／500／700；300 給 brand-display 等原本的細字重）。Universe rail kit 不載字體。 */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* App Router 的 root layout <head> 就是這條規則（本來針對 pages/_document）想要的位置，字體會套用到全站，不是單頁。 */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
         />
 
         {/*
