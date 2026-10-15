@@ -6,6 +6,7 @@
 - **主行動修訂（Phase A 修正）**：深色面柔金、淺色面深綠實心配奶油字（淺色主題與首頁固定奶油區 `.shop-home` 的清單按鈕改回深綠）；Hero「選購甜點」維持柔金。
 - 事件文件：`docs/DESIGN_NOTES.md` 2026-10-15 一節。shop 沒有獨立的 GA4 事件參考文件，`EVENTS.md` 是內部 EventBus 字典，與 GA4 無關，故未動。
 - 驗證與數字：`sites/.worktrees/style-20261014-qa/shop/results.json` 的 `phaseB`，索引在同目錄 `DELIVERY.md`。
+- 審查修正（2026-10-15）：帳號頁「開始訂購」觸控高度 ≥44px（`min-h-11`）；reduced-motion 全域規則對 `.animate-spin` 加例外（reduce 下仍持續旋轉、放慢到 1.5s 一圈，其他動效維持 0.01ms），避免載入轉圈停成缺口圓。`test:promotions:db` 本機要加 `LC_ALL=en_US.UTF-8` 才起得來，已跑過通過。
 - 已知限制：`login_status` 只在掛載時讀一次；`test:promotions:db` 本機仍起不來（CI 為準）；shop 沒有針對 rail 原始碼的測試，因此沒有測試需要替換。
 
 ## 2026-10-14｜風格升級 Phase A（Worker S）｜本機完成，未 push／未部署

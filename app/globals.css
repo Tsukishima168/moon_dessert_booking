@@ -603,6 +603,12 @@ html[data-theme='dark'] .shop-navbar { background-color: #243624; }
 @media (prefers-reduced-motion: reduce) {
   .shop-home *, .shop-product *, .shop-navbar *, .shop-cart-drawer *, .shop-mobile-cart * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+/* 載入轉圈例外：catch-all 會把 iteration-count 壓成 1，轉圈停成靜止的缺口圓，看起來像當機。
+   reduce 下 .animate-spin 維持持續旋轉，但放慢到約 1.5s 一圈；其他動效仍是 0.01ms。
+   必須放在上面 .shop-* 區塊之後（同特異性，後者勝），並重新指定 animation-name。 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin { animation: spin 1.5s linear infinite !important; }
+}
 .shop-checkout .brand-display { font-family: var(--font-sans); letter-spacing: -.025em; font-weight: 700; }
 .shop-order-summary, .shop-checkout-form { border-radius: 12px; }
 .shop-order-summary h3 { font-size: 15px; line-height: 1.7; }
