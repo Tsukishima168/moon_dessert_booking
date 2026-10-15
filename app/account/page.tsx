@@ -377,7 +377,7 @@ export default function AccountPage() {
                   action={(
                     <Link
                       href="/"
-                      className="inline-flex h-8 items-center justify-center shop-cta px-2.5 text-sm font-medium transition-all"
+                      className="inline-flex min-h-11 items-center justify-center shop-cta px-2.5 text-sm font-medium transition-all"
                     >
                       開始訂購
                     </Link>
@@ -402,7 +402,7 @@ export default function AccountPage() {
                 action={(
                   <Link
                     href="/"
-                    className="inline-flex h-8 items-center justify-center shop-cta px-2.5 text-sm font-medium transition-all"
+                    className="inline-flex min-h-11 items-center justify-center shop-cta px-2.5 text-sm font-medium transition-all"
                   >
                     開始訂購
                   </Link>
