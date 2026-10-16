@@ -140,6 +140,17 @@ body {
   overflow-x: clip;
 }
 
+/* 購物車抽屜開啟時鎖住背景捲動。
+   CartSidebar 開啟時只對 body 設 overflow:hidden；但上面的 html 已是 overflow-x:clip，html 自己的 overflow 不是 visible，
+   body 的 overflow 就不會傳到視窗，滾輪／觸控仍會把頁面捲走。抽屜只有開啟時才有 aria-modal="true"，
+   用它讓 html 也 overflow:hidden（捲動位置不動，關閉後原地恢復）。
+   scrollbar-gutter: stable：桌面 Safari「永遠顯示捲軸」或 Windows 經典捲軸，捲軸消失不會讓內容橫向位移。
+   促銷 dialog 等其他浮層不用這個狀態，不受影響。不支援 :has() 的舊瀏覽器維持原行為。 */
+html:has(#shop-cart-sidebar[aria-modal='true']) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
 body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
