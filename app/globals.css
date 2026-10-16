@@ -25,6 +25,17 @@
   --font-sans: 'Noto Sans TC', var(--font-inter-latin, 'Inter'), system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
   --radius: 0.75rem;
   --radius-md: 0.625rem;
+  /* moon-* token 名稱是歷史命名，與實際色值不一致；用的時候請看「角色」欄，不要看字面。
+     名稱 → 角色（深色主題 ／ 淺色主題）；完整說明見 docs/DESIGN_NOTES.md「token 對照表」。
+     moon-black  → 頁面底色          #1F2F1F ／ #F5F0E8（淺色主題是奶油，不是黑）
+     moon-dark   → 卡片與浮層底      #1F3527 ／ #FFFBF6
+     moon-gray   → 次層底與 hover 底 #304F2F ／ #F0E8DE
+     moon-border → 邊線              #50654D ／ #D8D7C4
+     moon-text   → 主要文字          #F0ECE1 ／ #1F2F1F
+     moon-muted  → 次要文字          #D7DDD0 ／ #5F6856
+     moon-accent → 最大反差色        #F5F0E8 ／ #1F2F1F（反白按鈕、強調邊框；不是品牌強調色）
+     moon-gold   → 金色點綴          #D7C678 ／ #795B23
+     主行動按鈕請用 .shop-cta（依表面：深色面柔金、淺色面深綠），不要自己拼 moon-accent。 */
   --moon-black: 31 47 31;
   --moon-dark: 31 53 39;
   --moon-gray: 48 79 47;

@@ -57,3 +57,21 @@ Penso 已選定 Map／Passport／Gacha 的深綠、奶油白、柔金方向；Sh
 - 主行動規則（依所在表面）：深色面（深色主題的商品頁、購物車抽屜、結帳、資訊頁、行動購物車列）＝柔金底 `#D7C678`＋深綠字 `#1F2F1F`（8.24:1）；淺色面（淺色主題，以及首頁固定奶油閱讀區 `.shop-home`，深色主題也一樣）＝深綠實心 `#1F2F1F`＋奶油字 `#F5F0E8`（12.47:1），hover 中綠 `#304F2F`。首頁深綠 Hero 的「選購甜點」`.shop-primary` 維持柔金。
 - GA4 `universe_nav_click`（Shop）：rail 每個連結點擊（含森林展覽、本站連結、「更多」面板內連結）都送，經 `lib/shop-analytics.ts` 的 `trackShopEvent` → `gtag('event', …)`；非正式網域（`__KW_GA_ENABLED !== true`）不送。參數 12 欄＋Shop 脈絡：
   `source_site`（`shop`）、`target_site`（`kiwimu`／`passport`／`map`／`gacha`／`shop`／`canopy`）、`viewport`（如 `390x844`）、`viewport_width`、`viewport_height`、`viewport_category`（≤640 `mobile`／≤1024 `tablet`／其餘 `desktop`）、`login_status`（`authenticated`／`anonymous`／`unknown`，掛載時讀一次 `supabase.auth.getSession()`，不走 `getResolvedUser`）、`surface`＝`entry_surface`（`universe_rail`）、`link_name`（`MBTI`／`Passport`／`Map`／`Gacha`／`Shop`／`Canopy`）、`destination_type`（站內 `cross_site_nav`、森林展覽 `external`）、`transport_type`（`beacon`）；`trackShopEvent` 另加 `site_id`（`shop`）與 attribution／UTM。分析時請用 `source_site != target_site` 過濾（本站連結也會送）。新欄位要在 GA4 報表出現，需另外登錄自訂維度。
+
+## 2026-10-16：token 對照表（只加說明，不改名）
+
+`moon-*` 是歷史命名，名字和實際色值不一致（例：`moon-black` 在淺色主題是奶油、`moon-accent` 在深色主題是奶油）。Penso 2026-10-16 決定**不改名**：全面改名要動約 2,000 處、57 個檔案（含 18 個後台檔），使用者看不出任何差別，風險卻不小。改成在這裡和 `app/globals.css` 的 `:root` 註解寫清楚對照，寫樣式時以「角色」為準。
+
+| token | 角色 | 深色主題 | 淺色主題 |
+|---|---|---|---|
+| `moon-black` | 頁面底色 | `#1F2F1F` 深綠 | `#F5F0E8` 奶油 |
+| `moon-dark` | 卡片與浮層底 | `#1F3527` | `#FFFBF6` |
+| `moon-gray` | 次層底、hover 底 | `#304F2F` | `#F0E8DE` |
+| `moon-border` | 邊線 | `#50654D` | `#D8D7C4` |
+| `moon-text` | 主要文字 | `#F0ECE1` | `#1F2F1F` |
+| `moon-muted` | 次要文字 | `#D7DDD0` | `#5F6856` |
+| `moon-accent` | 最大反差色（反白按鈕、強調邊框） | `#F5F0E8` | `#1F2F1F` |
+| `moon-gold` | 金色點綴 | `#D7C678` 柔金 | `#795B23` 深咖啡金 |
+
+- 主行動按鈕一律用 `.shop-cta`（依表面：深色面柔金、淺色面深綠實心），不要自己用 `moon-accent` 拼。
+- 新增樣式時，若需要的角色不在表上，先更新本表與 `:root`，不要另寫死色值。
