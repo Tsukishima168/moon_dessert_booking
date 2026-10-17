@@ -103,7 +103,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           <div className="flex items-center gap-2">
             {deliveryLabel && (
               <span
-                className={`text-[9px] tracking-widest px-1.5 py-0.5 border hidden sm:inline ${isPickupOnly
+                className={`text-xs tracking-widest px-1.5 py-0.5 border hidden sm:inline ${isPickupOnly
                     ? 'border-moon-gold text-moon-gold'
                     : 'border-moon-border/60 text-moon-muted'
                   }`}
@@ -158,14 +158,14 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           {/* 查看詳情 — 導向獨立商品頁 */}
           <Link
             href={productHref}
-            className="text-[11px] text-moon-muted/70 hover:text-moon-accent tracking-wider mb-3 inline-block transition-colors"
+            className="text-xs text-moon-muted/70 hover:text-moon-accent tracking-wider mb-3 inline-block transition-colors"
           >
             查看詳情 →
           </Link>
 
           {/* 僅門市供應提示（例如飲料） */}
           {isDisplayOnly && (
-            <p className="text-[11px] sm:text-xs text-moon-muted/80 italic mb-4">
+            <p className="text-xs text-moon-muted/80 italic mb-4">
               此品項目前僅於月島甜點店內提供，暫不開放線上預訂。
             </p>
           )}
@@ -226,7 +226,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 disabled={added}
                 className={`w-full sm:flex-1 py-3 text-xs sm:text-sm tracking-widest transition-colors ${added
                   ? 'bg-green-500/20 text-green-400 border border-green-500/40 animate-added-pop'
-                  : 'bg-moon-accent text-moon-black hover:bg-moon-text'
+                  : 'shop-cta'
                   }`}
               >
                 {added ? '✓ 已加入購物車' : `加入購物車 $${selectedVariant?.price ? selectedVariant.price * quantity : ''}`}

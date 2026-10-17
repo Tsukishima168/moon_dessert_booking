@@ -7,12 +7,21 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, ShoppingCart, User } from 'lucide-react';
 
-import KiwimuUniverseRail from '@/components/KiwimuUniverseRail';
+import KiwimuUniverseRail, { readSupabaseLoginStatus } from '@/components/KiwimuUniverseRail';
+import type { KiwimuUniverseNavigationDetails } from '@/components/KiwimuUniverseRail';
 import ThemeToggle from '@/components/ThemeToggle';
 import { clearServerSession, getResolvedUser } from '@/lib/client-auth';
 import { supabase } from '@/lib/supabase';
 import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
+import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
+
+// Universe rail：點擊送 universe_nav_click（trackShopEvent 會再加 site_id／source_site／attribution）。
+const trackUniverseNav = (eventName: 'universe_nav_click', details: KiwimuUniverseNavigationDetails) => {
+  trackShopEvent(eventName, { ...details });
+};
+// login_status 只讀 session 狀態，不走 getResolvedUser（它會同步 server session、送 site_visited，有副作用）。
+const getUniverseLoginStatus = () => readSupabaseLoginStatus(supabase);
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -123,7 +132,7 @@ export default function Navbar() {
 
   return (
     <>
-      {!isAdminRoute ? <KiwimuUniverseRail currentSite="shop" /> : null}
+      {!isAdminRoute ? <KiwimuUniverseRail currentSite="shop" onTrack={trackUniverseNav} getLoginStatus={getUniverseLoginStatus} /> : null}
       <nav
         className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-sm ${isAdminRoute ? 'admin-shell' : 'shop-navbar'}`}
       >

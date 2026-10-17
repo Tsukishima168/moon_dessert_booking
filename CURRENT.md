@@ -1,5 +1,22 @@
 # Shop current work
 
+## 2026-10-15｜風格升級 Phase B（Worker S）｜本機完成，未 push／未部署
+
+- 同一分支 `claude/style-upgrade-20261014`。**安裝共用 rail kit**：`components/KiwimuUniverseRail.tsx`、`styles/kiwimu-universe.css` 與 kit byte-identical（`verify-rail.mjs --scan` PASS）；`Navbar.tsx` 掛載改傳 `onTrack`（接 `trackShopEvent`，送 `universe_nav_click` 12 欄）與 `getLoginStatus`（`readSupabaseLoginStatus(supabase)`，不用 `getResolvedUser`）。站點覆寫放 `app/globals.css`：`--ku-nav-z: 35`、桌機導覽列 top 偏移。kit 不再 `@import` 字體，shop 的 Noto Sans TC 由 layout `<link>` 載一次（補上 300 字重，`brand-display` 回到 300）。
+- **主行動修訂（Phase A 修正）**：深色面柔金、淺色面深綠實心配奶油字（淺色主題與首頁固定奶油區 `.shop-home` 的清單按鈕改回深綠）；Hero「選購甜點」維持柔金。
+- 事件文件：`docs/DESIGN_NOTES.md` 2026-10-15 一節。shop 沒有獨立的 GA4 事件參考文件，`EVENTS.md` 是內部 EventBus 字典，與 GA4 無關，故未動。
+- 驗證與數字：`sites/.worktrees/style-20261014-qa/shop/results.json` 的 `phaseB`，索引在同目錄 `DELIVERY.md`。
+- 審查修正（2026-10-15）：帳號頁「開始訂購」觸控高度 ≥44px（`min-h-11`）；reduced-motion 全域規則對 `.animate-spin` 加例外（reduce 下仍持續旋轉、放慢到 1.5s 一圈，其他動效維持 0.01ms），避免載入轉圈停成缺口圓。`test:promotions:db` 本機要加 `LC_ALL=en_US.UTF-8` 才起得來，已跑過通過。
+- 已知限制：`login_status` 只在掛載時讀一次；`test:promotions:db` 本機仍起不來（CI 為準）；shop 沒有針對 rail 原始碼的測試，因此沒有測試需要替換。
+
+## 2026-10-14｜風格升級 Phase A（Worker S）｜本機完成，未 push／未部署
+
+- 分支 `claude/style-upgrade-20261014`（base `97b5f13`＝origin/main），worktree `sites/.worktrees/style-20261014-shop-kiwimu-com`。只改樣式／className，結帳、付款、LINE Pay、訂單、後台邏輯與 PR26 都沒碰；共用 rail 檔（`styles/kiwimu-universe.css`、`components/KiwimuUniverseRail.tsx`）與 Navbar 掛 rail 那一行未動（Phase B 才整合 rail kit）。
+- S1 主行動 `.shop-cta`（Phase A 為深淺主題一律柔金；Phase B 已改為依表面：深色面柔金、淺色面深綠實心）；S2 導覽列深色底 `#243624`＋1px 金色細線；S3 資訊頁中文大標手機字距 0.06em＋balance；S4 字體收成 `--font-sans`（Noto Sans TC 優先、Inter 後備），layout `<head>` 自載 Noto Sans TC 400／500／700；S5 全域 reduced-motion catch-all；S6 帳號頁 sticky 疊在 rail＋導覽列下方；S7 頁籤／`.ProseMirror`／email 編輯器焦點環，另把全域焦點環改柔金（深色面）；S8 公開頁 <12px 的 class 調到 `text-xs`，移除 `globals.css` 的 12px 補丁；S9 文件。
+- 驗證：`tsc --noEmit`、`npm run lint`（0 error／7 既有 warning，皆在後台與 Banner）、`npm run build` 皆通過；本機 `next start -p 5305` ＋假 Supabase fixture 做前後量測，數字與截圖在 `sites/.worktrees/style-20261014-qa/shop/`（`results.json`、`DELIVERY.md`）。
+- 已知限制：Universe rail CSS 仍有 Noto Sans TC／Space Grotesk 的 `@import`（Phase B 移除）；商品頁量測用無圖 fixture；結帳頁只量到送出按鈕色；真人 Safari／LINE、真實結帳未驗。
+- 下一步：Phase B 由調度者給 rail kit 後整合（rail 檔、事件、`@import` 清理）。
+
 ## 2026-10-07｜主對話收尾｜本機驗證完成，待獨立簽收與上線核定
 
 - ✅ 主對話補修通知信的HTML文字轉義與單次欄位替換；姓名、地址、商品、原因與銀行設定含`<`、`&`、引號、`$&`、`$1`及欄位樣式文字時仍作純文字，保留商家HTML／主旨／顏色與通知選擇。`lib/email/html.ts:1`、`lib/notifications.ts:284`。

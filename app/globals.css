@@ -20,9 +20,22 @@
 .promotion-error { padding: 12px 16px; border: 1px solid #ba775b; border-radius: 8px; color: #763823; font-size: 14px; }
 
 :root {
-  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+  /* 字體堆疊只有一套：Noto Sans TC 優先（由 layout <head> 的 Google Fonts <link> 載入），
+     Inter（next/font，--font-inter-latin 由 <html> 提供）只當西文與數字的後備。 */
+  --font-sans: 'Noto Sans TC', var(--font-inter-latin, 'Inter'), system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
   --radius: 0.75rem;
   --radius-md: 0.625rem;
+  /* moon-* token 名稱是歷史命名，與實際色值不一致；用的時候請看「角色」欄，不要看字面。
+     名稱 → 角色（深色主題 ／ 淺色主題）；完整說明見 docs/DESIGN_NOTES.md「token 對照表」。
+     moon-black  → 頁面底色          #1F2F1F ／ #F5F0E8（淺色主題是奶油，不是黑）
+     moon-dark   → 卡片與浮層底      #1F3527 ／ #FFFBF6
+     moon-gray   → 次層底與 hover 底 #304F2F ／ #F0E8DE
+     moon-border → 邊線              #50654D ／ #D8D7C4
+     moon-text   → 主要文字          #F0ECE1 ／ #1F2F1F
+     moon-muted  → 次要文字          #D7DDD0 ／ #5F6856
+     moon-accent → 最大反差色        #F5F0E8 ／ #1F2F1F（反白按鈕、強調邊框；不是品牌強調色）
+     moon-gold   → 金色點綴          #D7C678 ／ #795B23
+     主行動按鈕請用 .shop-cta（依表面：深色面柔金、淺色面深綠），不要自己拼 moon-accent。 */
   --moon-black: 31 47 31;
   --moon-dark: 31 53 39;
   --moon-gray: 48 79 47;
@@ -127,10 +140,21 @@ body {
   overflow-x: clip;
 }
 
+/* 購物車抽屜開啟時鎖住背景捲動。
+   CartSidebar 開啟時只對 body 設 overflow:hidden；但上面的 html 已是 overflow-x:clip，html 自己的 overflow 不是 visible，
+   body 的 overflow 就不會傳到視窗，滾輪／觸控仍會把頁面捲走。抽屜只有開啟時才有 aria-modal="true"，
+   用它讓 html 也 overflow:hidden（捲動位置不動，關閉後原地恢復）。
+   scrollbar-gutter: stable：桌面 Safari「永遠顯示捲軸」或 Windows 經典捲軸，捲軸消失不會讓內容橫向位移。
+   促銷 dialog 等其他浮層不用這個狀態，不受影響。不支援 :has() 的舊瀏覽器維持原行為。 */
+html:has(#shop-cart-sidebar[aria-modal='true']) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
 body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
-  font-family: var(--font-sans, var(--font-inter));
+  font-family: var(--font-sans);
   letter-spacing: 0.02em;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -245,8 +269,24 @@ body {
   }
 }
 
+/* 全域 catch-all（寫法同 Map）：含購物車抽屜的 transform 0.5s 與 Tailwind duration-* 一併壓到 0.01ms。 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .ProseMirror {
   outline: none;
+}
+
+/* 編輯器（後台固定深色面）鍵盤聚焦時給柔金環，不能只拿掉 outline。 */
+.ProseMirror:focus-visible {
+  outline: 2px solid #d7c678;
+  outline-offset: 2px;
 }
 
 .ProseMirror p {
@@ -372,10 +412,10 @@ html[data-theme='light'] .theme-logo {
 
 /* 可讀的表單與跨主題鍵盤焦點。 */
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid rgb(var(--moon-accent));
+  outline: 2px solid #d7c678;
   outline-offset: 3px;
 }
-/* Light theme: forest ring on Shop cream surfaces; exclude the fixed-black Universe rail. The dark-green hero keeps gold; the fixed-dark admin shell keeps its own ring. */
+/* Light theme: forest ring on Shop cream surfaces; exclude the forest-green Universe rail. The dark-green hero keeps gold; the fixed-dark admin shell keeps its own ring. */
 html[data-theme='light'] :where(a, button, input, select, textarea, summary):not(:where(.ku-universe-rail *)):focus-visible { outline-color: #304f2f; }
 html[data-theme='light'] .shop-hero :where(a, button, input, select, textarea, summary):focus-visible { outline-color: #d7c678; }
 html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea, summary):focus-visible { outline-color: rgb(var(--moon-accent)); }
@@ -401,7 +441,7 @@ html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea,
   --moon-gold: 121 91 35;
   background: rgb(var(--moon-black));
   color: rgb(var(--moon-text));
-  font-family: 'Noto Sans TC', var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans);
   padding-top: 28px;
   padding-bottom: 0;
 }
@@ -418,11 +458,19 @@ html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea,
   border-radius: 24px;
 }
 .shop-hero-grid { display: grid; grid-template-columns: 1fr 1.03fr; align-items: center; gap: 44px; padding: 44px; }
-.shop-hero-copy h1 { font-family: 'Noto Sans TC', var(--font-sans), system-ui, sans-serif; font-size: clamp(32px, 3.6vw, 44px); font-weight: 700; letter-spacing: -.03em; line-height: 1.45; margin: 18px 0; text-wrap: balance; color: rgb(var(--moon-accent)); }
+.shop-hero-copy h1 { font-family: var(--font-sans); font-size: clamp(32px, 3.6vw, 44px); font-weight: 700; letter-spacing: -.03em; line-height: 1.45; margin: 18px 0; text-wrap: balance; color: rgb(var(--moon-accent)); }
 .shop-hero-description { max-width: 370px; font-size: 16px; line-height: 1.9; color: rgb(var(--moon-text)); }
 .shop-hero-detail { margin-top: 8px; color: rgb(var(--moon-muted)); font-size: 14px; line-height: 1.85; }
 .shop-primary { display: inline-flex; align-items: center; justify-content: center; gap: 28px; min-height: 56px; margin-top: 26px; padding: 14px 28px; border-radius: 12px; background: #d7c678; color: #1f2f1f; font-weight: 600; font-size: 15px; transition: background .2s; }
 .shop-primary:hover { background: #e3d58f; }
+/* 全站主行動，依所在表面決定（common.md）：
+   深色面（深色主題的頁面、抽屜、結帳）＝柔金底、深綠字（#1F2F1F on #D7C678，8.24:1），與 .shop-primary 同色；
+   淺色面（淺色主題，以及首頁固定奶油閱讀區 .shop-home，連深色主題也是）＝深綠實心、奶油字（#F5F0E8 on #1F2F1F，12.47:1），hover 中綠 #304F2F。
+   首頁深綠 Hero 的「選購甜點」是 .shop-primary，維持柔金。 */
+.shop-cta { background-color: #d7c678; color: #1f2f1f; border-radius: 12px; }
+.shop-cta:hover:not(:disabled) { background-color: #e3d58f; color: #1f2f1f; }
+html[data-theme='light'] .shop-cta, .shop-home .shop-cta { background-color: #1f2f1f; color: #f5f0e8; }
+html[data-theme='light'] .shop-cta:hover:not(:disabled), .shop-home .shop-cta:hover:not(:disabled) { background-color: #304f2f; color: #f5f0e8; }
 .shop-hero-links { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 16px; }
 .shop-hero-links a { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; font-size: 13px; color: rgb(var(--moon-muted)); }
 .shop-hero-photo { display: block; padding: 10px; background: #f5f0e8; color: #1f2f1f; border-radius: 20px; }
@@ -432,7 +480,7 @@ html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea,
 .shop-announcement:has(> *) { padding-top: 24px; }
 .shop-menu { padding-block: 56px 64px; scroll-margin-top: 96px; }
 .shop-menu-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 28px; }
-.shop-menu h2, .shop-order-guide h2, .shop-story h2 { font-family: 'Noto Sans TC', var(--font-sans), system-ui, sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -.025em; line-height: 1.5; color: rgb(var(--moon-accent)); }
+.shop-menu h2, .shop-order-guide h2, .shop-story h2 { font-family: var(--font-sans); font-size: 28px; font-weight: 700; letter-spacing: -.025em; line-height: 1.5; color: rgb(var(--moon-accent)); }
 .shop-menu-heading h2 { margin: 10px 0 8px; }
 .shop-menu-heading p:last-child { font-size: 14px; line-height: 1.8; color: rgb(var(--moon-muted)); }
 .shop-search { display: flex; align-items: center; width: 280px; min-width: 0; gap: 10px; padding-left: 16px; border: 1px solid rgb(var(--moon-border)); background: rgb(var(--moon-dark)); border-radius: 8px; color: rgb(var(--moon-muted)); }
@@ -489,7 +537,7 @@ html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea,
 .shop-order-guide h2 { margin: 10px 0 28px; }
 .shop-order-guide ol { list-style: none; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px; }
 .shop-order-guide li { display: flex; gap: 16px; }
-.shop-order-guide li > span { font-family: 'Noto Sans TC', var(--font-sans), system-ui, sans-serif; font-size: 27px; color: rgb(var(--moon-gold)); line-height: 1.4; }
+.shop-order-guide li > span { font-family: var(--font-sans); font-size: 27px; color: rgb(var(--moon-gold)); line-height: 1.4; }
 .shop-order-guide h3 { font-size: 17px; font-weight: 500; line-height: 1.5; margin-bottom: 8px; }
 .shop-order-guide li p { font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.8; }
 .shop-guide-links { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 24px; }
@@ -498,13 +546,23 @@ html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea,
 .shop-story h2 { margin: 8px 0 12px; font-size: 26px; }
 .shop-story p:last-child { max-width: 550px; font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.9; }
 .shop-story > a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: 14px; white-space: nowrap; }
-.shop-navbar, .shop-footer, .shop-product, .shop-cart-drawer, .shop-checkout, .shop-mobile-cart { font-family: 'Noto Sans TC', var(--font-sans), system-ui, sans-serif; }
+.shop-navbar, .shop-footer, .shop-product, .shop-cart-drawer, .shop-checkout, .shop-mobile-cart { font-family: var(--font-sans); }
 .shop-navbar button, .shop-navbar a { border-radius: 12px; }
 .shop-navbar-main { height: 76px; }
+/* 導覽列疊在 Universe rail（#1F2F1F）下方：交界一條 1px 金色細線；深色主題底色再提亮一階（#243624），兩條橫條才分得出層級。
+   淺色主題 rail 是深綠、導覽列是奶油，底色本來就分得開，只保留細線（讓兩個主題的導覽列總高相同）。
+   導覽列桌機總高 = h-20（80px）＋上下框線各 1px，帳號頁 sticky 標頭靠 --shop-navbar-h 疊在它下方；改動導覽列高度時要一起改。 */
+.shop-navbar { border-top: 1px solid rgba(215, 198, 120, .22); }
+html[data-theme='dark'] .shop-navbar { background-color: #243624; }
+:root { --shop-navbar-h: 82px; }
+/* Universe rail kit 的站點覆寫：收合時層級 35，讓購物車 overlay（40）與 drawer（50）壓在 rail 之上；展開的「更多」維持 kit 預設 210。 */
+:root { --ku-nav-z: 35; }
+/* 導覽列桌機時貼在 sticky rail 下方（rail ≤640 是 relative，導覽列自己 top-0）。 */
+@media (min-width: 641px) { .ku-universe-rail + .shop-navbar { top: var(--ku-rail-height); } }
 .shop-footer { background: rgb(var(--moon-dark)); margin-top: 0; padding-bottom: 72px; }
 .shop-footer li a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; line-height: 1.7; }
 .shop-footer ul { gap: 0; }
-.shop-product .brand-display { font-family: 'Noto Sans TC', var(--font-sans), system-ui, sans-serif; font-size: 32px; line-height: 1.5; letter-spacing: -.025em; font-weight: 700; }
+.shop-product .brand-display { font-family: var(--font-sans); font-size: 32px; line-height: 1.5; letter-spacing: -.025em; font-weight: 700; }
 .shop-product .brand-body { font-size: 16px; font-weight: 400; line-height: 1.9; }
 .shop-product .brand-section { padding-block: 48px; }
 .shop-product .aspect-square { border-radius: 12px; }
@@ -560,10 +618,20 @@ html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea,
   .shop-product-actions .shop-buy-row > button { flex-basis: 100%; font-size: 15px; }
   .shop-cart-drawer { border-radius: 0; }
 }
+/* 資訊頁中文大標：品牌字距 0.25em 在手機會把句尾擠成孤字，≤640 收到 0.06em 並平均換行；桌機字距保留。 */
+@media (max-width: 640px) {
+  .brand-section > h1.brand-display { letter-spacing: .06em; text-wrap: balance; }
+}
 @media (prefers-reduced-motion: reduce) {
   .shop-home *, .shop-product *, .shop-navbar *, .shop-cart-drawer *, .shop-mobile-cart * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
-.shop-checkout .brand-display { font-family: 'Noto Sans TC', var(--font-sans), system-ui, sans-serif; letter-spacing: -.025em; font-weight: 700; }
+/* 載入轉圈例外：catch-all 會把 iteration-count 壓成 1，轉圈停成靜止的缺口圓，看起來像當機。
+   reduce 下 .animate-spin 維持持續旋轉，但放慢到約 1.5s 一圈；其他動效仍是 0.01ms。
+   必須放在上面 .shop-* 區塊之後（同特異性，後者勝），並重新指定 animation-name。 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin { animation: spin 1.5s linear infinite !important; }
+}
+.shop-checkout .brand-display { font-family: var(--font-sans); letter-spacing: -.025em; font-weight: 700; }
 .shop-order-summary, .shop-checkout-form { border-radius: 12px; }
 .shop-order-summary h3 { font-size: 15px; line-height: 1.7; }
 .shop-checkout-form h3 { font-size: 17px; font-weight: 500; }
@@ -585,7 +653,6 @@ html[data-theme='light'] .shop-checkout-form input[type='radio']:focus-visible +
 .shop-home :is(.shop-mobile-product,.shop-row-controls) .text-green-400 { color: #304f2f; }
 html[data-theme='light'] .shop-product-actions .text-green-400 { color: #304f2f; }
 .shop-home .shop-mobile-product a, .shop-home .shop-row-controls :is([class*='text-moon-muted/60'],[class*='text-moon-muted/70']) { color: rgb(var(--moon-muted)); }
-.shop-home [class*='text-[9px]'], .shop-home [class*='text-[10px]'], .shop-home [class*='text-[11px]'] { font-size: 12px; }
 @media (max-width: 360px) {
   .shop-hero-grid { padding: 24px 20px 20px; }
   .shop-hero-copy h1 { font-size: 30px; }

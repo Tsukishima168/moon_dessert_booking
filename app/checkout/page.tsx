@@ -1342,7 +1342,7 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || isDateValidationPending || isSelectedDateInvalid || !hasAvailableDeliveryMethod}
-                className="w-full bg-moon-accent text-moon-black py-4 text-sm tracking-widest hover:bg-moon-text transition-colors disabled:opacity-50"
+                className="w-full shop-cta py-4 text-sm tracking-widest transition-colors disabled:opacity-50"
               >
                 {isSubmitting
                   ? '處理中，請稍候...'

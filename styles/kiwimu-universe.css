@@ -1,118 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap');
-
+/*
+ * Kiwimu Universe rail — shared kit styles. Byte-identical across the five sites.
+ * Rail rules only: no fonts are loaded here (each site loads Noto Sans TC once itself),
+ * and nothing outside .ku-universe-rail is styled. Site differences go through the
+ * variables below or the site's own CSS, never by editing this file.
+ *
+ *   --ku-rail-height   rail height incl. safe area (the component overwrites it with the measured px)
+ *   --ku-nav-z         stacking order while collapsed   (default 60;  shop sets 35)
+ *   --ku-nav-z-open    stacking order of the open menu  (default 210)
+ */
 :root {
-  --ku-paper: #f4f4f0;
-  --ku-paper-raised: #fffdf7;
-  --ku-ink: #111111;
-  --ku-lime: #d4ff00;
-  --ku-moon-silver: #c9cdd8;
-  --ku-island-ember: #c4745a;
-  --ku-muted: #666666;
-  --ku-line: rgba(255, 255, 255, 0.14);
-  --ku-font-display: 'Space Grotesk', 'Noto Sans TC', system-ui, sans-serif;
-  --ku-font-body: 'Noto Sans TC', system-ui, sans-serif;
-  --ku-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-  --ku-space-1: 0.25rem;
-  --ku-space-2: 0.5rem;
-  --ku-space-3: 0.75rem;
-  --ku-space-4: 1rem;
-  --ku-radius-sm: 0.5rem;
-  --ku-radius-md: 0.75rem;
-  --ku-focus-ring: 0 0 0 3px rgba(212, 255, 0, 0.3);
-  --ku-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ku-rail-height: calc(3rem + 1px);
+  --ku-rail-height: calc(3rem + 1px + env(safe-area-inset-top, 0px));
 }
 
-.ku-site-kicker {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.8rem;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--ku-ink);
-  border-radius: var(--ku-radius-sm);
-  background: var(--ku-paper-raised);
-  box-shadow: 2px 2px 0 var(--ku-ink);
-  color: var(--ku-ink);
-  font-family: var(--ku-font-mono);
-  font-size: 0.56rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.ku-primary-action {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--ku-ink);
-  border-radius: var(--ku-radius-sm);
-  background: var(--ku-lime);
-  box-shadow: 3px 3px 0 var(--ku-ink);
-  color: var(--ku-ink);
-  font-family: var(--ku-font-display);
-  font-weight: 700;
-  transition:
-    transform 160ms var(--ku-ease),
-    box-shadow 160ms var(--ku-ease),
-    background-color 160ms var(--ku-ease);
-}
-
-.ku-primary-action:hover {
-  background: #e0ff4f;
-  box-shadow: 4px 4px 0 var(--ku-ink);
-  transform: translate(-1px, -1px);
-}
-
-.ku-primary-action:active {
-  box-shadow: 1px 1px 0 var(--ku-ink);
-  transform: translate(2px, 2px);
-}
-
-.ku-primary-action:focus-visible {
-  outline: 3px solid var(--ku-ink);
-  outline-offset: 4px;
-  box-shadow: 0 0 0 7px var(--ku-lime), 3px 3px 0 var(--ku-ink);
-}
-
-.ku-orbit-frame {
-  border: 1px solid rgba(17, 17, 17, 0.16);
-  box-shadow:
-    0 1.5rem 4rem rgba(17, 17, 17, 0.12),
-    0 0 0 0.5rem rgba(212, 255, 0, 0.08);
-}
-
-@media (max-width: 40rem) {
-  :root {
-    --ku-rail-height: calc(3rem + 1px);
-  }
-}
-
-
-
-@media (prefers-reduced-motion: reduce) {
-  .ku-primary-action,
-  .ku-orbit-frame,
-  .ku-orbit-frame * {
-    scroll-behavior: auto;
-    transition-duration: 0.01ms;
-  }
-}
-
-/* 月島共同導覽 */
 .ku-universe-rail {
   --ku-nav-forest: #1f2f1f;
   --ku-nav-paper: #f5f0e8;
   --ku-nav-gold: #d7c678;
   --ku-nav-muted: #d8d7c4;
   --ku-nav-line: rgba(216, 215, 196, .18);
-  overflow: visible; position: sticky; top: 0; z-index: 35; width: 100%;
-  min-height: 3rem; border-bottom: 1px solid var(--ku-nav-line);
+  --ku-nav-font: "Noto Sans TC", system-ui, sans-serif;
+  --ku-nav-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: visible; position: sticky; top: 0; z-index: var(--ku-nav-z, 60); width: 100%;
+  min-height: 3rem; padding-top: env(safe-area-inset-top, 0px); border-bottom: 1px solid var(--ku-nav-line);
   background: var(--ku-nav-forest); color: var(--ku-nav-paper);
-  font-family: var(--ku-font-body); -webkit-font-smoothing: antialiased;
+  font-family: var(--ku-nav-font); -webkit-font-smoothing: antialiased;
   isolation: isolate;
 }
+.ku-universe-rail, .ku-universe-rail *, .ku-universe-rail *::before, .ku-universe-rail *::after { box-sizing: border-box; }
+.ku-universe-rail.is-menu-open { z-index: var(--ku-nav-z-open, 210); }
 .ku-universe-rail__inner { position: relative; display: flex; width: min(100%, 90rem); min-height: 3rem; margin: 0 auto; }
 .ku-universe-rail__identity { display: flex; align-items: center; flex: 0 0 200px; padding: 0 24px; }
 .ku-universe-rail__wordmark { font-size: 12px; font-weight: 500; letter-spacing: .1em; color: var(--ku-nav-muted); white-space: nowrap; }
@@ -121,9 +36,9 @@
   position: relative; display: flex; align-items: center; justify-content: center;
   min-width: 0; min-height: 48px; padding: 10px 12px;
   border: 0; border-left: 1px solid var(--ku-nav-line); background: transparent;
-  color: var(--ku-nav-muted); font: 500 14px/1.6 var(--ku-font-body);
+  color: var(--ku-nav-muted); font: 500 14px/1.6 var(--ku-nav-font);
   text-align: center; text-decoration: none; cursor: pointer;
-  transition: color 160ms var(--ku-ease), background-color 160ms var(--ku-ease);
+  transition: color 160ms var(--ku-nav-ease), background-color 160ms var(--ku-nav-ease);
 }
 .ku-universe-rail__link:hover, .ku-universe-rail__more:hover { background: rgba(245,240,232,.05); color: var(--ku-nav-paper); }
 .ku-universe-rail__link.is-current, .ku-universe-rail__more.is-current { color: var(--ku-nav-gold); background: rgba(215,198,120,.06); }
@@ -145,16 +60,15 @@
 @media (max-width: 640px) {
   .ku-universe-rail { position: relative; }
   .ku-universe-rail__nav { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(60px, .72fr); }
+  /* Map and gacha sit inside "更多": the button carries the current site's name, so give it room (wraps naturally if text is enlarged). */
+  .ku-universe-rail__nav--more-current { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(92px, .72fr); }
   .ku-universe-rail__nav > .ku-universe-rail__secondary { display: none; }
   .ku-universe-rail__more { display: flex; }
   .ku-universe-rail__link, .ku-universe-rail__more { padding: 10px 6px; }
 }
 
-
-.ku-universe-rail :is(button, a):focus-visible { outline: 2px solid var(--ku-nav-gold); outline-offset: -4px; box-shadow: none; }
-@media (prefers-reduced-motion: reduce) { .ku-universe-rail *, .ku-universe-rail *::before, .ku-universe-rail *::after { scroll-behavior: auto; transition-duration: 0.01ms; } }
-@media (forced-colors: active) { .ku-universe-rail__link.is-current { outline: 2px solid CanvasText; outline-offset: -3px; } }
+/* !important on purpose: a site's own global :focus-visible rule (some use #root) must never recolour the rail's ring. */
+.ku-universe-rail :is(button, a):focus-visible { outline: 2px solid var(--ku-nav-gold) !important; outline-offset: -4px !important; box-shadow: none !important; }
+@media (prefers-reduced-motion: reduce) { .ku-universe-rail, .ku-universe-rail *, .ku-universe-rail *::before, .ku-universe-rail *::after { scroll-behavior: auto; transition-duration: 0.01ms; } }
+@media (forced-colors: active) { .ku-universe-rail__link.is-current, .ku-universe-rail__more.is-current { outline: 2px solid CanvasText; outline-offset: -3px; } }
 @media print { .ku-universe-rail { display: none; } }
-
-/* Shop 頁首位於共同導覽下方，購物車 overlay40／drawer50 在兩者之上。 */
-@media (min-width: 641px) { .ku-universe-rail + .shop-navbar { top: var(--ku-rail-height); } }

@@ -192,7 +192,7 @@ export default function EmailTemplatesPage() {
         content: '',
         editorProps: {
             attributes: {
-                class: 'min-h-[280px] p-4 focus:outline-none text-moon-text leading-relaxed',
+                class: 'min-h-[280px] p-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d7c678] text-moon-text leading-relaxed',
             },
         },
     });

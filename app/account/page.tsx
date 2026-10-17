@@ -249,7 +249,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-moon-dark text-moon-text">
-      <header className="sticky top-0 z-10 border-b border-moon-border bg-moon-black/95 backdrop-blur">
+      <header className="sticky top-0 z-10 min-[641px]:top-[calc(var(--ku-rail-height)+var(--shop-navbar-h))] border-b border-moon-border bg-moon-black/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div>
             <p className="brand-eyebrow">Moon Passport</p>
@@ -377,7 +377,7 @@ export default function AccountPage() {
                   action={(
                     <Link
                       href="/"
-                      className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90"
+                      className="inline-flex min-h-11 items-center justify-center shop-cta px-2.5 text-sm font-medium transition-all"
                     >
                       開始訂購
                     </Link>
@@ -402,7 +402,7 @@ export default function AccountPage() {
                 action={(
                   <Link
                     href="/"
-                    className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90"
+                    className="inline-flex min-h-11 items-center justify-center shop-cta px-2.5 text-sm font-medium transition-all"
                   >
                     開始訂購
                   </Link>

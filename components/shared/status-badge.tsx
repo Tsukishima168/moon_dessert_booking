@@ -63,7 +63,7 @@ export function StatusBadge({
   return (
     <Badge
       variant="outline"
-      className={cn("gap-1.5 px-2.5 py-1 text-[11px] font-medium", meta.className, className)}
+      className={cn("gap-1.5 px-2.5 py-1 text-xs font-medium", meta.className, className)}
     >
       {showIcon ? <span aria-hidden="true">{meta.icon}</span> : null}
       <span>{meta.label}</span>
