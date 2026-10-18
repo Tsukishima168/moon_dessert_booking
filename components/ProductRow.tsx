@@ -9,7 +9,7 @@ import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
 import { getDeliveryTypeLabel } from '@/lib/delivery-type';
-import { getOrderableVariants } from '@/lib/orderable';
+import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
 
 interface ProductRowProps {
     item: MenuItemWithVariants;
@@ -19,6 +19,8 @@ interface ProductRowProps {
 
 /** Desktop ordering row. Product data and cart actions remain shared with the existing flow. */
 export default function ProductRow({ item, displayOnly = false, index = 0 }: ProductRowProps) {
+    // 飲品一律門市供應（不論首頁是否傳入 displayOnly，例如搜尋結果與推薦列表）。
+    const storeOnly = displayOnly || isStoreOnlyCategory(item.category);
     const addItem = useCartStore((state) => state.addItem);
     const openCart = useCartStore((state) => state.openCart);
     // 只有價格 > 0 的規格可以線上訂購；0 元規格是門市限定。
@@ -28,7 +30,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
     const [added, setAdded] = useState(false);
 
     const handleAddToCart = () => {
-        if (!selectedVariant || isSoldOut || displayOnly) return;
+        if (!selectedVariant || isSoldOut || storeOnly) return;
         for (let i = 0; i < quantity; i++) {
             addItem({
                 id: `${item.id}-${selectedVariant.id}`,
@@ -66,7 +68,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
     const isPickupOnly = item.delivery_type === 'pickup_only';
     const productHref = `/product/${item.slug || item.id}`;
 
-    if (isSoldOut && !displayOnly) {
+    if (isSoldOut && !storeOnly) {
         return (
             <div className="flex items-center gap-6 py-5 px-4 border-b border-moon-border/20 opacity-40">
                 <span className="text-xs text-moon-muted/40 font-mono w-6 shrink-0">{serialNo}</span>
@@ -80,7 +82,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                 <div className="shop-row-copy flex-1 min-w-0">
                     <h3 className="text-moon-muted line-through text-sm tracking-wide">{item.name}</h3>
                 </div>
-                <span className="text-xs text-moon-muted tracking-widest shrink-0">{item.is_available ? '暫不開放預訂' : '已售完'}</span>
+                <span className="text-xs text-moon-muted tracking-widest shrink-0">{item.is_available ? (item.variants.length > 0 ? '門市限定' : '暫不開放預訂') : '已售完'}</span>
             </div>
         );
     }
@@ -153,7 +155,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
             {/* 右側：規格選擇 + 價格 + 操作（桌面橫排） */}
             <div className="shop-row-controls shrink-0 flex items-center gap-3 lg:gap-5">
                 {/* 規格選擇 */}
-                {!displayOnly && variants.length > 1 && (
+                {!storeOnly && variants.length > 1 && (
                     <div className="hidden lg:flex flex-col gap-1">
                         {variants.map((variant) => (
                             <button
@@ -172,20 +174,20 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                 )}
 
                 {/* 規格選擇（精簡版 — 只有一個 list 的時候） */}
-                {!displayOnly && variants.length === 1 && (
+                {!storeOnly && variants.length === 1 && (
                     <div className="hidden lg:block text-xs text-moon-muted/60 whitespace-nowrap">
                         {variants[0].variant_name !== '標準' && variants[0].variant_name}
                     </div>
                 )}
 
                 {/* 價格 */}
-                {(!displayOnly || (selectedVariant?.price ?? item.price) > 0) && <div className="text-lg lg:text-xl font-light text-moon-accent tracking-wide whitespace-nowrap">
+                {(!storeOnly || (selectedVariant?.price ?? item.price) > 0) && <div className="text-lg lg:text-xl font-light text-moon-accent tracking-wide whitespace-nowrap">
                     <span className="text-xs mr-0.5">$</span>
                     {selectedVariant?.price ?? item.price}
                 </div>}
 
                 {/* 操作區 */}
-                {displayOnly ? (
+                {storeOnly ? (
                     <span className="text-xs text-moon-muted/60 tracking-widest hidden lg:inline whitespace-nowrap">
                         門市供應
                     </span>

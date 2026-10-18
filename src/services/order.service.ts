@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto'
-import { isOrderablePrice } from '@/lib/orderable'
+import { isOrderablePrice, isStoreOnlyCategory } from '@/lib/orderable'
 import { createAdminClient } from '@/lib/supabase-admin'
 import type { OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
@@ -73,6 +73,7 @@ interface MenuItemRow {
   id: string
   name: string
   is_available: boolean | null
+  category_id?: string | null
 }
 
 interface MenuVariantRow {
@@ -150,7 +151,7 @@ async function recalculateOrderPricing(items: OrderItem[]) {
 
   const { data: menuItems, error: menuItemsError } = await adminClient
     .from('menu_items')
-    .select('id, name, is_available')
+    .select('id, name, is_available, category_id')
 
   if (menuItemsError) {
     console.error('[recalculateOrderPricing] 無法讀取 menu_items，拒絕建立訂單:', menuItemsError.message)
@@ -212,6 +213,11 @@ async function recalculateOrderPricing(items: OrderItem[]) {
 
     if (matchedMenuItem.is_available === false) {
       throw new OrderValidationError(`商品「${matchedMenuItem.name}」目前不可訂購，請重新整理菜單`)
+    }
+
+    // 飲品一律門市供應（現做、冷熱當場決定），即使有價格也不開放線上訂購。
+    if (isStoreOnlyCategory(matchedMenuItem.category_id)) {
+      throw new OrderValidationError(`商品「${matchedMenuItem.name}」為門市供應，請至門市點購`)
     }
 
     const canonicalPrice = parsePrice(matchedVariant.price)

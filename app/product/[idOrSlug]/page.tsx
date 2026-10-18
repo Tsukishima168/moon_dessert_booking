@@ -12,7 +12,7 @@ import ProductViewTracker from '@/components/ProductViewTracker';
 import { getMenuItemBySlugOrId } from '@/lib/supabase';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { getDeliveryTypeLabel } from '@/lib/delivery-type';
-import { getOrderableVariants, isOrderablePrice } from '@/lib/orderable';
+import { getOrderableVariants, isOrderablePrice, isStoreOnlyCategory } from '@/lib/orderable';
 
 // 商品資料（含價格/庫存）可能隨時變動，不做靜態快取，每次請求即時查詢。
 export const dynamic = 'force-dynamic';
@@ -94,9 +94,12 @@ export default async function ProductPage({ params }: ProductPageParams) {
   );
 
   const orderableVariantCount = getOrderableVariants(item.variants).length;
-  const availability = item.is_available && orderableVariantCount > 0
-    ? 'https://schema.org/InStock'
-    : 'https://schema.org/OutOfStock';
+  const isStoreSupplied = isStoreOnlyCategory(item.category);
+  const availability = !item.is_available || orderableVariantCount === 0
+    ? 'https://schema.org/OutOfStock'
+    : isStoreSupplied
+      ? 'https://schema.org/InStoreOnly'
+      : 'https://schema.org/InStock';
 
   const productSchema = {
     '@context': 'https://schema.org',
@@ -217,6 +220,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
                   image_url: item.image_url,
                   is_available: item.is_available,
                   variants: item.variants,
+                  category: item.category,
                 }}
               />
 

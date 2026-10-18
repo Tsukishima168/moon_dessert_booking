@@ -7,7 +7,7 @@ import { Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
-import { getOrderableVariants } from '@/lib/orderable';
+import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
 import { getDeliveryTypeLabel } from '@/lib/delivery-type';
 
 interface ProductListItemProps {
@@ -65,6 +65,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
   // 是否為純展示（例如飲料）
   const isDisplayOnly =
     displayOnly ||
+    isStoreOnlyCategory(item.category) ||
     (!item.is_available && item.variants.length === 0 && /drink/i.test(item.category || ''));
 
   // 商品真正售完的判斷：只看 is_available === false
@@ -75,7 +76,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           <div className="flex-1">
             <h3 className="text-sm text-moon-muted">{item.name}</h3>
           </div>
-          <span className="text-xs text-moon-muted tracking-wider">{item.is_available ? '暫不開放預訂' : '已售完'}</span>
+          <span className="text-xs text-moon-muted tracking-wider">{item.is_available ? (item.variants.length > 0 ? '門市限定' : '暫不開放預訂') : '已售完'}</span>
         </div>
       </div>
     );
@@ -100,7 +101,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 {item.description}
               </p>
             )}
-            <p className="shop-mobile-price">{isDisplayOnly ? '門市供應' : <>NT$ {variants.length > 0 ? Math.min(...variants.map(v => v.price)).toLocaleString('zh-TW') : item.price.toLocaleString('zh-TW')}{variants.length > 1 ? ' 起' : ''}</>}</p>
+            <p className="shop-mobile-price">{isDisplayOnly ? (variants.length > 0 ? `NT$ ${Math.min(...variants.map(v => v.price)).toLocaleString('zh-TW')}・門市供應` : '門市供應') : <>NT$ {variants.length > 0 ? Math.min(...variants.map(v => v.price)).toLocaleString('zh-TW') : item.price.toLocaleString('zh-TW')}{variants.length > 1 ? ' 起' : ''}</>}</p>
           </div>
 
           <div className="flex items-center gap-2">

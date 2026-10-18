@@ -284,6 +284,23 @@ await assert.rejects(
 );
 assert.equal(zeroPersisted, 0);
 
+// 飲品一律門市供應：即使有價格（菜單 150 元）也不得線上成立訂單（Penso 2026-10-18）。
+let drinkPersisted = 0;
+const drinkDb = { ...serviceDb, from: table => {
+  if (table === 'menu_items') return query({ data: [{ id: 'menu', name: 'fixture-latte', is_available: true, category_id: 'drinks' }], error: null });
+  if (table === 'menu_variants') return query({ data: [{ id: 'variant', menu_item_id: 'menu', variant_name: '一般', price: 150 }], error: null });
+  return serviceDb.from(table);
+} };
+const drinkService = load('src/services/order.service.ts', { ...serviceStubs,
+  '@/lib/supabase-admin': { createAdminClient: () => drinkDb },
+  '@/src/repositories/order.repository': { insertOrder: async payload => { drinkPersisted++; return payload; } },
+});
+await assert.rejects(
+  drinkService.createOrder({ ...orderInput, promo_code: undefined, items: [{ id: 'menu-variant', name: 'fixture-latte', quantity: 1, price: 150 }], total_price: 150 }, null),
+  error => error.name === 'OrderValidationError' && /門市供應/.test(error.message),
+);
+assert.equal(drinkPersisted, 0);
+
 const createRoute = load('app/api/order/route.ts', {
   'next/server': next,
   '@/lib/supabase-server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }) },

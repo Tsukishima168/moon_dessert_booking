@@ -5,10 +5,10 @@ import { Plus, Minus, ShoppingCart } from 'lucide-react';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
-import { getOrderableVariants } from '@/lib/orderable';
+import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
 
 interface ProductPageActionsProps {
-  item: Pick<MenuItemWithVariants, 'id' | 'name' | 'image_url' | 'is_available' | 'variants'>;
+  item: Pick<MenuItemWithVariants, 'id' | 'name' | 'image_url' | 'is_available' | 'variants' | 'category'>;
 }
 
 /**
@@ -27,6 +27,15 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
 
   const isSoldOut = !item.is_available || variants.length === 0;
   const isStoreOnly = item.is_available && item.variants.length > 0 && variants.length === 0;
+
+  // 飲品一律門市供應：顯示價格但不開放加購（伺服器也會拒絕）。
+  if (item.is_available && isStoreOnlyCategory(item.category)) {
+    return (
+      <div className="border border-moon-border/60 px-4 py-3 text-sm text-moon-muted tracking-widest text-center">
+        門市供應・請至門市點購
+      </div>
+    );
+  }
 
   if (isSoldOut) {
     return (

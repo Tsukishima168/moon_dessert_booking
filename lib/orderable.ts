@@ -11,3 +11,11 @@ export function isOrderablePrice(price: unknown): boolean {
 export function getOrderableVariants<T extends { price: unknown }>(variants: readonly T[]): T[] {
   return variants.filter((variant) => isOrderablePrice(variant.price));
 }
+
+// 飲品現做、冷熱當場決定：一律門市供應，不開放線上訂購（Penso 2026-10-18）。
+// 判斷式與首頁既有的飲品分類判斷一致（app/page.tsx）。
+const STORE_ONLY_CATEGORY = /drink|飲品|飲料/i;
+
+export function isStoreOnlyCategory(category: unknown): boolean {
+  return typeof category === 'string' && STORE_ONLY_CATEGORY.test(category);
+}
