@@ -267,6 +267,23 @@ assert.equal((await service.createOrder(orderInput, 'fixture-owner')).finalPrice
 assert.equal(released, 1);
 assert.equal(persisted.user_id, 'fixture-owner');
 
+// 0 元規格＝門市限定：伺服器必須拒絕，且不得寫入訂單（2026-10-17 抹茶拿鐵 $0 可下單）。
+let zeroPersisted = 0;
+const zeroPriceDb = { ...serviceDb, from: table => {
+  if (table === 'menu_items') return query({ data: [{ id: 'menu', name: 'fixture-drink', is_available: true }], error: null });
+  if (table === 'menu_variants') return query({ data: [{ id: 'variant', menu_item_id: 'menu', variant_name: '一般', price: 0 }], error: null });
+  return serviceDb.from(table);
+} };
+const zeroService = load('src/services/order.service.ts', { ...serviceStubs,
+  '@/lib/supabase-admin': { createAdminClient: () => zeroPriceDb },
+  '@/src/repositories/order.repository': { insertOrder: async payload => { zeroPersisted++; return payload; } },
+});
+await assert.rejects(
+  zeroService.createOrder({ ...orderInput, promo_code: undefined, items: [{ id: 'menu-variant', name: 'fixture-drink', quantity: 1, price: 0 }], total_price: 0 }, null),
+  error => error.name === 'OrderValidationError' && /門市限定/.test(error.message),
+);
+assert.equal(zeroPersisted, 0);
+
 const createRoute = load('app/api/order/route.ts', {
   'next/server': next,
   '@/lib/supabase-server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }) },

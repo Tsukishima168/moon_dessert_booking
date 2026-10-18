@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto'
+import { isOrderablePrice } from '@/lib/orderable'
 import { createAdminClient } from '@/lib/supabase-admin'
 import type { OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
@@ -216,6 +217,10 @@ async function recalculateOrderPricing(items: OrderItem[]) {
     const canonicalPrice = parsePrice(matchedVariant.price)
     if (!Number.isFinite(canonicalPrice) || canonicalPrice < 0) {
       throw new Error(`商品「${matchedMenuItem.name}」價格設定異常`)
+    }
+    // 0 元＝門市展示／門市限定，不開放線上訂購（不得以 $0 成立訂單）。
+    if (!isOrderablePrice(canonicalPrice)) {
+      throw new OrderValidationError(`商品「${matchedMenuItem.name}」為門市限定，無法線上訂購`)
     }
 
     return {
