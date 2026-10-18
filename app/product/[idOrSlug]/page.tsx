@@ -12,6 +12,7 @@ import ProductViewTracker from '@/components/ProductViewTracker';
 import { getMenuItemBySlugOrId } from '@/lib/supabase';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { getDeliveryTypeLabel } from '@/lib/delivery-type';
+import { getOrderableVariants, isOrderablePrice } from '@/lib/orderable';
 
 // 商品資料（含價格/庫存）可能隨時變動，不做靜態快取，每次請求即時查詢。
 export const dynamic = 'force-dynamic';
@@ -24,9 +25,12 @@ interface ProductPageParams {
   params: Promise<{ idOrSlug: string }>;
 }
 
-function getMinPrice(item: MenuItemWithVariants): number {
-  if (item.variants.length === 0) return item.price;
-  return Math.min(...item.variants.map((v) => v.price));
+// 只計入可線上訂購（價格 > 0）的規格；沒有時回傳 null＝門市限定，不顯示 $0。
+function getMinPrice(item: MenuItemWithVariants): number | null {
+  const variants = getOrderableVariants(item.variants);
+  if (variants.length > 0) return Math.min(...variants.map((v) => v.price));
+  if (item.variants.length === 0 && isOrderablePrice(item.price)) return item.price;
+  return null;
 }
 
 function serializeJsonLd(value: unknown): string {
@@ -89,7 +93,8 @@ export default async function ProductPage({ params }: ProductPageParams) {
     (item.allergens && item.allergens.length > 0)
   );
 
-  const availability = item.is_available && item.variants.length > 0
+  const orderableVariantCount = getOrderableVariants(item.variants).length;
+  const availability = item.is_available && orderableVariantCount > 0
     ? 'https://schema.org/InStock'
     : 'https://schema.org/OutOfStock';
 
@@ -100,14 +105,17 @@ export default async function ProductPage({ params }: ProductPageParams) {
     ...(galleryImages.length > 0 ? { image: galleryImages } : {}),
     ...(item.description ? { description: item.description } : {}),
     brand: { '@type': 'Brand', name: SITE_NAME },
-    offers: {
-      '@type': 'Offer',
-      url: productUrl,
-      price: minPrice,
-      priceCurrency: 'TWD',
-      availability,
-      ...(item.available_until ? { priceValidUntil: item.available_until.slice(0, 10) } : {}),
-    },
+    // 門市限定（沒有可線上訂購的價格）不輸出 offers，避免搜尋結果出現 $0。
+    ...(minPrice !== null ? {
+      offers: {
+        '@type': 'Offer',
+        url: productUrl,
+        price: minPrice,
+        priceCurrency: 'TWD',
+        availability,
+        ...(item.available_until ? { priceValidUntil: item.available_until.slice(0, 10) } : {}),
+      },
+    } : {}),
   };
 
   return (
@@ -116,7 +124,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(productSchema) }}
       />
-      <ProductViewTracker itemId={item.id} itemName={item.name} price={minPrice} />
+      <ProductViewTracker itemId={item.id} itemName={item.name} price={minPrice ?? 0} />
 
       {/* 商品主資訊 */}
       <section className="border-b border-moon-border">
@@ -183,10 +191,16 @@ export default async function ProductPage({ params }: ProductPageParams) {
               )}
 
               <div className="text-xl sm:text-2xl text-moon-accent font-light mb-6">
-                <span className="text-xs mr-1">$</span>
-                {minPrice}
-                {item.variants.length > 1 && (
-                  <span className="text-xs text-moon-muted ml-2">起</span>
+                {minPrice === null ? (
+                  <span className="text-base sm:text-lg">門市限定</span>
+                ) : (
+                  <>
+                    <span className="text-xs mr-1">$</span>
+                    {minPrice}
+                    {orderableVariantCount > 1 && (
+                      <span className="text-xs text-moon-muted ml-2">起</span>
+                    )}
+                  </>
                 )}
               </div>
 

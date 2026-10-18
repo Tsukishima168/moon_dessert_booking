@@ -5,6 +5,7 @@ import { Plus, Minus, ShoppingCart } from 'lucide-react';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
+import { getOrderableVariants } from '@/lib/orderable';
 
 interface ProductPageActionsProps {
   item: Pick<MenuItemWithVariants, 'id' | 'name' | 'image_url' | 'is_available' | 'variants'>;
@@ -18,16 +19,19 @@ interface ProductPageActionsProps {
 export default function ProductPageActions({ item }: ProductPageActionsProps) {
   const addItem = useCartStore((state) => state.addItem);
   const openCart = useCartStore((state) => state.openCart);
-  const [selectedVariant, setSelectedVariant] = useState(item.variants[0]);
+  // 只有價格 > 0 的規格可以線上訂購；0 元規格是門市限定。
+  const variants = getOrderableVariants(item.variants);
+  const [selectedVariant, setSelectedVariant] = useState(variants[0]);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
-  const isSoldOut = !item.is_available || item.variants.length === 0;
+  const isSoldOut = !item.is_available || variants.length === 0;
+  const isStoreOnly = item.is_available && item.variants.length > 0 && variants.length === 0;
 
   if (isSoldOut) {
     return (
       <div className="border border-moon-border/60 px-4 py-3 text-sm text-moon-muted tracking-widest text-center">
-        {item.is_available ? '暫不開放預訂' : '已售完'}
+        {isStoreOnly ? '門市限定・僅於門市供應' : item.is_available ? '暫不開放預訂' : '已售完'}
       </div>
     );
   }
@@ -64,13 +68,13 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
 
   return (
     <div className="shop-product-actions space-y-4">
-      {item.variants.length > 1 && (
+      {variants.length > 1 && (
         <div>
           <label className="text-xs text-moon-muted tracking-wider mb-2 block">
             選擇規格
           </label>
           <div className="flex flex-wrap gap-2">
-            {item.variants.map((variant) => (
+            {variants.map((variant) => (
               <button
                 key={variant.id}
                 aria-pressed={selectedVariant?.id === variant.id}

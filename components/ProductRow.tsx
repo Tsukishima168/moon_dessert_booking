@@ -9,6 +9,7 @@ import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
 import { getDeliveryTypeLabel } from '@/lib/delivery-type';
+import { getOrderableVariants } from '@/lib/orderable';
 
 interface ProductRowProps {
     item: MenuItemWithVariants;
@@ -20,7 +21,9 @@ interface ProductRowProps {
 export default function ProductRow({ item, displayOnly = false, index = 0 }: ProductRowProps) {
     const addItem = useCartStore((state) => state.addItem);
     const openCart = useCartStore((state) => state.openCart);
-    const [selectedVariant, setSelectedVariant] = useState(item.variants[0]);
+    // 只有價格 > 0 的規格可以線上訂購；0 元規格是門市限定。
+    const variants = getOrderableVariants(item.variants);
+    const [selectedVariant, setSelectedVariant] = useState(variants[0]);
     const [quantity, setQuantity] = useState(1);
     const [added, setAdded] = useState(false);
 
@@ -53,7 +56,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
         setTimeout(() => setAdded(false), 2000);
     };
 
-    const isSoldOut = !item.is_available || item.variants.length === 0;
+    const isSoldOut = !item.is_available || variants.length === 0;
 
     // 序號：01 / 02 / 03 樣式
     const serialNo = String(index + 1).padStart(2, '0');
@@ -150,9 +153,9 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
             {/* 右側：規格選擇 + 價格 + 操作（桌面橫排） */}
             <div className="shop-row-controls shrink-0 flex items-center gap-3 lg:gap-5">
                 {/* 規格選擇 */}
-                {!displayOnly && item.variants.length > 1 && (
+                {!displayOnly && variants.length > 1 && (
                     <div className="hidden lg:flex flex-col gap-1">
-                        {item.variants.map((variant) => (
+                        {variants.map((variant) => (
                             <button
                                 key={variant.id}
                                 aria-pressed={selectedVariant?.id === variant.id}
@@ -169,9 +172,9 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                 )}
 
                 {/* 規格選擇（精簡版 — 只有一個 list 的時候） */}
-                {!displayOnly && item.variants.length === 1 && (
+                {!displayOnly && variants.length === 1 && (
                     <div className="hidden lg:block text-xs text-moon-muted/60 whitespace-nowrap">
-                        {item.variants[0].variant_name !== '標準' && item.variants[0].variant_name}
+                        {variants[0].variant_name !== '標準' && variants[0].variant_name}
                     </div>
                 )}
 
