@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { productCategoryLabel } from '@/lib/product-copy';
 import ProductListItem from '@/components/ProductListItem';
 import ProductRow from '@/components/ProductRow';
+import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
 import Banner from '@/components/Banner';
 import { MenuSkeleton } from '@/components/ui/MenuSkeleton';
 import Reveal from '@/components/ui/Reveal';
@@ -146,7 +147,7 @@ function HomePageContent() {
         : '選一份喜歡的甜點，留給自己，也留給想念的人。';
 
   const featuredItems = menuItems
-    .filter(item => item.is_available && item.variants?.length > 0 && !/drink|飲品|飲料/i.test(item.category || ''))
+    .filter(item => item.is_available && getOrderableVariants(item.variants ?? []).length > 0 && !isStoreOnlyCategory(item.category))
     .slice(0, 4);
   const heroItem = featuredItems.find(item => item.image_url?.trim());
 
@@ -233,7 +234,7 @@ function HomePageContent() {
             {featuredItems.map(item => (
               <Link key={item.id} href={`/product/${item.slug || item.id}`} className="shop-featured-card">
                 <div className="shop-featured-image">{item.image_url?.trim() ? <Image src={item.image_url} alt={item.name} fill sizes="(max-width: 639px) 50vw, (max-width: 1023px) 50vw, 25vw" className="object-cover" /> : <span aria-hidden="true">月島甜點</span>}</div>
-                <div className="shop-featured-copy"><h3>{item.name}</h3><p>NT$ {Math.min(...item.variants.map(v => v.price)).toLocaleString('zh-TW')}{item.variants.length > 1 ? ' 起' : ''}</p><span>選擇規格 <ArrowRight size={15} aria-hidden="true" /></span></div>
+                <div className="shop-featured-copy"><h3>{item.name}</h3><p>NT$ {Math.min(...getOrderableVariants(item.variants).map(v => v.price)).toLocaleString('zh-TW')}{getOrderableVariants(item.variants).length > 1 ? ' 起' : ''}</p><span>選擇規格 <ArrowRight size={15} aria-hidden="true" /></span></div>
               </Link>
             ))}
           </div>

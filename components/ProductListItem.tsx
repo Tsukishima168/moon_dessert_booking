@@ -7,6 +7,7 @@ import { Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
+import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
 import { getDeliveryTypeLabel } from '@/lib/delivery-type';
 
 interface ProductListItemProps {
@@ -17,7 +18,9 @@ interface ProductListItemProps {
 export default function ProductListItem({ item, displayOnly = false }: ProductListItemProps) {
   const addItem = useCartStore((state) => state.addItem);
   const openCart = useCartStore((state) => state.openCart);
-  const [selectedVariant, setSelectedVariant] = useState(item.variants[0]);
+  // 只有價格 > 0 的規格可以線上訂購；0 元規格是門市限定。
+  const variants = getOrderableVariants(item.variants);
+  const [selectedVariant, setSelectedVariant] = useState(variants[0]);
   const [quantity, setQuantity] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
   const [added, setAdded] = useState(false);
@@ -62,17 +65,18 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
   // 是否為純展示（例如飲料）
   const isDisplayOnly =
     displayOnly ||
+    isStoreOnlyCategory(item.category) ||
     (!item.is_available && item.variants.length === 0 && /drink/i.test(item.category || ''));
 
   // 商品真正售完的判斷：只看 is_available === false
-  if ((!item.is_available || item.variants.length === 0) && !isDisplayOnly) {
+  if ((!item.is_available || variants.length === 0) && !isDisplayOnly) {
     return (
       <div className="border-b border-moon-border/30 py-3 px-4 opacity-50">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <h3 className="text-sm text-moon-muted">{item.name}</h3>
           </div>
-          <span className="text-xs text-moon-muted tracking-wider">{item.is_available ? '暫不開放預訂' : '已售完'}</span>
+          <span className="text-xs text-moon-muted tracking-wider">{item.is_available ? (item.variants.length > 0 ? '門市限定' : '暫不開放預訂') : '已售完'}</span>
         </div>
       </div>
     );
@@ -97,7 +101,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
                 {item.description}
               </p>
             )}
-            <p className="shop-mobile-price">{isDisplayOnly ? '門市供應' : <>NT$ {item.variants.length > 0 ? Math.min(...item.variants.map(v => v.price)).toLocaleString('zh-TW') : item.price.toLocaleString('zh-TW')}{item.variants.length > 1 ? ' 起' : ''}</>}</p>
+            <p className="shop-mobile-price">{isDisplayOnly ? (variants.length > 0 ? `NT$ ${Math.min(...variants.map(v => v.price)).toLocaleString('zh-TW')}・門市供應` : '門市供應') : <>NT$ {variants.length > 0 ? Math.min(...variants.map(v => v.price)).toLocaleString('zh-TW') : item.price.toLocaleString('zh-TW')}{variants.length > 1 ? ' 起' : ''}</>}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -171,13 +175,13 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           )}
 
           {/* 規格選擇（僅可預訂的商品才顯示） */}
-          {!isDisplayOnly && item.variants.length > 1 && (
+          {!isDisplayOnly && variants.length > 1 && (
             <div className="mb-4">
               <label className="text-xs text-moon-muted tracking-wider mb-2 block">
                 選擇規格
               </label>
               <div className="flex flex-col sm:flex-row gap-2">
-                {item.variants.map((variant) => (
+                {variants.map((variant) => (
                   <button
                     key={variant.id}
                     aria-pressed={selectedVariant?.id === variant.id}

@@ -267,6 +267,45 @@ assert.equal((await service.createOrder(orderInput, 'fixture-owner')).finalPrice
 assert.equal(released, 1);
 assert.equal(persisted.user_id, 'fixture-owner');
 
+// 0 元規格＝門市限定：伺服器必須拒絕，且不得寫入訂單（2026-10-17 抹茶拿鐵 $0 可下單）。
+let zeroPersisted = 0;
+const zeroPriceDb = { ...serviceDb, from: table => {
+  if (table === 'menu_items') return query({ data: [{ id: 'menu', name: 'fixture-drink', is_available: true }], error: null });
+  if (table === 'menu_variants') return query({ data: [{ id: 'variant', menu_item_id: 'menu', variant_name: '一般', price: 0 }], error: null });
+  return serviceDb.from(table);
+} };
+const zeroService = load('src/services/order.service.ts', { ...serviceStubs,
+  '@/lib/supabase-admin': { createAdminClient: () => zeroPriceDb },
+  '@/src/repositories/order.repository': { insertOrder: async payload => { zeroPersisted++; return payload; } },
+});
+await assert.rejects(
+  zeroService.createOrder({ ...orderInput, promo_code: undefined, items: [{ id: 'menu-variant', name: 'fixture-drink', quantity: 1, price: 0 }], total_price: 0 }, null),
+  error => error.name === 'OrderValidationError' && /門市限定/.test(error.message),
+);
+assert.equal(zeroPersisted, 0);
+
+// 飲品一律門市供應：即使有價格（菜單 150 元）也不得線上成立訂單（Penso 2026-10-18）。
+let drinkPersisted = 0, drinkMenuColumns = '';
+const drinkDb = { ...serviceDb, from: table => {
+  if (table === 'menu_items') {
+    const builder = query({ data: [{ id: 'menu', name: 'fixture-latte', is_available: true, category_id: 'drinks' }], error: null });
+    builder.select = columns => { drinkMenuColumns = columns; return builder; };  // 防止查詢漏掉 category_id 時防線無聲失效
+    return builder;
+  }
+  if (table === 'menu_variants') return query({ data: [{ id: 'variant', menu_item_id: 'menu', variant_name: '一般', price: 150 }], error: null });
+  return serviceDb.from(table);
+} };
+const drinkService = load('src/services/order.service.ts', { ...serviceStubs,
+  '@/lib/supabase-admin': { createAdminClient: () => drinkDb },
+  '@/src/repositories/order.repository': { insertOrder: async payload => { drinkPersisted++; return payload; } },
+});
+await assert.rejects(
+  drinkService.createOrder({ ...orderInput, promo_code: undefined, items: [{ id: 'menu-variant', name: 'fixture-latte', quantity: 1, price: 150 }], total_price: 150 }, null),
+  error => error.name === 'OrderValidationError' && /門市供應/.test(error.message),
+);
+assert.equal(drinkPersisted, 0);
+assert.match(drinkMenuColumns, /\bcategory_id\b/);
+
 const createRoute = load('app/api/order/route.ts', {
   'next/server': next,
   '@/lib/supabase-server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }) },

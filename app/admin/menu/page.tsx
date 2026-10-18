@@ -675,6 +675,9 @@ export default function MenuAdminPage() {
                                         </div>
                                     ))}
                                 </div>
+                                <p className="mt-2 text-xs text-moon-muted leading-relaxed">
+                                    價格 0 元＝門市限定，前台不可加購、伺服器不接受下單。飲品類一律門市供應，填價格只用於顯示。
+                                </p>
                             </div>
 
                             {/* ===== 電商內容欄位（P0-2） ===== */}
