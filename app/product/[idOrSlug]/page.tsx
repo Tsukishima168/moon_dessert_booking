@@ -195,7 +195,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
 
               <div className="text-xl sm:text-2xl text-moon-accent font-light mb-6">
                 {minPrice === null ? (
-                  <span className="text-base sm:text-lg">門市限定</span>
+                  <span className="text-base sm:text-lg">{isStoreSupplied ? '門市供應' : '門市限定'}</span>
                 ) : (
                   <>
                     <span className="text-xs mr-1">$</span>

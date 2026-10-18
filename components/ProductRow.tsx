@@ -80,7 +80,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                     )}
                 </div>
                 <div className="shop-row-copy flex-1 min-w-0">
-                    <h3 className="text-moon-muted line-through text-sm tracking-wide">{item.name}</h3>
+                    <h3 className={`text-moon-muted text-sm tracking-wide${item.is_available ? '' : ' line-through'}`}>{item.name}</h3>
                 </div>
                 <span className="text-xs text-moon-muted tracking-widest shrink-0">{item.is_available ? (item.variants.length > 0 ? '門市限定' : '暫不開放預訂') : '已售完'}</span>
             </div>

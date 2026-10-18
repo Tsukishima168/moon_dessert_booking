@@ -285,9 +285,13 @@ await assert.rejects(
 assert.equal(zeroPersisted, 0);
 
 // 飲品一律門市供應：即使有價格（菜單 150 元）也不得線上成立訂單（Penso 2026-10-18）。
-let drinkPersisted = 0;
+let drinkPersisted = 0, drinkMenuColumns = '';
 const drinkDb = { ...serviceDb, from: table => {
-  if (table === 'menu_items') return query({ data: [{ id: 'menu', name: 'fixture-latte', is_available: true, category_id: 'drinks' }], error: null });
+  if (table === 'menu_items') {
+    const builder = query({ data: [{ id: 'menu', name: 'fixture-latte', is_available: true, category_id: 'drinks' }], error: null });
+    builder.select = columns => { drinkMenuColumns = columns; return builder; };  // 防止查詢漏掉 category_id 時防線無聲失效
+    return builder;
+  }
   if (table === 'menu_variants') return query({ data: [{ id: 'variant', menu_item_id: 'menu', variant_name: '一般', price: 150 }], error: null });
   return serviceDb.from(table);
 } };
@@ -300,6 +304,7 @@ await assert.rejects(
   error => error.name === 'OrderValidationError' && /門市供應/.test(error.message),
 );
 assert.equal(drinkPersisted, 0);
+assert.match(drinkMenuColumns, /\bcategory_id\b/);
 
 const createRoute = load('app/api/order/route.ts', {
   'next/server': next,
