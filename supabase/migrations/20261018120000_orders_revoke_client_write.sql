@@ -22,6 +22,9 @@ BEGIN;
 DROP POLICY IF EXISTS "anon_can_insert_orders" ON public.orders;
 DROP POLICY IF EXISTS "authenticated_can_insert_orders" ON public.orders;
 
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.orders FROM anon, authenticated;
+-- 先收回全部（含可能經 PUBLIC 取得的授權；TRUNCATE 不受 RLS 限制），再只還給讀取。
+-- 2026-10-18 正式庫 relacl：anon=arwdDxtm、authenticated=arwdDxtm（全部權限）。
+REVOKE ALL ON TABLE public.orders FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.orders TO anon, authenticated;
 
 COMMIT;

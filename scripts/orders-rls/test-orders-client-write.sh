@@ -17,11 +17,13 @@ P=(psql -h "$S" -p $PORT -U postgres -v ON_ERROR_STOP=1 -q)
 try() { local out; if out=$("${P[@]}" -d t -c "$1" 2>&1); then echo "OK"; else echo "DENIED ($(echo "$out" | tail -1 | cut -c1-60))"; fi; }
 echo "BEFORE anon insert: $(try "set role anon; insert into public.orders(order_id, final_price) values ('before-anon', 0);")"
 "${P[@]}" -d t -f "$MIG" && echo "migration applied"
+denied_all=1
 for r in anon authenticated; do
-  echo "AFTER $r insert:   $(try "set role $r; insert into public.orders(order_id, final_price) values ('after-$r', 0);")"
-  echo "AFTER $r update:   $(try "set role $r; update public.orders set final_price=1;")"
-  echo "AFTER $r delete:   $(try "set role $r; delete from public.orders;")"
-  echo "AFTER $r truncate: $(try "set role $r; truncate public.orders;")"
+  for op in "insert into public.orders(order_id, final_price) values ('after-$r', 0)" "update public.orders set final_price=1" "delete from public.orders" "truncate public.orders"; do
+    res="$(try "set role $r; $op;")"
+    echo "AFTER $r ${op%% *}: $res"
+    case "$res" in DENIED*) ;; *) denied_all=0 ;; esac
+  done
 done
 echo "AFTER service_role insert: $(try "set role service_role; insert into public.orders(order_id, final_price) values ('after-service', 180);")"
 "${P[@]}" -d t -c "insert into public.orders(order_id,user_id,final_price) values ('own','11111111-1111-1111-1111-111111111111',100)"
@@ -32,6 +34,9 @@ echo "rows: $("${P[@]}" -d t -tA -c "select string_agg(order_id, ',' order by or
 
 # 斷言
 fail=0
+[ "$denied_all" = 1 ] || { echo "FAIL: 有前端寫入嘗試沒有被拒"; fail=1; }
+[ "$("${P[@]}" -d t -tA -c "select has_table_privilege('anon','public.orders','TRUNCATE') or has_table_privilege('authenticated','public.orders','TRUNCATE') or has_table_privilege('anon','public.orders','INSERT')")" = "f" ] || { echo "FAIL: has_table_privilege 顯示仍有寫入權限（含 PUBLIC）"; fail=1; }
+[ "$("${P[@]}" -d t -tA -c "select has_table_privilege('anon','public.orders','SELECT')")" = "t" ] || { echo "FAIL: anon 的 SELECT 被收走（check_daily_capacity 需要）"; fail=1; }
 [ "$("${P[@]}" -d t -tA -c "select count(*) from pg_policies where tablename='orders' and cmd='INSERT'")" = "0" ] || { echo "FAIL: INSERT policy 仍存在"; fail=1; }
 [ "$("${P[@]}" -d t -tA -c "select count(*) from information_schema.role_table_grants where table_name='orders' and grantee in ('anon','authenticated') and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE')")" = "0" ] || { echo "FAIL: 前端角色仍有寫入授權"; fail=1; }
 [ "$("${P[@]}" -d t -tA -c "select count(*) from public.orders where order_id like 'after-anon%' or order_id like 'after-authenticated%'")" = "0" ] || { echo "FAIL: 前端角色寫入成功"; fail=1; }
