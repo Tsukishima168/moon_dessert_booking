@@ -5,7 +5,8 @@
 #   20261009000000_restrict_campaigns_access.sql → 20261019120000_legacy_tables_revoke_client_write.sql（連套兩次）
 # 後驗證：前端角色（anon / authenticated）對四張表的 INSERT/UPDATE/DELETE/TRUNCATE 全部 permission denied、
 # 三張表與三個 view 的 SELECT 被拒、signage_items 的 SELECT 保留、service_role 的 SELECT/INSERT/UPDATE/DELETE 保留、
-# 表層與欄位層級授權（含 PUBLIC）都清乾淨。不連任何遠端資料庫。
+# 表層與欄位層級授權（含 PUBLIC）都清乾淨。另有獨立情境 E1–E5：view 不存在、表不存在、授予者不是 owner 的授權、
+# header 回滾原文可執行且能還原、經角色成員關係繼承的權限（migration 必須失敗並整段回滾）。不連任何遠端資料庫。
 #
 # 環境變數：
 #   LEGACY_RLS_MIGRATION      指定要測的「新 migration」路徑（反向驗證用，見 run-mutants.sh）
@@ -54,14 +55,14 @@ claims_for() {
 }
 try_as() {
   local role="$1" stmt="$2" out rc=0
-  out="$("${P[@]}" -d t -c "begin; set local role $role; $(claims_for "$role") $stmt; rollback;" 2>&1)" || rc=$?
+  out="$("${P[@]}" -d "${DB:-t}" -c "begin; set local role $role; $(claims_for "$role") $stmt; rollback;" 2>&1)" || rc=$?
   if [ "$rc" = 0 ]; then echo "OK"
   elif grep -qi 'permission denied' <<<"$out"; then echo "DENIED"
   else echo "ERROR:$(tail -1 <<<"$out" | cut -c1-90)"; fi
 }
 scalar_as() {  # role stmt → 單一值
   local role="$1" stmt="$2"
-  "${P[@]}" -d t -tA -c "begin; set local role $role; $(claims_for "$role") $stmt; rollback;" 2>&1 | grep -v -e '^BEGIN$' -e '^SET$' -e '^ROLLBACK$' -e '^$' | tail -1
+  "${P[@]}" -d "${DB:-t}" -tA -c "begin; set local role $role; $(claims_for "$role") $stmt; rollback;" 2>&1 | grep -v -e '^BEGIN$' -e '^SET$' -e '^ROLLBACK$' -e '^$' | tail -1
 }
 expect_try() {  # 說明 預期(OK|DENIED|RLS) 角色 語句
   local desc="$1" want="$2" role="$3" stmt="$4" got
@@ -91,11 +92,12 @@ update_sql() { case "$1" in
 esac; }
 
 # ---- 測試資料（僅測試用，非正式資料） ----
-sql "insert into auth.users(id) values ('$U1'), ('22222222-2222-2222-2222-222222222222');
+SEED_SQL="insert into auth.users(id) values ('$U1'), ('22222222-2222-2222-2222-222222222222');
      insert into public.shop_orders(id, customer_name, phone, email, status, total) values ('$SEED_ORDER','seed','0900000000','seed@example.test','pending',100);
      insert into public.shop_order_items(order_id, product_name, quantity, unit_price) values ('$SEED_ORDER','seed',1,100);
      insert into public.campaigns(name, subject) values ('seed','seed');
-     insert into public.signage_items(title, body) values ('seed','seed');" >/dev/null
+     insert into public.signage_items(title, body) values ('seed','seed');"
+sql "$SEED_SQL" >/dev/null
 
 # ---- BEFORE：確認 fixture 真的重現漏洞，否則後面的「通過」沒有意義 ----
 echo "== BEFORE（未套用 migration）：fixture 必須重現漏洞 =="
@@ -109,7 +111,7 @@ expect_try "BEFORE anon DELETE shop_order_items" OK anon "delete from public.sho
 expect_try "BEFORE anon TRUNCATE campaigns" OK anon "truncate table public.campaigns"
 expect_try "BEFORE authenticated UPDATE signage_items" OK authenticated "$(update_sql signage_items)"
 for v in $VIEWS; do expect_try "BEFORE anon SELECT view $v" OK anon "select * from public.$v"; done
-expect_eq "BEFORE 欄位層級授權存在（fixture 有重現）" "t" "$(sql "select exists (select 1 from pg_attribute a join pg_class c on c.oid=a.attrelid where c.relname='shop_orders' and a.attacl is not null)")"
+expect_eq "BEFORE fixture 含防禦性欄位層級授權（正式庫實際沒有，見 fixture 註解）" "t" "$(sql "select exists (select 1 from pg_attribute a join pg_class c on c.oid=a.attrelid where c.relname='shop_orders' and a.attacl is not null)")"
 if [ "$FAILS" != 0 ]; then echo "FIXTURE 沒有重現漏洞（$FAILS 項），測試無效"; exit 3; fi
 echo "fixture 已重現漏洞（$CHECKS 項）"
 
@@ -243,6 +245,42 @@ sqld e3 "create role legacy_grantor nologin;
 if "${P[@]}" -d e3 -f "$MIG" >"$T/e3.log" 2>&1; then fail "E3 別的授予者授出的授權清不掉，migration 卻顯示成功"; else CHECKS=$((CHECKS+1)); okline "E3 殘留授權時 migration 失敗"; fi
 expect_eq "E3 錯誤訊息列出殘留的授權" "1" "$(grep -c 'shop_orders.phone SELECT to anon' "$T/e3.log" || true)"
 expect_eq "E3 失敗時整段回滾（policy 仍在、授權維持原狀）" "1,true" "$(sqld e3 "select (select count(*) from pg_policies where policyname='Anyone can insert shop orders')||','||has_table_privilege('authenticated','public.shop_orders','INSERT')")"
+
+# E4：header 裡的回滾原文能實際執行、確實把舊狀態還原（也能再套回去）
+fresh_db e4
+sqld e4 "$SEED_SQL" >/dev/null
+POLICY_SQL="select coalesce(string_agg(tablename||'|'||policyname||'|'||cmd||'|'||roles::text||'|'||coalesce(qual,'')||'|'||coalesce(with_check,''), E'\n' order by tablename, policyname), '') from pg_policies where schemaname='public'"
+POLICIES_ORIG="$(sqld e4 "$POLICY_SQL")"
+"${P[@]}" -d e4 -f "$MIG_CAMPAIGNS" >/dev/null 2>&1 && "${P[@]}" -d e4 -f "$MIG" >/dev/null 2>&1 || { fail "E4 前置：e4 套用 migration 失敗"; }
+SNAP_E4A="$(sqld e4 "$SNAP_SQL")"
+awk '/^--   BEGIN;$/{p=1} p{l=$0; sub(/^-- ?/,""); print; if (l ~ /^--   COMMIT;$/) p=0}' "$MIG" > "$T/rollback.sql"
+expect_eq "E4 header 內有完整的回滾區塊（BEGIN … COMMIT）" "BEGIN;,COMMIT;" "$(grep -m1 -o 'BEGIN;' "$T/rollback.sql" || true),$(grep -o 'COMMIT;' "$T/rollback.sql" | tail -1 || true)"
+if "${P[@]}" -d e4 -v ON_ERROR_STOP=1 -f "$T/rollback.sql" >"$T/e4.log" 2>&1; then CHECKS=$((CHECKS+1)); okline "E4 回滾區塊可執行"; else fail "E4 回滾區塊執行失敗: $(tail -1 "$T/e4.log")"; fi
+DB=e4
+expect_try "E4 回滾後 anon 又能 INSERT shop_orders（確實還原舊狀態）" OK anon "$(insert_sql shop_orders)"
+expect_try "E4 回滾後 anon 又能 INSERT shop_order_items" OK anon "$(insert_sql shop_order_items)"
+expect_try "E4 回滾後 anon 又能 INSERT campaigns" OK anon "$(insert_sql campaigns)"
+expect_try "E4 回滾後 authenticated 又能 INSERT signage_items" OK authenticated "$(insert_sql signage_items)"
+for v in $VIEWS; do expect_try "E4 回滾後 anon 又能 SELECT view $v" OK anon "select * from public.$v"; done
+DB=t
+expect_eq "E4 回滾後 anon/authenticated 對七個物件的全部權限都回來（含 view 的 ALL）" "0" "$(sqld e4 "
+  select count(*) from (values ('anon'),('authenticated')) r(role) cross join (values $REL_VALUES) t(rel)
+  cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']
+    || case when current_setting('server_version_num')::int >= 170000 then array['MAINTAIN'] else '{}'::text[] end) p(priv)
+  where not has_table_privilege(r.role, 'public.'||t.rel, p.priv)")"
+expect_eq "E4 回滾後 policy 與原狀完全相同（名稱、cmd、roles、qual、with_check）" "$POLICIES_ORIG" "$(sqld e4 "$POLICY_SQL")"
+if "${P[@]}" -d e4 -f "$MIG_CAMPAIGNS" >/dev/null 2>&1 && "${P[@]}" -d e4 -f "$MIG" >"$T/e4b.log" 2>&1; then CHECKS=$((CHECKS+1)); okline "E4 回滾後可再次套用 migration"; else fail "E4 回滾後再套用失敗: $(tail -1 "$T/e4b.log")"; fi
+expect_eq "E4 回滾再套用後的權限／policy 快照與第一次相同" "$SNAP_E4A" "$(sqld e4 "$SNAP_SQL")"
+# E5：權限是「經角色成員關係繼承」來的（GRANT some_role TO anon），ACL 掃描看不到，[4b] 必須擋下並整段回滾
+fresh_db e5
+sqld e5 "create role legacy_reader nologin;
+  grant insert, truncate on public.shop_orders to legacy_reader;
+  grant update on public.signage_items to legacy_reader;
+  grant legacy_reader to anon;" >/dev/null
+expect_eq "E5 前置：anon 確實經繼承持有 INSERT／TRUNCATE（fixture 有重現）" "t,t" "$(sqld e5 "select has_table_privilege('anon','public.shop_orders','INSERT')::text, has_table_privilege('anon','public.shop_orders','TRUNCATE')" | tr '|' ',' | sed 's/true/t/g')"
+if "${P[@]}" -d e5 -f "$MIG" >"$T/e5.log" 2>&1; then fail "E5 經角色繼承的權限清不掉，migration 卻顯示成功"; else CHECKS=$((CHECKS+1)); okline "E5 繼承權限殘留時 migration 失敗"; fi
+expect_eq "E5 錯誤訊息列出繼承來的權限" "1,1" "$(grep -c 'shop_orders INSERT to anon' "$T/e5.log" || true),$(grep -c 'signage_items UPDATE to anon' "$T/e5.log" || true)"
+expect_eq "E5 失敗時整段回滾（policy 仍在）" "1" "$(sqld e5 "select count(*) from pg_policies where policyname='Anyone can insert shop orders'")"
 
 echo "checks: $CHECKS, failures: $FAILS"
 if [ "$FAILS" = 0 ]; then echo "PASS: 前端寫入與個資讀取已關閉（四張表＋三個 view）、signage_items 讀取保留、service_role 正常、migration 冪等"; else exit 1; fi

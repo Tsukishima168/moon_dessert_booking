@@ -9,15 +9,17 @@
 # 例外：mutant a（拿掉逐欄位 REVOKE 迴圈）是「等價 mutant」，預期存活（結束碼 0），無法被任何測試殺死：
 # Postgres 的表層 REVOKE 會連動收回同一授予者（表 owner）授出的欄位授權（官方文件 REVOKE 章節），
 # 所以有沒有迴圈結果相同；授予者不是 owner 的授權則表層與逐欄位 REVOKE 都清不掉。
-# 真正有風險的是後者，由 migration 的 [4] 事後檢查負責，對應 mutant h（拿掉 [4]）會被 E3 情境殺死（exit 1）。
+# 真正有風險的是後者，由 migration 的 [4] 事後檢查負責，對應 mutant h（拿掉 [4] 與 [4b]）會被 E3 情境殺死（exit 1）。
+# mutant i 只拿掉 [4b]（has_table_privilege 繼承檢查）：由 E5 情境（GRANT some_role TO anon，some_role 持有 INSERT）殺死（exit 1）。
+# 例外 2：mutant j（拿掉 SET LOCAL lock_timeout）也預期存活（exit 0）：它是快速失敗的保護，不是權限正確性的一部分。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 REAL="$ROOT/supabase/migrations/20261019120000_legacy_tables_revoke_client_write.sql"
 TEST="$ROOT/scripts/legacy-rls/test-legacy-client-write.sh"
 M="$(mktemp -d)"; trap 'rm -rf "$M"' EXIT
 
-# 刪掉指定編號的區段（從 "-- [n]" 標記到下一個標記或 COMMIT; 之前）
-drop_section() { awk -v n="$1" 'BEGIN{p="^-- \\[" n "\\]"} /^-- \[[0-9]+\]/ {skip=($0 ~ p)} /^COMMIT;/{skip=0} !skip' "$2"; }
+# 刪掉指定編號的區段（從 "-- [n]" 標記到下一個標記或 COMMIT; 之前）；n 可用 "4|4b" 一次指定多個
+drop_section() { awk -v n="$1" 'BEGIN{p="^-- \\[(" n ")\\]"} /^-- \[[0-9a-z]+\]/ {skip=($0 ~ p)} /^COMMIT;/{skip=0} !skip' "$2"; }
 # 各種破壞方式（參數為來源檔）
 no_col_loop()  { grep -v 'REVOKE ALL PRIVILEGES (%I)' "$1"; }
 no_anon_sel()  { sed 's/^GRANT SELECT ON TABLE public.signage_items TO anon, authenticated;$/GRANT SELECT ON TABLE public.signage_items TO authenticated;/' "$1"; }
@@ -26,7 +28,7 @@ no_public()    { sed 's/FROM PUBLIC, anon, authenticated/FROM anon, authenticate
 no_policy()    { grep -v '^DROP POLICY IF EXISTS' "$1"; }
 
 grep -q 'REVOKE ALL PRIVILEGES (%I)' "$REAL" || { echo "FATAL: migration 沒有欄位層級 REVOKE，mutant a 無意義"; exit 2; }
-drop_section 4 "$REAL" > "$M/ng.sql"                                   # 拿掉事後檢查的基底（= mutant h）
+drop_section '4|4b' "$REAL" > "$M/ng.sql"                              # 拿掉事後檢查的基底（= mutant h）
 no_col_loop "$REAL"    > "$M/a.sql"
 drop_section 3 "$REAL" > "$M/b.sql";  drop_section 3 "$M/ng.sql" > "$M/b-ng.sql"
 no_anon_sel "$REAL"    > "$M/c.sql"
@@ -34,6 +36,8 @@ no_auth_sel "$REAL"    > "$M/c2.sql"
 no_public "$REAL"      > "$M/e.sql";  no_public "$M/ng.sql"      > "$M/e-ng.sql"
 drop_section 2 "$REAL" > "$M/f.sql";  drop_section 2 "$M/ng.sql" > "$M/f-ng.sql"
 no_policy "$REAL"      > "$M/g.sql"
+drop_section 4b "$REAL" > "$M/i.sql"
+grep -v '^SET LOCAL lock_timeout' "$REAL" > "$M/j.sql"
 
 run() {  # 名稱 說明 檔案 skip_campaigns 預期結束碼
   local name="$1" desc="$2" file="$3" skip="$4" want="$5" rc=0 log="$M/$1.log"
@@ -55,10 +59,12 @@ run e-ng    "沒從 PUBLIC 收回（無 [4]，靠測試斷言）"        "$M/e-n
 run f       "忘了三個 view（[4] 擋下）"                    "$M/f.sql"    0 2
 run f-ng    "忘了三個 view（無 [4]，靠測試斷言）"           "$M/f-ng.sql" 0 1
 run g       "沒刪 policy"                                 "$M/g.sql"    0 1
-run h       "拿掉事後檢查 [4]（E3 情境殺死）"               "$M/ng.sql"   0 1
+run h       "拿掉事後檢查 [4]+[4b]（E3 情境殺死）"          "$M/ng.sql"   0 1
+run i       "只拿掉 [4b] 繼承檢查（E5 情境殺死）"           "$M/i.sql"    0 1
+run j       "拿掉 lock_timeout（非正確性，預期存活）"        "$M/j.sql"    0 0
 
 bad=0
 while read -r name rc want; do
   [ "$rc" = "$want" ] || { echo "$name 預期 exit $want，實際 exit $rc"; bad=1; }
 done < "$M/results"
-[ "$bad" = 0 ] && echo "MUTANT CHECK OK：對照組 exit 0；a（等價）如預期存活；其餘皆被殺死（exit 1 = 測試斷言，exit 2 = migration 事後檢查）" || { echo "MUTANT CHECK FAILED"; exit 1; }
+[ "$bad" = 0 ] && echo "MUTANT CHECK OK：對照組 exit 0；a（等價）與 j（lock_timeout）如預期存活；其餘皆被殺死（exit 1 = 測試斷言，exit 2 = migration 事後檢查）" || { echo "MUTANT CHECK FAILED"; exit 1; }

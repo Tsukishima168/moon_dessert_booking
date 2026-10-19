@@ -87,7 +87,7 @@ create view public.shop_product_performance with (security_invoker = true) as
 -- signage_items（0 筆）：SELECT 開放；三條寫入 policy 只檢查 auth.role() = 'authenticated'，且 TO public
 create table public.signage_items (
   id uuid primary key default gen_random_uuid(),
-  title text, body text, image_url text, sort_order integer default 0, active boolean default true,
+  title text, body text, image_url text, sort_order integer default 0, "order" integer default 0, active boolean default true,
   created_at timestamptz default now());
 alter table public.signage_items enable row level security;
 create policy "Public profiles are viewable by everyone." on public.signage_items for select to public using (true);
@@ -101,11 +101,16 @@ create policy "Authenticated users can delete" on public.signage_items for delet
 -- 正式庫 relacl：{postgres=arwdDxtm, anon=arwdDxtm, authenticated=arwdDxtm, service_role=arwdDxtm}
 grant all on public.campaigns, public.shop_orders, public.shop_order_items, public.signage_items
   to anon, authenticated, service_role;
--- view：anon / authenticated / service_role 皆有 SELECT
+-- view：正式庫 anon / authenticated 持有全部權限（2026-10-19 再確認），service_role 在此只給 SELECT
+grant all on public.shop_order_summary, public.shop_daily_sales, public.shop_product_performance
+  to anon, authenticated;
 grant select on public.shop_order_summary, public.shop_daily_sales, public.shop_product_performance
-  to anon, authenticated, service_role;
+  to service_role;
 
--- 額外風險 1：anon / authenticated 另有「欄位層級」的 INSERT/SELECT/UPDATE/REFERENCES（表層 REVOKE 清不掉）。
+-- 額外風險 1（防禦性假設，正式庫並沒有：pg_attribute.attacl 全為 NULL，欄位權限都是由表層授權衍生）：
+--   anon / authenticated 另有「欄位層級」的 INSERT/SELECT/UPDATE/REFERENCES。
+--   這些欄位授權的授予者是 owner（postgres），所以 Postgres 的表層 REVOKE 本來就會連動收回同一類型的欄位權限；
+--   fixture 仍保留它們，用來確認最終狀態裡欄位層級的 ACL 也是空的（不是證明逐欄位 REVOKE 有必要）。
 -- 額外風險 2（假設）：view 也有欄位層級 SELECT。
 do $$
 declare r record;
