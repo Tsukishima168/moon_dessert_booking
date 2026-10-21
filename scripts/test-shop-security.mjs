@@ -117,12 +117,12 @@ for (const origin of ['https://blog.kiwimu.com', 'https://shop.kiwimu.com.evil.i
 assert.equal(isSameOriginMutation(request('/api/admin/menu')), true);
 assert.equal(isSameOriginMutation(new Request('http://localhost:5226/api/admin/upload', { method: 'POST', headers: { origin: 'http://localhost:5226', 'Content-Type': 'multipart/form-data' } })), true);
 assert.equal(isSameOriginMutation(new Request('https://fixture.vercel.app/api/admin/menu', { method: 'POST', headers: { origin: 'https://fixture.vercel.app' } })), true);
-const middleware = load('middleware.ts', {
+const proxy = load('proxy.ts', {
   'next/server': next, '@supabase/ssr': { createServerClient() { throw new Error('Rejected request reached session'); } },
 });
 const cross = request('/api/admin/menu', 'POST', {}, 'https://blog.kiwimu.com');
 cross.headers.set('rsc', '1');
-assert.equal((await middleware.middleware(cross)).status, 403);
+assert.equal((await proxy.proxy(cross)).status, 403);
 
 const paymentTokens = load('src/lib/order-payment-token.ts', {}, env);
 const orderId = 'ORD-ABCDEF0123456789';
