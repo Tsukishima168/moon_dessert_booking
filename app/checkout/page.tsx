@@ -40,6 +40,7 @@ interface PendingOrderSnapshot {
 
 const STORE_PICKUP_ADDRESS = '月島甜點店 台南市安南區本原街一段97巷168號';
 const PICKUP_TIME_SLOTS = ['12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00', '17:00-18:00'] as const;
+const DELIVERY_TIME_SLOTS = ['上午', '下午'] as const;
 const PENDING_ORDER_STORAGE_KEY = 'moonmoon_pending_order';
 const PENDING_ORDER_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -397,6 +398,10 @@ export default function CheckoutPage() {
 
   const watchedDeliveryMethod = watch('delivery_method') as 'pickup' | 'delivery';
   const deliveryMethod = watchedDeliveryMethod || 'pickup';
+  // 自取與宅配的時段選項不同，切換取貨方式時清掉已選時段，避免帶著另一種方式的時段送單
+  useEffect(() => {
+    setValue('pickup_time', '');
+  }, [deliveryMethod, setValue]);
   const pickupAvailable = deliveryConfig?.pickup_available ?? true;
   const deliveryAvailable = deliveryConfig?.delivery_available ?? true;
   const hasAvailableDeliveryMethod = pickupAvailable || deliveryAvailable;
@@ -691,6 +696,7 @@ export default function CheckoutPage() {
         msg += `取貨日期：${data.pickup_date}\n`;
         if (data.delivery_method === 'delivery') {
           msg += `配送地址：${finalAddress}\n`;
+          msg += `到貨時段：${data.pickup_time}\n`;
         } else {
           msg += `取貨時間：${data.pickup_time}\n`;
         }
@@ -1246,11 +1252,10 @@ export default function CheckoutPage() {
                 {errors.pickup_date && <p className="text-xs shop-status-error">{errors.pickup_date.message}</p>}
                 {dateValidation && !dateValidation.valid && <p className="text-xs shop-status-error">{dateValidation.reason}</p>}
 
-                {deliveryMethod === 'pickup' && (
-                  <div>
-                    <label className="text-xs text-moon-muted block mb-1">取貨時段 <span className="text-moon-accent">*</span></label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {PICKUP_TIME_SLOTS.map(slot => (
+                <div>
+                    <label className="text-xs text-moon-muted block mb-1">{deliveryMethod === 'pickup' ? '取貨時段' : '到貨時段'} <span className="text-moon-accent">*</span></label>
+                    <div className={`grid gap-2 ${deliveryMethod === 'pickup' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                      {(deliveryMethod === 'pickup' ? PICKUP_TIME_SLOTS : DELIVERY_TIME_SLOTS).map(slot => (
                         <button
                           key={slot}
                           type="button"
@@ -1264,10 +1269,9 @@ export default function CheckoutPage() {
                         </button>
                       ))}
                     </div>
-                    <input type="hidden" {...register('pickup_time', { required: deliveryMethod === 'pickup' ? '請選擇時段' : false })} />
+                    <input type="hidden" {...register('pickup_time', { required: '請選擇時段' })} />
                     {errors.pickup_time && <p className="text-xs shop-status-error mt-1">{errors.pickup_time.message}</p>}
                   </div>
-                )}
               </div>
 
               {/* Address Section */}
