@@ -48,7 +48,6 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.2",
     "postcss": "^8.5.14",
-    "shadcn": "^4.6.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3"
   },
