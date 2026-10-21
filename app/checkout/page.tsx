@@ -1269,6 +1269,9 @@ export default function CheckoutPage() {
                         </button>
                       ))}
                     </div>
+                    {deliveryMethod === 'delivery' && (
+                      <p className="text-xs text-moon-muted mt-2">※ 無法指定確切到貨時間，實際以貨運司機配送為主。</p>
+                    )}
                     <input type="hidden" {...register('pickup_time', { required: '請選擇時段' })} />
                     {errors.pickup_time && <p className="text-xs shop-status-error mt-1">{errors.pickup_time.message}</p>}
                   </div>
