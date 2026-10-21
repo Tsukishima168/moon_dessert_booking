@@ -27,7 +27,7 @@ export default function LocationPage() {
           <div className="flex justify-center mb-6">
             <Eyebrow bordered>LOCATION · 門市資訊</Eyebrow>
           </div>
-          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug">
+          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug sm:leading-9 lg:leading-10">
             安南區・本原街，
             <br className="hidden sm:block" />
             果菜市場邊上的甜點工作室。

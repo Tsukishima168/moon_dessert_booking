@@ -73,9 +73,9 @@ export default function DiscordSettingsPage() {
                 >
                     <div className="flex items-center gap-3">
                         {connected ? (
-                            <CheckCircle className="text-green-400 flex-shrink-0" size={22} />
+                            <CheckCircle className="text-green-400 shrink-0" size={22} />
                         ) : (
-                            <AlertCircle className="text-red-400 flex-shrink-0" size={22} />
+                            <AlertCircle className="text-red-400 shrink-0" size={22} />
                         )}
                         <div>
                             <p className={`font-medium ${connected ? 'text-green-300' : 'text-red-300'}`}>
@@ -110,7 +110,7 @@ export default function DiscordSettingsPage() {
                                 value={testMessage}
                                 onChange={(e) => setTestMessage(e.target.value)}
                                 placeholder="不填會使用預設訊息"
-                                className="w-full bg-moon-black border border-moon-border px-4 py-2 text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                className="w-full bg-moon-black border border-moon-border px-4 py-2 text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                 rows={3}
                             />
                         </div>
@@ -137,9 +137,9 @@ export default function DiscordSettingsPage() {
                                 }`}
                             >
                                 {testResult.success ? (
-                                    <CheckCircle size={18} className="flex-shrink-0 mt-0.5" />
+                                    <CheckCircle size={18} className="shrink-0 mt-0.5" />
                                 ) : (
-                                    <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+                                    <AlertCircle size={18} className="shrink-0 mt-0.5" />
                                 )}
                                 <p className="text-sm">{testResult.message}</p>
                             </div>

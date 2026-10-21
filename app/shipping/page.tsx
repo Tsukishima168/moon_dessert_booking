@@ -25,7 +25,7 @@ export default function ShippingPage() {
           <div className="flex justify-center mb-6">
             <Eyebrow bordered>SHIPPING · 運送與取貨</Eyebrow>
           </div>
-          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug">
+          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug sm:leading-9 lg:leading-10">
             本原街自取，
             <br className="hidden sm:block" />
             配送安排先確認。

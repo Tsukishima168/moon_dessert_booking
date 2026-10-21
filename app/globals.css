@@ -1,342 +1,286 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss' source(none);
 
-/* Promotion forms and activity details share one readable surface. */
-.promotion-dialog { background: #f5f0e8; color: #1f2f1f; border: 1px solid #d8d7c4; max-height: 88dvh; box-shadow: 0 18px 64px #0c1a1240; }
-.promotion-form label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 500; }
-.promotion-form input:not([type=checkbox]), .promotion-form select, .promotion-form textarea { width: 100%; min-height: 44px; border: 1px solid #adb6a4; border-radius: 8px; background: #fffdf8; color: #1f2f1f; padding: 10px 12px; font-size: 16px; font-weight: 400; }
-.promotion-form small { color: #5f6856; font-size: 13px; font-weight: 400; line-height: 1.6; }
-.promotion-form .promotion-check { flex-direction: row; align-items: center; min-height: 44px; gap: 12px; }
-.promotion-check input { width: 20px; height: 20px; accent-color: #304f2f; }
-.promotion-primary, .promotion-secondary, .promotion-close { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 12px; padding: 10px 18px; font-size: 14px; line-height: 1.5; }
-.promotion-primary { background: #304f2f; color: #fffdf8; border: 1px solid #304f2f; }
-.promotion-secondary, .promotion-close { border: 1px solid #adb6a4; color: #1f2f1f; background: transparent; }
-.promotion-close { width: 44px; padding: 0; }
-.promotion-dialog :focus-visible { outline: 2px solid #304f2f; outline-offset: 3px; }
-.promotion-dialog button:disabled { opacity: .55; cursor: wait; }
-.promotion-preview { background: #e6e8d9; border-radius: 12px; padding: 16px; }
-.promotion-error { padding: 12px 16px; border: 1px solid #ba775b; border-radius: 8px; color: #763823; font-size: 14px; }
+/* 掃描範圍維持與 Tailwind 3 的 content 設定一致（./components、./app）。
+   Tailwind 4 預設會掃描整個專案（含 docs/、scripts/ 的文字），可能多生出原本沒有的 utility。 */
+@source '../components';
+@source './';
 
-:root {
-  /* 字體堆疊只有一套：Noto Sans TC 優先（由 layout <head> 的 Google Fonts <link> 載入），
-     Inter（next/font，--font-inter-latin 由 <html> 提供）只當西文與數字的後備。 */
-  --font-sans: 'Noto Sans TC', var(--font-inter-latin, 'Inter'), system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-  --radius: 0.75rem;
-  --radius-md: 0.625rem;
-  /* moon-* token 名稱是歷史命名，與實際色值不一致；用的時候請看「角色」欄，不要看字面。
-     名稱 → 角色（深色主題 ／ 淺色主題）；完整說明見 docs/DESIGN_NOTES.md「token 對照表」。
-     moon-black  → 頁面底色          #1F2F1F ／ #F5F0E8（淺色主題是奶油，不是黑）
-     moon-dark   → 卡片與浮層底      #1F3527 ／ #FFFBF6
-     moon-gray   → 次層底與 hover 底 #304F2F ／ #F0E8DE
-     moon-border → 邊線              #50654D ／ #D8D7C4
-     moon-text   → 主要文字          #F0ECE1 ／ #1F2F1F
-     moon-muted  → 次要文字          #D7DDD0 ／ #5F6856
-     moon-accent → 最大反差色        #F5F0E8 ／ #1F2F1F（反白按鈕、強調邊框；不是品牌強調色）
-     moon-gold   → 金色點綴          #D7C678 ／ #795B23
-     主行動按鈕請用 .shop-cta（依表面：深色面柔金、淺色面深綠），不要自己拼 moon-accent。 */
-  --moon-black: 31 47 31;
-  --moon-dark: 31 53 39;
-  --moon-gray: 48 79 47;
-  --moon-border: 80 101 77;
-  --moon-text: 240 236 225;
-  --moon-muted: 215 221 208;
-  --moon-accent: 245 240 232;
-  --moon-gold: 215 198 120;
-  --background: 31 47 31;
-  --foreground: 240 236 225;
-  --card: 31 53 39;
-  --card-foreground: 240 236 225;
-  --popover: 31 53 39;
-  --popover-foreground: 240 236 225;
-  --primary: 245 240 232;
-  --primary-foreground: 31 47 31;
-  --secondary: 48 79 47;
-  --secondary-foreground: 240 236 225;
-  --muted: 48 79 47;
-  --muted-foreground: 215 221 208;
-  --accent: 48 79 47;
-  --accent-foreground: 240 236 225;
-  --destructive: 239 68 68;
-  --border: 80 101 77;
-  --input: 80 101 77;
-  --ring: 215 198 120;
+/* shadcn 元件（components/ui）寫的是 Tailwind 4 語法；其中下列 class 在 Tailwind 3 一律被忽略（沒有任何效果），
+   Tailwind 4 卻會變成有效，導致 Button／Input／Tabs／Badge 的外觀與升級前不同（例如多出 3px 的 focus ring、
+   Tabs 的作用中樣式、aria-invalid 紅框）。升級要求外觀不變，所以在這裡擋掉，維持「沒有效果」。
+   日後想採用 shadcn 原本的設計，刪掉對應那行即可。 */
+/* avatar */
+@source not inline("group-has-data-[size=lg]/avatar-group:size-10");
+@source not inline("group-has-data-[size=sm]/avatar-group:size-6");
+@source not inline("[&>svg]:group-has-data-[size=lg]/avatar-group:size-5");
+@source not inline("[&>svg]:group-has-data-[size=sm]/avatar-group:size-3");
+/* badge */
+@source not inline("rounded-4xl");
+@source not inline("has-data-[icon=inline-end]:pr-1.5");
+@source not inline("has-data-[icon=inline-start]:pl-1.5");
+@source not inline("aria-invalid:border-destructive");
+@source not inline("aria-invalid:ring-destructive/20");
+@source not inline("dark:aria-invalid:ring-destructive/40");
+@source not inline("[&>svg]:size-3!");
+@source not inline("[a]:hover:bg-primary/80");
+@source not inline("[a]:hover:bg-secondary/80");
+@source not inline("[a]:hover:bg-destructive/20");
+@source not inline("[a]:hover:bg-muted");
+@source not inline("[a]:hover:text-muted-foreground");
+/* button */
+@source not inline("focus-visible:ring-3");
+@source not inline("aria-invalid:ring-3");
+@source not inline("dark:aria-invalid:border-destructive/50");
+@source not inline("has-data-[icon=inline-end]:pr-2");
+@source not inline("has-data-[icon=inline-start]:pl-2");
+@source not inline("in-data-[slot=button-group]:rounded-lg");
+@source not inline("has-data-[icon=inline-end]:pr-3");
+@source not inline("has-data-[icon=inline-start]:pl-3");
+/* card */
+@source not inline("has-data-[slot=card-footer]:pb-0");
+@source not inline("data-[size=sm]:has-data-[slot=card-footer]:pb-0");
+@source not inline("[img:first-child]:*:rounded-t-xl");
+@source not inline("[img:last-child]:*:rounded-b-xl");
+@source not inline("@container/card-header");
+@source not inline("has-data-[slot=card-action]:grid-cols-[1fr_auto]");
+@source not inline("has-data-[slot=card-description]:grid-rows-[auto_auto]");
+@source not inline("[.border-b]:pb-4");
+@source not inline("[.border-b]:group-data-[size=sm]/card:pb-3");
+/* input */
+/* separator */
+@source not inline("data-horizontal:h-px");
+@source not inline("data-horizontal:w-full");
+@source not inline("data-vertical:w-px");
+@source not inline("data-vertical:self-stretch");
+/* tabs */
+@source not inline("data-horizontal:flex-col");
+@source not inline("group-data-horizontal/tabs:h-8");
+@source not inline("group-data-vertical/tabs:h-fit");
+@source not inline("group-data-vertical/tabs:flex-col");
+@source not inline("group-data-vertical/tabs:w-full");
+@source not inline("group-data-vertical/tabs:justify-start");
+@source not inline("data-active:group-data-[variant=default]/tabs-list:shadow-xs");
+@source not inline("data-active:group-data-[variant=line]/tabs-list:shadow-none");
+@source not inline("data-active:group-data-[variant=line]/tabs-list:bg-transparent");
+@source not inline("dark:data-active:group-data-[variant=line]/tabs-list:border-transparent");
+@source not inline("dark:data-active:group-data-[variant=line]/tabs-list:bg-transparent");
+@source not inline("data-active:bg-background");
+@source not inline("data-active:text-foreground");
+@source not inline("dark:data-active:border-input");
+@source not inline("dark:data-active:bg-input/30");
+@source not inline("dark:data-active:text-foreground");
+@source not inline("group-data-horizontal/tabs:after:inset-x-0");
+@source not inline("group-data-horizontal/tabs:after:bottom-[-5px]");
+@source not inline("group-data-horizontal/tabs:after:h-0.5");
+@source not inline("group-data-vertical/tabs:after:inset-y-0");
+@source not inline("group-data-vertical/tabs:after:-right-1");
+@source not inline("group-data-vertical/tabs:after:w-0.5");
+@source not inline("data-active:group-data-[variant=line]/tabs-list:after:opacity-100");
+
+/* space-y-*／space-x-*：改用下方 Tailwind 3 規則 */
+@source not inline("space-y-0");
+@source not inline("space-y-0.5");
+@source not inline("space-y-1");
+@source not inline("space-y-1.5");
+@source not inline("space-y-2");
+@source not inline("space-y-3");
+@source not inline("space-y-4");
+@source not inline("space-y-5");
+@source not inline("space-y-6");
+@source not inline("space-y-8");
+@source not inline("space-y-10");
+@source not inline("sm:space-y-6");
+@source not inline("-space-x-2");
+
+/* Tailwind 4 的 hover: 預設只在「支援 hover 的裝置」生效；Tailwind 3 在觸控裝置點一下也會觸發。維持 v3 行為。 */
+@custom-variant hover (&:hover);
+
+/* 必須用 @theme inline：utility 直接帶出 rgb(var(--moon-*))，讓 .admin-shell／.shop-home／.shop-hero／
+   html[data-theme='light'] 對 --moon-*、--background… 的覆寫在各自的子樹內生效。
+   不加 inline 的話，Tailwind 會在 :root 定義 --color-moon-* 再讓子孫繼承，覆寫就失效（後台配色會壞）。 */
+@theme inline {
+  --color-moon-black: rgb(var(--moon-black));
+  --color-moon-dark: rgb(var(--moon-dark));
+  --color-moon-gray: rgb(var(--moon-gray));
+  --color-moon-border: rgb(var(--moon-border));
+  --color-moon-text: rgb(var(--moon-text));
+  --color-moon-muted: rgb(var(--moon-muted));
+  --color-moon-accent: rgb(var(--moon-accent));
+  --color-moon-gold: rgb(var(--moon-gold));
+
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--card-foreground));
+  --color-popover: rgb(var(--popover));
+  --color-popover-foreground: rgb(var(--popover-foreground));
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-foreground: rgb(var(--secondary-foreground));
+  --color-muted: rgb(var(--muted));
+  --color-muted-foreground: rgb(var(--muted-foreground));
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--accent-foreground));
+  --color-destructive: rgb(var(--destructive));
+  --color-border: rgb(var(--border));
+  --color-input: rgb(var(--input));
+  --color-ring: rgb(var(--ring));
+
+  /* Tailwind 4 把預設色盤改成 oklch；程式裡用到的 34 個預設色維持 Tailwind 3 的 hex，色值不變。 */
+  --color-blue-50: #eff6ff;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-cyan-300: #67e8f9;
+  --color-emerald-300: #6ee7b7;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-green-50: #f0fdf4;
+  --color-green-300: #86efac;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-orange-400: #fb923c;
+  --color-pink-100: #fce7f3;
+  --color-pink-600: #db2777;
+  --color-purple-300: #d8b4fe;
+  --color-purple-400: #c084fc;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-900: #7f1d1d;
+  --color-yellow-200: #fef08a;
+  --color-yellow-300: #fde047;
+  --color-yellow-400: #facc15;
+  --color-yellow-500: #eab308;
+
+  /* text-* 的行高：Tailwind 3 是固定長度（text-xs ＝ 1rem），Tailwind 4 改成相對字級的倍數（text-xs ＝ 1/0.75 倍）。
+     兩者在「字級＝utility 預設值」時相同；但自訂 CSS 把字級改成 13px 之類時，v4 的行高會跟著變（16px → 17.33px）。
+     這裡把行高原樣放回 Tailwind 3 的固定值。 */
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-5xl--line-height: 1;
+  --text-6xl--line-height: 1;
+  --text-7xl--line-height: 1;
+  --text-8xl--line-height: 1;
+  --text-9xl--line-height: 1;
+
+  /* 圓角：lg／md／sm／xl 沿用舊 tailwind.config.js 的自訂值（rounded 與 rounded-2xl 以上維持預設）。 */
+  --radius-lg: var(--radius);
+  --radius-md: var(--radius-md);
+  --radius-sm: calc(var(--radius-md) - 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+  --font-heading: var(--font-sans), system-ui, sans-serif;
+  --font-serif: Georgia, serif;
 }
 
-html[data-theme='dark'] { color-scheme: dark; }
-
-html[data-theme='light'] {
-  color-scheme: light;
-
-  --moon-black: 245 240 232;
-  --moon-dark: 255 251 246;
-  --moon-gray: 240 232 222;
-  --moon-border: 216 215 196;
-  --moon-text: 31 47 31;
-  --moon-muted: 95 104 86;
-  --moon-accent: 31 47 31;
-  --moon-gold: 121 91 35;
-
-  --background: 245 240 232;
-  --foreground: 31 47 31;
-  --card: 255 251 246;
-  --card-foreground: 31 47 31;
-  --popover: 255 251 246;
-  --popover-foreground: 31 47 31;
-  --primary: 31 47 31;
-  --primary-foreground: 245 240 232;
-  --secondary: 240 232 222;
-  --secondary-foreground: 42 35 30;
-  --muted: 240 232 222;
-  --muted-foreground: 95 104 86;
-  --accent: 240 232 222;
-  --accent-foreground: 42 35 30;
-  --destructive: 220 38 38;
-  --border: 216 215 196;
-  --input: 216 215 196;
-  --ring: 48 79 47;
-}
-
-.admin-shell {
-  --moon-black: 10 10 10;
-  --moon-dark: 20 20 20;
-  --moon-gray: 31 31 31;
-  --moon-border: 42 42 42;
-  --moon-text: 229 229 229;
-  --moon-muted: 153 153 153;
-  --moon-accent: 255 255 255;
-  --moon-gold: 212 175 55;
-
-  --background: 10 10 10;
-  --foreground: 229 229 229;
-  --card: 20 20 20;
-  --card-foreground: 229 229 229;
-  --popover: 20 20 20;
-  --popover-foreground: 229 229 229;
-  --primary: 255 255 255;
-  --primary-foreground: 10 10 10;
-  --secondary: 31 31 31;
-  --secondary-foreground: 229 229 229;
-  --muted: 31 31 31;
-  --muted-foreground: 153 153 153;
-  --accent: 31 31 31;
-  --accent-foreground: 229 229 229;
-  --destructive: 239 68 68;
-  --border: 42 42 42;
-  --input: 42 42 42;
-  --ring: 255 255 255;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: clip;
-}
-
-/* 購物車抽屜開啟時鎖住背景捲動。
-   CartSidebar 開啟時只對 body 設 overflow:hidden；但上面的 html 已是 overflow-x:clip，html 自己的 overflow 不是 visible，
-   body 的 overflow 就不會傳到視窗，滾輪／觸控仍會把頁面捲走。抽屜只有開啟時才有 aria-modal="true"，
-   用它讓 html 也 overflow:hidden（捲動位置不動，關閉後原地恢復）。
-   scrollbar-gutter: stable：桌面 Safari「永遠顯示捲軸」或 Windows 經典捲軸，捲軸消失不會讓內容橫向位移。
-   促銷 dialog 等其他浮層不用這個狀態，不受影響。不支援 :has() 的舊瀏覽器維持原行為。 */
-html:has(#shop-cart-sidebar[aria-modal='true']) {
-  overflow: hidden;
-  scrollbar-gutter: stable;
-}
-
-body {
-  color: rgb(var(--foreground));
-  background: rgb(var(--background));
-  font-family: var(--font-sans);
-  letter-spacing: 0.02em;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgb(var(--muted));
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgb(var(--border));
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--moon-muted));
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+/* Tailwind 4 預設值改變，這裡把會影響外觀的幾項還原成 Tailwind 3 的行為。 */
+@layer base {
+  /* 預設邊框色：v3 是 gray-200，v4 是 currentcolor。一般元素由下方 * 規則（border-border）覆寫，
+     這條只影響 ::before／::after／::backdrop／::file-selector-button。 */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e5e7eb;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  /* v4 的按鈕不再預設 cursor: pointer。 */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
   }
-}
 
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-out;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
+  /* v4 的 placeholder 顏色改成「目前文字色 50%」；v3 是 gray-400。 */
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
   }
-  50% {
-    opacity: 0.5;
+
+  /* v4 把所有表單元件的底色都重設成透明；v3 只有按鈕類，輸入框維持瀏覽器預設底色。 */
+  input:where(:not([type='button'], [type='reset'], [type='submit'])),
+  select,
+  textarea,
+  optgroup {
+    background-color: revert;
   }
-}
 
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* ── 訂購首頁精緻化動效（純 CSS、雙主題用 moon-* token、可被 reduced-motion 關閉）── */
-
-/* 捲動浮現：初始隱藏，進視窗由 useInView 加 .is-visible */
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-  will-change: opacity, transform;
-}
-.reveal.is-visible {
-  opacity: 1;
-  transform: none;
-}
-
-/* 購物車徽章彈跳 */
-@keyframes cartBump {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.35); }
-  60% { transform: scale(0.92); }
-  100% { transform: scale(1); }
-}
-.animate-cart-bump {
-  animation: cartBump 0.4s ease-out;
-}
-
-/* 加入購物車成功 micro pop */
-@keyframes addedPop {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.06); }
-  100% { transform: scale(1); }
-}
-.animate-added-pop {
-  animation: addedPop 0.35s ease-out;
-}
-
-/* 骨架屏 shimmer（雙主題 token） */
-@keyframes shimmer {
-  0% { background-position: 100% 0; }
-  100% { background-position: 0 0; }
-}
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    rgb(var(--moon-gray)) 25%,
-    rgb(var(--moon-border)) 37%,
-    rgb(var(--moon-gray)) 63%
-  );
-  background-size: 400% 100%;
-  animation: shimmer 1.4s ease infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
+  /* v4 為了 iOS Safari 對日期／時間輸入框的內部欄位做了一批調整（min-height、display、padding），
+     在 Chrome 會讓 date／datetime-local 輸入框矮 2px。v3 沒有這批規則，還原成瀏覽器預設。 */
+  ::-webkit-date-and-time-value {
+    min-height: revert;
+    text-align: revert;
   }
-  .animate-cart-bump,
-  .animate-added-pop,
-  .skeleton {
-    animation: none !important;
+  ::-webkit-datetime-edit {
+    display: revert;
+  }
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: revert;
+  }
+  ::-webkit-datetime-edit,
+  ::-webkit-datetime-edit-year-field,
+  ::-webkit-datetime-edit-month-field,
+  ::-webkit-datetime-edit-day-field,
+  ::-webkit-datetime-edit-hour-field,
+  ::-webkit-datetime-edit-minute-field,
+  ::-webkit-datetime-edit-second-field,
+  ::-webkit-datetime-edit-millisecond-field,
+  ::-webkit-datetime-edit-meridiem-field {
+    padding-block: revert;
+  }
+  ::-webkit-calendar-picker-indicator {
+    line-height: revert;
+  }
+
+  /* v3 的搜尋框是 textfield 外觀、outline-offset -2px。 */
+  [type='search'] {
+    -webkit-appearance: textfield;
+    appearance: textfield;
+    outline-offset: -2px;
   }
 }
 
-/* 全域 catch-all（寫法同 Map）：含購物車抽屜的 transform 0.5s 與 Tailwind duration-* 一併壓到 0.01ms。 */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+/* 這三組原本是未分層的低 specificity 規則（* 與 element selector）。Tailwind 3 的 cascade 是 specificity 優先，
+   所以任何 class 級規則（utility、brand-*）都蓋得過它們；Tailwind 4 若放在 utilities 層，會反過來蓋過
+   components 層的 brand-section 等規則，因此放進 base 層，維持「比 class 低」的位置。 */
+@layer base {
+  * {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
   }
-}
 
-.ProseMirror {
-  outline: none;
-}
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: clip;
+  }
 
-/* 編輯器（後台固定深色面）鍵盤聚焦時給柔金環，不能只拿掉 outline。 */
-.ProseMirror:focus-visible {
-  outline: 2px solid #d7c678;
-  outline-offset: 2px;
-}
-
-.ProseMirror p {
-  margin: 0.5em 0;
-  color: rgb(var(--moon-text));
-  line-height: 1.7;
-}
-
-.ProseMirror h2 {
-  margin: 1em 0 0.5em;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: rgb(var(--moon-gold));
-}
-
-.ProseMirror h3 {
-  margin: 0.75em 0 0.4em;
-  font-size: 1rem;
-  font-weight: 600;
-  color: rgb(var(--moon-gold));
-}
-
-.ProseMirror ul {
-  margin: 0.5em 0;
-  padding-left: 1.4em;
-  color: rgb(var(--moon-text));
-}
-
-.ProseMirror li {
-  margin: 0.2em 0;
-}
-
-.ProseMirror strong,
-.ProseMirror a {
-  color: rgb(var(--moon-gold));
-}
-
-.ProseMirror em {
-  opacity: 0.8;
-}
-
-.ProseMirror a {
-  text-decoration: underline;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  color: rgb(var(--moon-muted));
-  pointer-events: none;
+  body {
+    color: rgb(var(--foreground));
+    background: rgb(var(--background));
+    font-family: var(--font-sans);
+    letter-spacing: 0.02em;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
 }
 
 @layer base {
@@ -351,11 +295,6 @@ body {
   html {
     @apply font-sans;
   }
-}
-
-/* 白色 logo 在淺色模式自動變黑（invert 能處理各種深淺的白/灰） */
-html[data-theme='light'] .theme-logo {
-  filter: invert(1) brightness(0.1);
 }
 
 /* ── 品牌視覺識別系統（type 角色 / 節奏）──
@@ -409,262 +348,618 @@ html[data-theme='light'] .theme-logo {
   }
 }
 
-/* 可讀的表單與跨主題鍵盤焦點。 */
-:where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid #d7c678;
-  outline-offset: 3px;
-}
-/* Light theme: forest ring on Shop cream surfaces; exclude the forest-green Universe rail. The dark-green hero keeps gold; the fixed-dark admin shell keeps its own ring. */
-html[data-theme='light'] :where(a, button, input, select, textarea, summary):not(:where(.ku-universe-rail *)):focus-visible { outline-color: #304f2f; }
-html[data-theme='light'] .shop-hero :where(a, button, input, select, textarea, summary):focus-visible { outline-color: #d7c678; }
-html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea, summary):focus-visible { outline-color: rgb(var(--moon-accent)); }
-.shop-checkout-form button { min-height: 2.75rem; }
-@media (max-width: 40rem) {
-  .shop-checkout-form :is(input:not([type='radio']):not([type='checkbox']):not([type='hidden']), select, textarea) {
-    min-width: 0;
-    font-size: 1rem;
+/* 其餘自訂 CSS 放進 utilities 層：與 Tailwind utility 同層，沿用 v3「同一層、比 specificity 與順序」的 cascade，
+   *、body 這類低 specificity 規則才不會蓋過 utility（v4 的未分層 CSS 會無條件勝過所有分層）。 */
+@layer utilities {
+  /* space-y-* ／ space-x-*：Tailwind 4 把實作改成 :where(.space-y-N > :not(:last-child)) 加在「前一個」元素的 margin-bottom，
+     specificity 變 0，會被子元素自己的 mt-*／mb-* 蓋掉，而且最後一個子元素被 display:none 時還會多出一段空白。
+     升級要求版面不變，這裡原樣放回 Tailwind 3 的規則（specificity 0,3,0、加在「後一個」元素的 margin-top），
+     並在檔案開頭用 @source not inline 擋掉 v4 自己生的同名規則。新程式碼請改用 flex／grid + gap。 */
+  .space-y-0 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(0px * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(0px * var(--tw-space-y-reverse)); }
+  .space-y-0\.5 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(.125rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(.125rem * var(--tw-space-y-reverse)); }
+  .space-y-1 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(.25rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(.25rem * var(--tw-space-y-reverse)); }
+  .space-y-1\.5 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(.375rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(.375rem * var(--tw-space-y-reverse)); }
+  .space-y-2 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(.5rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(.5rem * var(--tw-space-y-reverse)); }
+  .space-y-3 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(.75rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(.75rem * var(--tw-space-y-reverse)); }
+  .space-y-4 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(1rem * var(--tw-space-y-reverse)); }
+  .space-y-5 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(1.25rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(1.25rem * var(--tw-space-y-reverse)); }
+  .space-y-6 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(1.5rem * var(--tw-space-y-reverse)); }
+  .space-y-8 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(2rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(2rem * var(--tw-space-y-reverse)); }
+  .space-y-10 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(2.5rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(2.5rem * var(--tw-space-y-reverse)); }
+  @media (min-width: 640px) {
+    .sm\:space-y-6 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(1.5rem * var(--tw-space-y-reverse)); }
   }
-}
+  .-space-x-2 > :not([hidden]) ~ :not([hidden]) { --tw-space-x-reverse: 0; margin-right: calc(-.5rem * var(--tw-space-x-reverse)); margin-left: calc(-.5rem * calc(1 - var(--tw-space-x-reverse))); }
 
-/* Shop public design: the same quiet green family as Map, Passport and Gacha. */
-.shop-container { width: min(1160px, calc(100% - 48px)); margin-inline: auto; }
-/* Branded cream reading surfaces stay legible in either theme, as on Map. */
-.shop-home {
-  --moon-black: 245 240 232;
-  --moon-dark: 255 253 248;
-  --moon-gray: 230 232 217;
-  --moon-border: 216 215 196;
-  --moon-text: 31 47 31;
-  --moon-muted: 95 104 86;
-  --moon-accent: 31 47 31;
-  --moon-gold: 121 91 35;
-  background: rgb(var(--moon-black));
-  color: rgb(var(--moon-text));
-  font-family: var(--font-sans);
-  padding-top: 28px;
-  padding-bottom: 0;
-}
-.shop-eyebrow { color: rgb(var(--moon-gold)); font-size: 12px; letter-spacing: .15em; line-height: 1.5; font-weight: 500; }
-.shop-hero {
-  --moon-black: 31 47 31;
-  --moon-dark: 31 53 39;
-  --moon-text: 240 236 225;
-  --moon-muted: 215 221 208;
-  --moon-accent: 245 240 232;
-  --moon-gold: 215 198 120;
-  background: #1f3527;
-  color: rgb(var(--moon-text));
-  border-radius: 24px;
-}
-.shop-hero-grid { display: grid; grid-template-columns: 1fr 1.03fr; align-items: center; gap: 44px; padding: 44px; }
-.shop-hero-copy h1 { font-family: var(--font-sans); font-size: clamp(32px, 3.6vw, 44px); font-weight: 700; letter-spacing: -.03em; line-height: 1.45; margin: 18px 0; text-wrap: balance; color: rgb(var(--moon-accent)); }
-.shop-hero-description { max-width: 370px; font-size: 16px; line-height: 1.9; color: rgb(var(--moon-text)); }
-.shop-hero-detail { margin-top: 8px; color: rgb(var(--moon-muted)); font-size: 14px; line-height: 1.85; }
-.shop-primary { display: inline-flex; align-items: center; justify-content: center; gap: 28px; min-height: 56px; margin-top: 26px; padding: 14px 28px; border-radius: 12px; background: #d7c678; color: #1f2f1f; font-weight: 600; font-size: 15px; transition: background .2s; }
-.shop-primary:hover { background: #e3d58f; }
-/* 全站主行動，依所在表面決定（common.md）：
-   深色面（深色主題的頁面、抽屜、結帳）＝柔金底、深綠字（#1F2F1F on #D7C678，8.24:1），與 .shop-primary 同色；
-   淺色面（淺色主題，以及首頁固定奶油閱讀區 .shop-home，連深色主題也是）＝深綠實心、奶油字（#F5F0E8 on #1F2F1F，12.47:1），hover 中綠 #304F2F。
-   首頁深綠 Hero 的「選購甜點」是 .shop-primary，維持柔金。 */
-.shop-cta { background-color: #d7c678; color: #1f2f1f; border-radius: 12px; }
-.shop-cta:hover:not(:disabled) { background-color: #e3d58f; color: #1f2f1f; }
-html[data-theme='light'] .shop-cta, .shop-home .shop-cta { background-color: #1f2f1f; color: #f5f0e8; }
-html[data-theme='light'] .shop-cta:hover:not(:disabled), .shop-home .shop-cta:hover:not(:disabled) { background-color: #304f2f; color: #f5f0e8; }
-.shop-hero-links { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 16px; }
-.shop-hero-links a { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; font-size: 13px; color: rgb(var(--moon-muted)); }
-.shop-hero-photo { display: block; padding: 10px; background: #f5f0e8; color: #1f2f1f; border-radius: 20px; }
-.shop-hero-image { position: relative; aspect-ratio: 1.32; overflow: hidden; border-radius: 12px; }
-.shop-hero-caption { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 8px 3px; font-size: 13px; line-height: 1.65; }
-.shop-hero-caption > span:last-child { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 12px; }
-.shop-announcement:has(> *) { padding-top: 24px; }
-.shop-menu { padding-block: 56px 64px; scroll-margin-top: 96px; }
-.shop-menu-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 28px; }
-.shop-menu h2, .shop-order-guide h2, .shop-story h2 { font-family: var(--font-sans); font-size: 28px; font-weight: 700; letter-spacing: -.025em; line-height: 1.5; color: rgb(var(--moon-accent)); }
-.shop-menu-heading h2 { margin: 10px 0 8px; }
-.shop-menu-heading p:last-child { font-size: 14px; line-height: 1.8; color: rgb(var(--moon-muted)); }
-.shop-search { display: flex; align-items: center; width: 280px; min-width: 0; gap: 10px; padding-left: 16px; border: 1px solid rgb(var(--moon-border)); background: rgb(var(--moon-dark)); border-radius: 8px; color: rgb(var(--moon-muted)); }
-.shop-search input { background: transparent; color: rgb(var(--moon-text)); width: 100%; min-width: 0; min-height: 48px; font-size: 16px; padding: 10px 12px 10px 0; outline-offset: 0; }
-.shop-search input::placeholder { color: rgb(var(--moon-muted)); opacity: 1; }
-.shop-search input::-webkit-search-cancel-button { display: none; }
-.shop-search button { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
-.shop-search-result { font-size: 14px; color: rgb(var(--moon-muted)); margin-bottom: 24px; }
-.shop-featured-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; margin-bottom: 56px; }
-.shop-featured-card { display: flex; flex-direction: column; border: 1px solid rgb(var(--moon-border)); border-radius: 16px; overflow: hidden; background: rgb(var(--moon-dark)); }
-.shop-featured-card:hover { border-color: #587337; }
-.shop-featured-image { position: relative; aspect-ratio: 1.18; display: flex; align-items: center; justify-content: center; background: rgb(var(--moon-gray)); font-size: 12px; }
-.shop-featured-copy { padding: 18px; display: flex; flex: 1; flex-direction: column; }
-.shop-featured-copy h3 { font-size: 17px; line-height: 1.65; font-weight: 600; color: rgb(var(--moon-accent)); }
-.shop-featured-copy p { font-size: 15px; font-variant-numeric: tabular-nums; color: rgb(var(--moon-gold)); margin-top: 10px; }
-.shop-featured-copy > span { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: auto; padding-top: 10px; font-size: 13px; color: rgb(var(--moon-muted)); }
-.shop-catalog-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-.shop-catalog-heading h2 { font-size: 24px; }
-.shop-catalog-heading span { font-size: 13px; color: rgb(var(--moon-muted)); }
-.shop-category-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 30px; }
-.shop-category-nav a { display: flex; align-items: center; min-height: 44px; padding: 8px 18px; border: 1px solid rgb(var(--moon-border)); border-radius: 24px; font-size: 14px; color: rgb(var(--moon-text)); }
-.shop-category-nav a:hover { background: rgb(var(--moon-gray)); }
-.shop-categories { display: flex; flex-direction: column; gap: 32px; }
-.shop-category-title { scroll-margin-top: 100px; display: flex; gap: 20px; align-items: baseline; margin-bottom: 14px; }
-.shop-category-title h3 { font-size: 19px; line-height: 1.6; color: rgb(var(--moon-accent)); }
-.shop-category-title span { font-size: 13px; color: rgb(var(--moon-muted)); }
-.shop-product-list { border: 1px solid rgb(var(--moon-border)); background: rgb(var(--moon-dark)); border-radius: 12px; overflow: hidden; }
-.shop-product-row { padding: 20px; gap: 24px; }
-.shop-product-row > span:first-child { display: none; }
-.shop-row-photo { width: 104px; height: 104px; border-radius: 8px; }
-.shop-row-copy h3 { font-size: 17px; line-height: 1.6; font-weight: 500; white-space: normal; }
-.shop-row-copy > div { flex-wrap: wrap; gap: 6px 12px; }
-.shop-row-copy p { font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.75; }
-.shop-row-copy a { min-height: 44px; display: inline-flex; align-items: center; font-size: 13px; color: rgb(var(--moon-muted)); }
-.shop-row-copy span { font-size: 12px; color: rgb(var(--moon-muted)); }
-.shop-row-controls { max-width: 410px; flex-wrap: wrap; justify-content: end; gap: 12px; }
-.shop-row-controls button { min-height: 44px; min-width: 44px; font-size: 13px; border-radius: 6px; }
-.shop-row-controls > div:first-child { display: flex; }
-.shop-row-controls > div:first-child button { white-space: normal; }
-.shop-row-controls > div:last-child > button { min-height: 48px; padding-inline: 18px; border-radius: 12px; }
-.shop-mobile-product > button { padding: 18px 14px; }
-.shop-mobile-product h3 { font-size: 16px; line-height: 1.65; font-weight: 500; }
-.shop-mobile-product p { font-size: 13px; line-height: 1.7; color: rgb(var(--moon-muted)); }
-.shop-mobile-product button { min-height: 44px; }
-.shop-mobile-thumb { position: relative; width: 76px; height: 86px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: rgb(var(--moon-gray)); display: grid; place-items: center; }
-.shop-mobile-product .shop-mobile-price { color: rgb(var(--moon-gold)); margin-top: 5px; font-size: 14px; }
-.shop-mobile-product a { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; }
-.shop-mobile-product [aria-pressed] { border-radius: 6px; }
-.shop-recommendations { margin-bottom: 40px; }
-.shop-recommendations > p { margin: 10px 0 20px; color: rgb(var(--moon-muted)); font-size: 14px; }
-.shop-no-results { text-align: center; padding: 40px 16px; font-size: 16px; }
-.shop-no-results :is(a,button) { display: inline-flex; align-items: center; min-height: 44px; color: rgb(var(--moon-gold)); text-decoration: underline; margin-top: 12px; }
-.shop-order-guide { background: #e9eadf; border-block: 1px solid rgb(var(--moon-border) / .6); padding: 48px 0; }
-.shop-order-guide h2 { margin: 10px 0 28px; }
-.shop-order-guide ol { list-style: none; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px; }
-.shop-order-guide li { display: flex; gap: 16px; }
-.shop-order-guide li > span { font-family: var(--font-sans); font-size: 27px; color: rgb(var(--moon-gold)); line-height: 1.4; }
-.shop-order-guide h3 { font-size: 17px; font-weight: 500; line-height: 1.5; margin-bottom: 8px; }
-.shop-order-guide li p { font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.8; }
-.shop-guide-links { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 24px; }
-.shop-guide-links a { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; text-decoration: underline; text-underline-offset: 5px; }
-.shop-story { padding-block: 48px; display: flex; gap: 30px; justify-content: space-between; align-items: center; }
-.shop-story h2 { margin: 8px 0 12px; font-size: 26px; }
-.shop-story p:last-child { max-width: 550px; font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.9; }
-.shop-story > a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: 14px; white-space: nowrap; }
-.shop-navbar, .shop-footer, .shop-product, .shop-cart-drawer, .shop-checkout, .shop-mobile-cart { font-family: var(--font-sans); }
-.shop-navbar button, .shop-navbar a { border-radius: 12px; }
-.shop-navbar-main { height: 76px; }
-/* 導覽列疊在 Universe rail（#1F2F1F）下方：交界一條 1px 金色細線；深色主題底色再提亮一階（#243624），兩條橫條才分得出層級。
-   淺色主題 rail 是深綠、導覽列是奶油，底色本來就分得開，只保留細線（讓兩個主題的導覽列總高相同）。
-   導覽列桌機總高 = h-20（80px）＋上下框線各 1px，帳號頁 sticky 標頭靠 --shop-navbar-h 疊在它下方；改動導覽列高度時要一起改。 */
-.shop-navbar { border-top: 1px solid rgba(215, 198, 120, .22); }
-html[data-theme='dark'] .shop-navbar { background-color: #243624; }
-:root { --shop-navbar-h: 82px; }
-/* Universe rail kit 的站點覆寫：收合時層級 35，讓購物車 overlay（40）與 drawer（50）壓在 rail 之上；展開的「更多」維持 kit 預設 210。 */
-:root { --ku-nav-z: 35; }
-/* 共用 rail 不繼承 shop body 的 0.02em 字距：320 寬時「更多」等入口會因此換行，rail 變 71px 高。 */
-.ku-universe-rail { letter-spacing: normal; }
-@media (max-width: 640px) { .ku-universe-rail .ku-universe-rail__more { gap: 4px; } }
-/* 導覽列桌機時貼在 sticky rail 下方（rail ≤640 是 relative，導覽列自己 top-0）。 */
-@media (min-width: 641px) { .ku-universe-rail + .shop-navbar { top: var(--ku-rail-height); } }
-.shop-footer { background: rgb(var(--moon-dark)); margin-top: 0; padding-bottom: 72px; }
-.shop-footer li a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; line-height: 1.7; }
-.shop-footer ul { gap: 0; }
-.shop-product .brand-display { font-family: var(--font-sans); font-size: 32px; line-height: 1.5; letter-spacing: -.025em; font-weight: 700; }
-.shop-product .brand-body { font-size: 16px; font-weight: 400; line-height: 1.9; }
-.shop-product .brand-section { padding-block: 48px; }
-.shop-product .aspect-square { border-radius: 12px; }
-.shop-product-actions [aria-pressed] { min-height: 44px; font-size: 14px; border-radius: 6px; }
-.shop-product-actions .shop-buy-row > button { min-height: 52px; border-radius: 12px; }
-.shop-product > div:last-child a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
-.shop-cart-drawer { border-radius: 16px 0 0 16px; }
-.shop-cart-drawer h3 { white-space: normal; font-size: 15px; line-height: 1.6; }
-.shop-cart-drawer a[href='/checkout'] { min-height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-.shop-mobile-cart a { min-height: 50px; border-radius: 12px; }
-.shop-mobile-cart button { min-height: 50px; }
-.shop-mobile-cart p:first-child { font-size: 12px; }
-@media (max-width: 1023px) {
-  .shop-hero-grid { gap: 28px; padding: 32px; }
-  .shop-featured-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .shop-row-controls { max-width: 250px; }
-  .shop-row-controls > div:last-child { flex-wrap: wrap; justify-content: end; }
-}
-@media (max-width: 767px) {
-  .shop-container { width: calc(100% - 40px); }
-  .shop-navbar-main { height: 64px; }
-  .shop-home { padding-top: 20px; }
-  .shop-hero { border-radius: 22px; }
-  .shop-hero-grid { grid-template-columns: 1fr; gap: 24px; padding: 28px 24px 24px; }
-  .shop-hero-copy h1 { font-size: 32px; margin: 14px 0; line-height: 1.45; }
-  .shop-hero-description { font-size: 15px; }
-  .shop-primary { margin-top: 22px; width: 100%; }
-  .shop-hero-links { justify-content: center; margin-top: 8px; }
-  .shop-hero-photo { border-radius: 16px; padding: 8px; }
-  .shop-hero-image { border-radius: 10px; aspect-ratio: 1.25; }
-  .shop-hero-caption { padding: 12px 5px 4px; }
-  .shop-hero-caption > span:last-child { display: none; }
-  .shop-menu { padding-block: 36px 44px; scroll-margin-top: 76px; }
-  .shop-menu-heading { display: block; }
-  .shop-menu h2, .shop-order-guide h2 { font-size: 24px; }
-  .shop-search { margin-top: 20px; width: 100%; }
-  .shop-featured-grid { gap: 12px; margin-bottom: 36px; }
-  .shop-featured-copy { padding: 12px; }
-  .shop-featured-copy h3 { font-size: 15px; line-height: 1.65; }
-  .shop-featured-copy p { font-size: 14px; }
-  .shop-featured-copy > span { font-size: 12px; }
-  .shop-catalog-heading { display: block; }
-  .shop-catalog-heading h2 { font-size: 22px; margin-bottom: 6px; }
-  .shop-category-nav { gap: 8px; }
-  .shop-category-nav a { font-size: 13px; padding-inline: 14px; }
-  .shop-order-guide { padding-block: 36px; }
-  .shop-order-guide ol { grid-template-columns: 1fr; gap: 24px; }
-  .shop-story { padding-block: 36px; flex-direction: column; align-items: start; gap: 18px; }
-  .shop-story h2 { font-size: 25px; }
-  .shop-product .brand-display { font-size: 27px; }
-  .shop-product .brand-section { padding-block: 28px; }
-  .shop-product-actions .shop-buy-row { flex-wrap: wrap; }
-  .shop-product-actions .shop-buy-row > button { flex-basis: 100%; font-size: 15px; }
-  .shop-cart-drawer { border-radius: 0; }
-}
-/* 資訊頁中文大標：品牌字距 0.25em 在手機會把句尾擠成孤字，≤640 收到 0.06em 並平均換行；桌機字距保留。 */
-@media (max-width: 640px) {
-  .brand-section > h1.brand-display { letter-spacing: .06em; text-wrap: balance; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .shop-home *, .shop-product *, .shop-navbar *, .shop-cart-drawer *, .shop-mobile-cart * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-}
-/* 載入轉圈例外：catch-all 會把 iteration-count 壓成 1，轉圈停成靜止的缺口圓，看起來像當機。
-   reduce 下 .animate-spin 維持持續旋轉，但放慢到約 1.5s 一圈；其他動效仍是 0.01ms。
-   必須放在上面 .shop-* 區塊之後（同特異性，後者勝），並重新指定 animation-name。 */
-@media (prefers-reduced-motion: reduce) {
-  .animate-spin { animation: spin 1.5s linear infinite !important; }
-}
-.shop-checkout .brand-display { font-family: var(--font-sans); letter-spacing: -.025em; font-weight: 700; }
-.shop-order-summary, .shop-checkout-form { border-radius: 12px; }
-.shop-order-summary h3 { font-size: 15px; line-height: 1.7; }
-.shop-checkout-form h3 { font-size: 17px; font-weight: 500; }
-.shop-checkout-form :is(input:not([type='radio']):not([type='checkbox']), select, textarea) { border-radius: 6px; min-height: 46px; }
-.shop-checkout-form :is(label,p) { font-size: 13px; line-height: 1.8; }
-.shop-checkout-form button { border-radius: 6px; min-width: 44px; }
-.shop-checkout-form button[type='submit'] { min-height: 54px; border-radius: 12px; }
-.shop-checkout-form :is(input,select,textarea):focus-visible { outline: 2px solid rgb(var(--moon-gold)); outline-offset: 3px; }
-.shop-checkout-form input[type='radio']:focus-visible + div { outline: 2px solid rgb(var(--moon-gold)); outline-offset: 3px; }
-html[data-theme='light'] .shop-checkout-form :is(input,select,textarea):focus-visible,
-html[data-theme='light'] .shop-checkout-form input[type='radio']:focus-visible + div { outline-color: #304f2f; }
-/* Keep the mobile disclosure focus ring inside the clipped, rounded card. */
-.shop-mobile-product > button:focus-visible { outline-offset: -3px; }
 
-/* Cream catalog focus and success states use forest ink, never pale gold. */
-.shop-home :focus-visible { outline-color: #304f2f; }
-.shop-hero :focus-visible { outline-color: #d7c678; }
-.shop-hero-photo:focus-visible { outline-offset: 4px; }
-.shop-home :is(.shop-mobile-product,.shop-row-controls) .text-green-400 { color: #304f2f; }
-html[data-theme='light'] .shop-product-actions .text-green-400 { color: #304f2f; }
-.shop-home .shop-mobile-product a, .shop-home .shop-row-controls :is([class*='text-moon-muted/60'],[class*='text-moon-muted/70']) { color: rgb(var(--moon-muted)); }
-@media (max-width: 360px) {
-  .shop-hero-grid { padding: 24px 20px 20px; }
-  .shop-hero-copy h1 { font-size: 30px; }
-  .shop-hero-links { gap: 8px 16px; }
-}
+  /* Promotion forms and activity details share one readable surface. */
+  .promotion-dialog { background: #f5f0e8; color: #1f2f1f; border: 1px solid #d8d7c4; max-height: 88dvh; box-shadow: 0 18px 64px #0c1a1240; }
+  .promotion-form label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 500; }
+  .promotion-form input:not([type=checkbox]), .promotion-form select, .promotion-form textarea { width: 100%; min-height: 44px; border: 1px solid #adb6a4; border-radius: 8px; background: #fffdf8; color: #1f2f1f; padding: 10px 12px; font-size: 16px; font-weight: 400; }
+  .promotion-form small { color: #5f6856; font-size: 13px; font-weight: 400; line-height: 1.6; }
+  .promotion-form .promotion-check { flex-direction: row; align-items: center; min-height: 44px; gap: 12px; }
+  .promotion-check input { width: 20px; height: 20px; accent-color: #304f2f; }
+  .promotion-primary, .promotion-secondary, .promotion-close { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 12px; padding: 10px 18px; font-size: 14px; line-height: 1.5; }
+  .promotion-primary { background: #304f2f; color: #fffdf8; border: 1px solid #304f2f; }
+  .promotion-secondary, .promotion-close { border: 1px solid #adb6a4; color: #1f2f1f; background: transparent; }
+  .promotion-close { width: 44px; padding: 0; }
+  .promotion-dialog :focus-visible { outline: 2px solid #304f2f; outline-offset: 3px; }
+  .promotion-dialog button:disabled { opacity: .55; cursor: wait; }
+  .promotion-preview { background: #e6e8d9; border-radius: 12px; padding: 16px; }
+  .promotion-error { padding: 12px 16px; border: 1px solid #ba775b; border-radius: 8px; color: #763823; font-size: 14px; }
 
-/* Public feedback remains readable on forest and paper surfaces. */
-.shop-status-success { color: #86efac; }
-.shop-status-error { color: #fca5a5; }
-html[data-theme='light'] .shop-status-success { color: #304f2f; }
-html[data-theme='light'] .shop-status-error { color: #9b2c2c; }
-.shop-status-warning { color: #d7c678; }
-html[data-theme='light'] .shop-status-warning { color: #795b23; }
+  :root {
+    /* 字體堆疊只有一套：Noto Sans TC 優先（由 layout <head> 的 Google Fonts <link> 載入），
+       Inter（next/font，--font-inter-latin 由 <html> 提供）只當西文與數字的後備。 */
+    --font-sans: 'Noto Sans TC', var(--font-inter-latin, 'Inter'), system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    --radius: 0.75rem;
+    --radius-md: 0.625rem;
+    /* moon-* token 名稱是歷史命名，與實際色值不一致；用的時候請看「角色」欄，不要看字面。
+       名稱 → 角色（深色主題 ／ 淺色主題）；完整說明見 docs/DESIGN_NOTES.md「token 對照表」。
+       moon-black  → 頁面底色          #1F2F1F ／ #F5F0E8（淺色主題是奶油，不是黑）
+       moon-dark   → 卡片與浮層底      #1F3527 ／ #FFFBF6
+       moon-gray   → 次層底與 hover 底 #304F2F ／ #F0E8DE
+       moon-border → 邊線              #50654D ／ #D8D7C4
+       moon-text   → 主要文字          #F0ECE1 ／ #1F2F1F
+       moon-muted  → 次要文字          #D7DDD0 ／ #5F6856
+       moon-accent → 最大反差色        #F5F0E8 ／ #1F2F1F（反白按鈕、強調邊框；不是品牌強調色）
+       moon-gold   → 金色點綴          #D7C678 ／ #795B23
+       主行動按鈕請用 .shop-cta（依表面：深色面柔金、淺色面深綠），不要自己拼 moon-accent。 */
+    --moon-black: 31 47 31;
+    --moon-dark: 31 53 39;
+    --moon-gray: 48 79 47;
+    --moon-border: 80 101 77;
+    --moon-text: 240 236 225;
+    --moon-muted: 215 221 208;
+    --moon-accent: 245 240 232;
+    --moon-gold: 215 198 120;
+    --background: 31 47 31;
+    --foreground: 240 236 225;
+    --card: 31 53 39;
+    --card-foreground: 240 236 225;
+    --popover: 31 53 39;
+    --popover-foreground: 240 236 225;
+    --primary: 245 240 232;
+    --primary-foreground: 31 47 31;
+    --secondary: 48 79 47;
+    --secondary-foreground: 240 236 225;
+    --muted: 48 79 47;
+    --muted-foreground: 215 221 208;
+    --accent: 48 79 47;
+    --accent-foreground: 240 236 225;
+    --destructive: 239 68 68;
+    --border: 80 101 77;
+    --input: 80 101 77;
+    --ring: 215 198 120;
+  }
+
+  html[data-theme='dark'] { color-scheme: dark; }
+
+  html[data-theme='light'] {
+    color-scheme: light;
+
+    --moon-black: 245 240 232;
+    --moon-dark: 255 251 246;
+    --moon-gray: 240 232 222;
+    --moon-border: 216 215 196;
+    --moon-text: 31 47 31;
+    --moon-muted: 95 104 86;
+    --moon-accent: 31 47 31;
+    --moon-gold: 121 91 35;
+
+    --background: 245 240 232;
+    --foreground: 31 47 31;
+    --card: 255 251 246;
+    --card-foreground: 31 47 31;
+    --popover: 255 251 246;
+    --popover-foreground: 31 47 31;
+    --primary: 31 47 31;
+    --primary-foreground: 245 240 232;
+    --secondary: 240 232 222;
+    --secondary-foreground: 42 35 30;
+    --muted: 240 232 222;
+    --muted-foreground: 95 104 86;
+    --accent: 240 232 222;
+    --accent-foreground: 42 35 30;
+    --destructive: 220 38 38;
+    --border: 216 215 196;
+    --input: 216 215 196;
+    --ring: 48 79 47;
+  }
+
+  .admin-shell {
+    --moon-black: 10 10 10;
+    --moon-dark: 20 20 20;
+    --moon-gray: 31 31 31;
+    --moon-border: 42 42 42;
+    --moon-text: 229 229 229;
+    --moon-muted: 153 153 153;
+    --moon-accent: 255 255 255;
+    --moon-gold: 212 175 55;
+
+    --background: 10 10 10;
+    --foreground: 229 229 229;
+    --card: 20 20 20;
+    --card-foreground: 229 229 229;
+    --popover: 20 20 20;
+    --popover-foreground: 229 229 229;
+    --primary: 255 255 255;
+    --primary-foreground: 10 10 10;
+    --secondary: 31 31 31;
+    --secondary-foreground: 229 229 229;
+    --muted: 31 31 31;
+    --muted-foreground: 153 153 153;
+    --accent: 31 31 31;
+    --accent-foreground: 229 229 229;
+    --destructive: 239 68 68;
+    --border: 42 42 42;
+    --input: 42 42 42;
+    --ring: 255 255 255;
+  }
+
+  /* 購物車抽屜開啟時鎖住背景捲動。
+     CartSidebar 開啟時只對 body 設 overflow:hidden；但上面的 html 已是 overflow-x:clip，html 自己的 overflow 不是 visible，
+     body 的 overflow 就不會傳到視窗，滾輪／觸控仍會把頁面捲走。抽屜只有開啟時才有 aria-modal="true"，
+     用它讓 html 也 overflow:hidden（捲動位置不動，關閉後原地恢復）。
+     scrollbar-gutter: stable：桌面 Safari「永遠顯示捲軸」或 Windows 經典捲軸，捲軸消失不會讓內容橫向位移。
+     促銷 dialog 等其他浮層不用這個狀態，不受影響。不支援 :has() 的舊瀏覽器維持原行為。 */
+  html:has(#shop-cart-sidebar[aria-modal='true']) {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border));
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--moon-muted));
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* ── 訂購首頁精緻化動效（純 CSS、雙主題用 moon-* token、可被 reduced-motion 關閉）── */
+
+  /* 捲動浮現：初始隱藏，進視窗由 useInView 加 .is-visible */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    will-change: opacity, transform;
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* 購物車徽章彈跳 */
+  @keyframes cartBump {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.35); }
+    60% { transform: scale(0.92); }
+    100% { transform: scale(1); }
+  }
+  .animate-cart-bump {
+    animation: cartBump 0.4s ease-out;
+  }
+
+  /* 加入購物車成功 micro pop */
+  @keyframes addedPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+  .animate-added-pop {
+    animation: addedPop 0.35s ease-out;
+  }
+
+  /* 骨架屏 shimmer（雙主題 token） */
+  @keyframes shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: 0 0; }
+  }
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--moon-gray)) 25%,
+      rgb(var(--moon-border)) 37%,
+      rgb(var(--moon-gray)) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: none !important;
+    }
+    .animate-cart-bump,
+    .animate-added-pop,
+    .skeleton {
+      animation: none !important;
+    }
+  }
+
+  /* 全域 catch-all（寫法同 Map）：含購物車抽屜的 transform 0.5s 與 Tailwind duration-* 一併壓到 0.01ms。 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  .ProseMirror {
+    outline: none;
+  }
+
+  /* 編輯器（後台固定深色面）鍵盤聚焦時給柔金環，不能只拿掉 outline。 */
+  .ProseMirror:focus-visible {
+    outline: 2px solid #d7c678;
+    outline-offset: 2px;
+  }
+
+  .ProseMirror p {
+    margin: 0.5em 0;
+    color: rgb(var(--moon-text));
+    line-height: 1.7;
+  }
+
+  .ProseMirror h2 {
+    margin: 1em 0 0.5em;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: rgb(var(--moon-gold));
+  }
+
+  .ProseMirror h3 {
+    margin: 0.75em 0 0.4em;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(var(--moon-gold));
+  }
+
+  .ProseMirror ul {
+    margin: 0.5em 0;
+    padding-left: 1.4em;
+    color: rgb(var(--moon-text));
+  }
+
+  .ProseMirror li {
+    margin: 0.2em 0;
+  }
+
+  .ProseMirror strong,
+  .ProseMirror a {
+    color: rgb(var(--moon-gold));
+  }
+
+  .ProseMirror em {
+    opacity: 0.8;
+  }
+
+  .ProseMirror a {
+    text-decoration: underline;
+  }
+
+  .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: rgb(var(--moon-muted));
+    pointer-events: none;
+  }
+
+  /* 白色 logo 在淺色模式自動變黑（invert 能處理各種深淺的白/灰） */
+  html[data-theme='light'] .theme-logo {
+    filter: invert(1) brightness(0.1);
+  }
+
+  /* 可讀的表單與跨主題鍵盤焦點。 */
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid #d7c678;
+    outline-offset: 3px;
+  }
+  /* Light theme: forest ring on Shop cream surfaces; exclude the forest-green Universe rail. The dark-green hero keeps gold; the fixed-dark admin shell keeps its own ring. */
+  html[data-theme='light'] :where(a, button, input, select, textarea, summary):not(:where(.ku-universe-rail *)):focus-visible { outline-color: #304f2f; }
+  html[data-theme='light'] .shop-hero :where(a, button, input, select, textarea, summary):focus-visible { outline-color: #d7c678; }
+  html[data-theme='light'] .admin-shell :where(a, button, input, select, textarea, summary):focus-visible { outline-color: rgb(var(--moon-accent)); }
+  .shop-checkout-form button { min-height: 2.75rem; }
+  @media (max-width: 40rem) {
+    .shop-checkout-form :is(input:not([type='radio']):not([type='checkbox']):not([type='hidden']), select, textarea) {
+      min-width: 0;
+      font-size: 1rem;
+    }
+  }
+
+  /* Shop public design: the same quiet green family as Map, Passport and Gacha. */
+  .shop-container { width: min(1160px, calc(100% - 48px)); margin-inline: auto; }
+  /* Branded cream reading surfaces stay legible in either theme, as on Map. */
+  .shop-home {
+    --moon-black: 245 240 232;
+    --moon-dark: 255 253 248;
+    --moon-gray: 230 232 217;
+    --moon-border: 216 215 196;
+    --moon-text: 31 47 31;
+    --moon-muted: 95 104 86;
+    --moon-accent: 31 47 31;
+    --moon-gold: 121 91 35;
+    background: rgb(var(--moon-black));
+    color: rgb(var(--moon-text));
+    font-family: var(--font-sans);
+    padding-top: 28px;
+    padding-bottom: 0;
+  }
+  .shop-eyebrow { color: rgb(var(--moon-gold)); font-size: 12px; letter-spacing: .15em; line-height: 1.5; font-weight: 500; }
+  .shop-hero {
+    --moon-black: 31 47 31;
+    --moon-dark: 31 53 39;
+    --moon-text: 240 236 225;
+    --moon-muted: 215 221 208;
+    --moon-accent: 245 240 232;
+    --moon-gold: 215 198 120;
+    background: #1f3527;
+    color: rgb(var(--moon-text));
+    border-radius: 24px;
+  }
+  .shop-hero-grid { display: grid; grid-template-columns: 1fr 1.03fr; align-items: center; gap: 44px; padding: 44px; }
+  .shop-hero-copy h1 { font-family: var(--font-sans); font-size: clamp(32px, 3.6vw, 44px); font-weight: 700; letter-spacing: -.03em; line-height: 1.45; margin: 18px 0; text-wrap: balance; color: rgb(var(--moon-accent)); }
+  .shop-hero-description { max-width: 370px; font-size: 16px; line-height: 1.9; color: rgb(var(--moon-text)); }
+  .shop-hero-detail { margin-top: 8px; color: rgb(var(--moon-muted)); font-size: 14px; line-height: 1.85; }
+  .shop-primary { display: inline-flex; align-items: center; justify-content: center; gap: 28px; min-height: 56px; margin-top: 26px; padding: 14px 28px; border-radius: 12px; background: #d7c678; color: #1f2f1f; font-weight: 600; font-size: 15px; transition: background .2s; }
+  .shop-primary:hover { background: #e3d58f; }
+  /* 全站主行動，依所在表面決定（common.md）：
+     深色面（深色主題的頁面、抽屜、結帳）＝柔金底、深綠字（#1F2F1F on #D7C678，8.24:1），與 .shop-primary 同色；
+     淺色面（淺色主題，以及首頁固定奶油閱讀區 .shop-home，連深色主題也是）＝深綠實心、奶油字（#F5F0E8 on #1F2F1F，12.47:1），hover 中綠 #304F2F。
+     首頁深綠 Hero 的「選購甜點」是 .shop-primary，維持柔金。 */
+  .shop-cta { background-color: #d7c678; color: #1f2f1f; border-radius: 12px; }
+  .shop-cta:hover:not(:disabled) { background-color: #e3d58f; color: #1f2f1f; }
+  html[data-theme='light'] .shop-cta, .shop-home .shop-cta { background-color: #1f2f1f; color: #f5f0e8; }
+  html[data-theme='light'] .shop-cta:hover:not(:disabled), .shop-home .shop-cta:hover:not(:disabled) { background-color: #304f2f; color: #f5f0e8; }
+  .shop-hero-links { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 16px; }
+  .shop-hero-links a { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; font-size: 13px; color: rgb(var(--moon-muted)); }
+  .shop-hero-photo { display: block; padding: 10px; background: #f5f0e8; color: #1f2f1f; border-radius: 20px; }
+  .shop-hero-image { position: relative; aspect-ratio: 1.32; overflow: hidden; border-radius: 12px; }
+  .shop-hero-caption { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 8px 3px; font-size: 13px; line-height: 1.65; }
+  .shop-hero-caption > span:last-child { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 12px; }
+  .shop-announcement:has(> *) { padding-top: 24px; }
+  .shop-menu { padding-block: 56px 64px; scroll-margin-top: 96px; }
+  .shop-menu-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 28px; }
+  .shop-menu h2, .shop-order-guide h2, .shop-story h2 { font-family: var(--font-sans); font-size: 28px; font-weight: 700; letter-spacing: -.025em; line-height: 1.5; color: rgb(var(--moon-accent)); }
+  .shop-menu-heading h2 { margin: 10px 0 8px; }
+  .shop-menu-heading p:last-child { font-size: 14px; line-height: 1.8; color: rgb(var(--moon-muted)); }
+  .shop-search { display: flex; align-items: center; width: 280px; min-width: 0; gap: 10px; padding-left: 16px; border: 1px solid rgb(var(--moon-border)); background: rgb(var(--moon-dark)); border-radius: 8px; color: rgb(var(--moon-muted)); }
+  .shop-search input { background: transparent; color: rgb(var(--moon-text)); width: 100%; min-width: 0; min-height: 48px; font-size: 16px; padding: 10px 12px 10px 0; outline-offset: 0; }
+  .shop-search input::placeholder { color: rgb(var(--moon-muted)); opacity: 1; }
+  .shop-search input::-webkit-search-cancel-button { display: none; }
+  .shop-search button { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+  .shop-search-result { font-size: 14px; color: rgb(var(--moon-muted)); margin-bottom: 24px; }
+  .shop-featured-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; margin-bottom: 56px; }
+  .shop-featured-card { display: flex; flex-direction: column; border: 1px solid rgb(var(--moon-border)); border-radius: 16px; overflow: hidden; background: rgb(var(--moon-dark)); }
+  .shop-featured-card:hover { border-color: #587337; }
+  .shop-featured-image { position: relative; aspect-ratio: 1.18; display: flex; align-items: center; justify-content: center; background: rgb(var(--moon-gray)); font-size: 12px; }
+  .shop-featured-copy { padding: 18px; display: flex; flex: 1; flex-direction: column; }
+  .shop-featured-copy h3 { font-size: 17px; line-height: 1.65; font-weight: 600; color: rgb(var(--moon-accent)); }
+  .shop-featured-copy p { font-size: 15px; font-variant-numeric: tabular-nums; color: rgb(var(--moon-gold)); margin-top: 10px; }
+  .shop-featured-copy > span { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: auto; padding-top: 10px; font-size: 13px; color: rgb(var(--moon-muted)); }
+  .shop-catalog-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .shop-catalog-heading h2 { font-size: 24px; }
+  .shop-catalog-heading span { font-size: 13px; color: rgb(var(--moon-muted)); }
+  .shop-category-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 30px; }
+  .shop-category-nav a { display: flex; align-items: center; min-height: 44px; padding: 8px 18px; border: 1px solid rgb(var(--moon-border)); border-radius: 24px; font-size: 14px; color: rgb(var(--moon-text)); }
+  .shop-category-nav a:hover { background: rgb(var(--moon-gray)); }
+  .shop-categories { display: flex; flex-direction: column; gap: 32px; }
+  .shop-category-title { scroll-margin-top: 100px; display: flex; gap: 20px; align-items: baseline; margin-bottom: 14px; }
+  .shop-category-title h3 { font-size: 19px; line-height: 1.6; color: rgb(var(--moon-accent)); }
+  .shop-category-title span { font-size: 13px; color: rgb(var(--moon-muted)); }
+  .shop-product-list { border: 1px solid rgb(var(--moon-border)); background: rgb(var(--moon-dark)); border-radius: 12px; overflow: hidden; }
+  .shop-product-row { padding: 20px; }
+  /* gap／photo 尺寸／controls gap 只在 <1024px 生效：≥1024 時 lg:gap-8、lg:w-24 lg:h-24、lg:gap-5 要贏
+     （Tailwind 3 時 lg: 變體排在自訂規則之後；Tailwind 4 沒有那個排序，所以把自訂規則限縮在 lg 以下）。 */
+  @media (max-width: 1023.98px) {
+    .shop-product-row { gap: 24px; }
+    .shop-row-photo { width: 104px; height: 104px; }
+    .shop-row-controls { gap: 12px; }
+  }
+  .shop-product-row > span:first-child { display: none; }
+  .shop-row-photo { border-radius: 8px; }
+  .shop-row-copy h3 { font-size: 17px; line-height: 1.6; font-weight: 500; white-space: normal; }
+  .shop-row-copy > div { flex-wrap: wrap; gap: 6px 12px; }
+  .shop-row-copy p { font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.75; }
+  .shop-row-copy a { min-height: 44px; display: inline-flex; align-items: center; font-size: 13px; color: rgb(var(--moon-muted)); }
+  .shop-row-copy span { font-size: 12px; color: rgb(var(--moon-muted)); }
+  .shop-row-controls { max-width: 410px; flex-wrap: wrap; justify-content: end; }
+  .shop-row-controls button { min-height: 44px; min-width: 44px; font-size: 13px; border-radius: 6px; }
+  .shop-row-controls > div:first-child { display: flex; }
+  .shop-row-controls > div:first-child button { white-space: normal; }
+  .shop-row-controls > div:last-child > button { min-height: 48px; padding-inline: 18px; border-radius: 12px; }
+  .shop-mobile-product > button { padding: 18px 14px; }
+  .shop-mobile-product h3 { font-size: 16px; line-height: 1.65; font-weight: 500; }
+  .shop-mobile-product p { font-size: 13px; line-height: 1.7; color: rgb(var(--moon-muted)); }
+  .shop-mobile-product button { min-height: 44px; }
+  .shop-mobile-thumb { position: relative; width: 76px; height: 86px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: rgb(var(--moon-gray)); display: grid; place-items: center; }
+  .shop-mobile-product .shop-mobile-price { color: rgb(var(--moon-gold)); margin-top: 5px; font-size: 14px; }
+  .shop-mobile-product a { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; }
+  .shop-mobile-product [aria-pressed] { border-radius: 6px; }
+  .shop-recommendations { margin-bottom: 40px; }
+  .shop-recommendations > p { margin: 10px 0 20px; color: rgb(var(--moon-muted)); font-size: 14px; }
+  .shop-no-results { text-align: center; padding: 40px 16px; font-size: 16px; }
+  .shop-no-results :is(a,button) { display: inline-flex; align-items: center; min-height: 44px; color: rgb(var(--moon-gold)); text-decoration: underline; margin-top: 12px; }
+  .shop-order-guide { background: #e9eadf; border-block: 1px solid rgb(var(--moon-border) / .6); padding: 48px 0; }
+  .shop-order-guide h2 { margin: 10px 0 28px; }
+  .shop-order-guide ol { list-style: none; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px; }
+  .shop-order-guide li { display: flex; gap: 16px; }
+  .shop-order-guide li > span { font-family: var(--font-sans); font-size: 27px; color: rgb(var(--moon-gold)); line-height: 1.4; }
+  .shop-order-guide h3 { font-size: 17px; font-weight: 500; line-height: 1.5; margin-bottom: 8px; }
+  .shop-order-guide li p { font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.8; }
+  .shop-guide-links { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 24px; }
+  .shop-guide-links a { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; text-decoration: underline; text-underline-offset: 5px; }
+  .shop-story { padding-block: 48px; display: flex; gap: 30px; justify-content: space-between; align-items: center; }
+  .shop-story h2 { margin: 8px 0 12px; font-size: 26px; }
+  .shop-story p:last-child { max-width: 550px; font-size: 14px; color: rgb(var(--moon-muted)); line-height: 1.9; }
+  .shop-story > a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: 14px; white-space: nowrap; }
+  .shop-navbar, .shop-footer, .shop-product, .shop-cart-drawer, .shop-checkout, .shop-mobile-cart { font-family: var(--font-sans); }
+  .shop-navbar button, .shop-navbar a { border-radius: 12px; }
+  /* .shop-navbar-main 的高度交給 Navbar 的 h-16（<640）與 sm:h-20（≥640）。
+     原本這裡有 height: 76px（桌機）與 ≤767px 的 height: 64px，但 Tailwind 3 時 sm:h-20 排在自訂規則之後而蓋過它們，
+     兩條實際上從沒生效過（<640 的 64px 與 h-16 相同）；Tailwind 4 沒有那個排序，留著會讓導覽列變成 76px。 */
+  /* 導覽列疊在 Universe rail（#1F2F1F）下方：交界一條 1px 金色細線；深色主題底色再提亮一階（#243624），兩條橫條才分得出層級。
+     淺色主題 rail 是深綠、導覽列是奶油，底色本來就分得開，只保留細線（讓兩個主題的導覽列總高相同）。
+     導覽列桌機總高 = h-20（80px）＋上下框線各 1px，帳號頁 sticky 標頭靠 --shop-navbar-h 疊在它下方；改動導覽列高度時要一起改。 */
+  .shop-navbar { border-top: 1px solid rgba(215, 198, 120, .22); }
+  html[data-theme='dark'] .shop-navbar { background-color: #243624; }
+  :root { --shop-navbar-h: 82px; }
+  /* Universe rail kit 的站點覆寫：收合時層級 35，讓購物車 overlay（40）與 drawer（50）壓在 rail 之上；展開的「更多」維持 kit 預設 210。 */
+  :root { --ku-nav-z: 35; }
+  /* 共用 rail 不繼承 shop body 的 0.02em 字距：320 寬時「更多」等入口會因此換行，rail 變 71px 高。 */
+  .ku-universe-rail { letter-spacing: normal; }
+  @media (max-width: 640px) { .ku-universe-rail .ku-universe-rail__more { gap: 4px; } }
+  /* 導覽列桌機時貼在 sticky rail 下方（rail ≤640 是 relative，導覽列自己 top-0）。 */
+  @media (min-width: 641px) { .ku-universe-rail + .shop-navbar { top: var(--ku-rail-height); } }
+  /* margin-top 交給 Footer 的 mt-0 sm:mt-4 lg:mt-8（Tailwind 3 時 sm:／lg: 變體排在自訂規則之後，本來就是它們生效）。 */
+  .shop-footer { background: rgb(var(--moon-dark)); padding-bottom: 72px; }
+  .shop-footer li a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; line-height: 1.7; }
+  .shop-footer ul { gap: 0; }
+  .shop-product .brand-display { font-family: var(--font-sans); font-size: 32px; line-height: 1.5; letter-spacing: -.025em; font-weight: 700; }
+  .shop-product .brand-body { font-size: 16px; font-weight: 400; line-height: 1.9; }
+  .shop-product .brand-section { padding-block: 48px; }
+  .shop-product .aspect-square { border-radius: 12px; }
+  .shop-product-actions [aria-pressed] { min-height: 44px; font-size: 14px; border-radius: 6px; }
+  .shop-product-actions .shop-buy-row > button { min-height: 52px; border-radius: 12px; }
+  .shop-product > div:last-child a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
+  .shop-cart-drawer { border-radius: 16px 0 0 16px; }
+  .shop-cart-drawer h3 { white-space: normal; font-size: 15px; line-height: 1.6; }
+  .shop-cart-drawer a[href='/checkout'] { min-height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  .shop-mobile-cart a { min-height: 50px; border-radius: 12px; }
+  .shop-mobile-cart button { min-height: 50px; }
+  .shop-mobile-cart p:first-child { font-size: 12px; }
+  @media (max-width: 1023px) {
+    .shop-hero-grid { gap: 28px; padding: 32px; }
+    .shop-featured-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .shop-row-controls { max-width: 250px; }
+    .shop-row-controls > div:last-child { flex-wrap: wrap; justify-content: end; }
+  }
+  @media (max-width: 767px) {
+    .shop-container { width: calc(100% - 40px); }
+    .shop-home { padding-top: 20px; }
+    .shop-hero { border-radius: 22px; }
+    .shop-hero-grid { grid-template-columns: 1fr; gap: 24px; padding: 28px 24px 24px; }
+    .shop-hero-copy h1 { font-size: 32px; margin: 14px 0; line-height: 1.45; }
+    .shop-hero-description { font-size: 15px; }
+    .shop-primary { margin-top: 22px; width: 100%; }
+    .shop-hero-links { justify-content: center; margin-top: 8px; }
+    .shop-hero-photo { border-radius: 16px; padding: 8px; }
+    .shop-hero-image { border-radius: 10px; aspect-ratio: 1.25; }
+    .shop-hero-caption { padding: 12px 5px 4px; }
+    .shop-hero-caption > span:last-child { display: none; }
+    .shop-menu { padding-block: 36px 44px; scroll-margin-top: 76px; }
+    .shop-menu-heading { display: block; }
+    .shop-menu h2, .shop-order-guide h2 { font-size: 24px; }
+    .shop-search { margin-top: 20px; width: 100%; }
+    .shop-featured-grid { gap: 12px; margin-bottom: 36px; }
+    .shop-featured-copy { padding: 12px; }
+    .shop-featured-copy h3 { font-size: 15px; line-height: 1.65; }
+    .shop-featured-copy p { font-size: 14px; }
+    .shop-featured-copy > span { font-size: 12px; }
+    .shop-catalog-heading { display: block; }
+    .shop-catalog-heading h2 { font-size: 22px; margin-bottom: 6px; }
+    .shop-category-nav { gap: 8px; }
+    .shop-category-nav a { font-size: 13px; padding-inline: 14px; }
+    .shop-order-guide { padding-block: 36px; }
+    .shop-order-guide ol { grid-template-columns: 1fr; gap: 24px; }
+    .shop-story { padding-block: 36px; flex-direction: column; align-items: start; gap: 18px; }
+    .shop-story h2 { font-size: 25px; }
+    .shop-product .brand-display { font-size: 27px; }
+    .shop-product .brand-section { padding-block: 28px; }
+    .shop-product-actions .shop-buy-row { flex-wrap: wrap; }
+    .shop-product-actions .shop-buy-row > button { flex-basis: 100%; font-size: 15px; }
+    .shop-cart-drawer { border-radius: 0; }
+  }
+  /* 資訊頁中文大標：品牌字距 0.25em 在手機會把句尾擠成孤字，≤640 收到 0.06em 並平均換行；桌機字距保留。 */
+  @media (max-width: 640px) {
+    .brand-section > h1.brand-display { letter-spacing: .06em; text-wrap: balance; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shop-home *, .shop-product *, .shop-navbar *, .shop-cart-drawer *, .shop-mobile-cart * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+  /* 載入轉圈例外：catch-all 會把 iteration-count 壓成 1，轉圈停成靜止的缺口圓，看起來像當機。
+     reduce 下 .animate-spin 維持持續旋轉，但放慢到約 1.5s 一圈；其他動效仍是 0.01ms。
+     必須放在上面 .shop-* 區塊之後（同特異性，後者勝），並重新指定 animation-name。 */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-spin { animation: spin 1.5s linear infinite !important; }
+  }
+  .shop-checkout .brand-display { font-family: var(--font-sans); letter-spacing: -.025em; font-weight: 700; }
+  .shop-order-summary, .shop-checkout-form { border-radius: 12px; }
+  .shop-order-summary h3 { font-size: 15px; line-height: 1.7; }
+  .shop-checkout-form h3 { font-size: 17px; font-weight: 500; }
+  .shop-checkout-form :is(input:not([type='radio']):not([type='checkbox']), select, textarea) { border-radius: 6px; min-height: 46px; }
+  .shop-checkout-form :is(label,p) { font-size: 13px; line-height: 1.8; }
+  .shop-checkout-form button { border-radius: 6px; min-width: 44px; }
+  .shop-checkout-form button[type='submit'] { min-height: 54px; border-radius: 12px; }
+  .shop-checkout-form :is(input,select,textarea):focus-visible { outline: 2px solid rgb(var(--moon-gold)); outline-offset: 3px; }
+  .shop-checkout-form input[type='radio']:focus-visible + div { outline: 2px solid rgb(var(--moon-gold)); outline-offset: 3px; }
+  html[data-theme='light'] .shop-checkout-form :is(input,select,textarea):focus-visible,
+  html[data-theme='light'] .shop-checkout-form input[type='radio']:focus-visible + div { outline-color: #304f2f; }
+  /* Keep the mobile disclosure focus ring inside the clipped, rounded card. */
+  .shop-mobile-product > button:focus-visible { outline-offset: -3px; }
+
+  /* Cream catalog focus and success states use forest ink, never pale gold. */
+  .shop-home :focus-visible { outline-color: #304f2f; }
+  .shop-hero :focus-visible { outline-color: #d7c678; }
+  .shop-hero-photo:focus-visible { outline-offset: 4px; }
+  .shop-home :is(.shop-mobile-product,.shop-row-controls) .text-green-400 { color: #304f2f; }
+  html[data-theme='light'] .shop-product-actions .text-green-400 { color: #304f2f; }
+  .shop-home .shop-mobile-product a, .shop-home .shop-row-controls :is([class*='text-moon-muted/60'],[class*='text-moon-muted/70']) { color: rgb(var(--moon-muted)); }
+  @media (max-width: 360px) {
+    .shop-hero-grid { padding: 24px 20px 20px; }
+    .shop-hero-copy h1 { font-size: 30px; }
+    .shop-hero-links { gap: 8px 16px; }
+  }
+
+  /* Public feedback remains readable on forest and paper surfaces. */
+  .shop-status-success { color: #86efac; }
+  .shop-status-error { color: #fca5a5; }
+  html[data-theme='light'] .shop-status-success { color: #304f2f; }
+  html[data-theme='light'] .shop-status-error { color: #9b2c2c; }
+  .shop-status-warning { color: #d7c678; }
+  html[data-theme='light'] .shop-status-warning { color: #795b23; }
+}

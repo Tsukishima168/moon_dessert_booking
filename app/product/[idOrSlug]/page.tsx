@@ -172,7 +172,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
                 </Eyebrow>
               )}
 
-              <h1 className="brand-display text-2xl sm:text-3xl mb-2 leading-snug">
+              <h1 className="brand-display text-2xl sm:text-3xl mb-2 leading-snug sm:leading-9">
                 {item.name}
               </h1>
 
