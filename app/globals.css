@@ -78,6 +78,9 @@
 @source not inline("data-active:group-data-[variant=line]/tabs-list:after:opacity-100");
 
 /* space-y-*／space-x-*：改用下方 Tailwind 3 規則 */
+/* ⚠️ 這份清單和下方的 Tailwind 3 space 規則都是逐字列舉。日後新增 shadcn 元件，或寫新的 space-y-*／space-x-*
+   （包含 md: 等變體），不在清單上的 class 會直接套用 Tailwind 4 的行為，不會報錯，外觀就會跟現有頁面不一致。
+   要維持一致，請把新 class 同時加進這份清單和下方對應的規則。 */
 @source not inline("space-y-0");
 @source not inline("space-y-0.5");
 @source not inline("space-y-1");
@@ -388,6 +391,9 @@
   .promotion-preview { background: #e6e8d9; border-radius: 12px; padding: 16px; }
   .promotion-error { padding: 12px 16px; border: 1px solid #ba775b; border-radius: 8px; color: #763823; font-size: 14px; }
 
+  /* ⚠️ 上方 @theme inline 的 --font-sans、--radius-md 直接引用這裡的同名變數。Tailwind 會在 theme 層輸出自我引用的宣告，
+     目前靠這段（utilities 層）勝出才有正確的值。這段不能刪，也不能搬到 theme 層之前，否則全站字體和 rounded-md 會一起失效。
+     要改名的話，@theme inline、components/ui/button.tsx 的 var(--radius-md)、本檔所有 var(--font-sans) 三處要一起改。 */
   :root {
     /* 字體堆疊只有一套：Noto Sans TC 優先（由 layout <head> 的 Google Fonts <link> 載入），
        Inter（next/font，--font-inter-latin 由 <html> 提供）只當西文與數字的後備。 */
