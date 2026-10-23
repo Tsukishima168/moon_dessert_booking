@@ -313,7 +313,7 @@ export default function AdminOrderEditPage() {
             type="datetime-local"
             value={form.pickup_time}
             onChange={e => setForm(p => ({ ...p, pickup_time: e.target.value }))}
-            className="bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-none focus:border-moon-accent transition-colors w-full sm:w-auto"
+            className="bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-hidden focus:border-moon-accent transition-colors w-full sm:w-auto"
           />
         </section>
 
@@ -339,7 +339,7 @@ export default function AdminOrderEditPage() {
                     </p>
                     <p className="text-[11px] text-moon-muted">${item.price} × {item.quantity} = ${item.price * item.quantity}</p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => changeQty(idx, -1)}
                       className="w-7 h-7 flex items-center justify-center border border-moon-border text-moon-muted hover:border-red-400/60 hover:text-red-400 transition-colors"
@@ -407,7 +407,7 @@ export default function AdminOrderEditPage() {
                 min={0}
                 value={form.discount_amount}
                 onChange={e => setForm(p => ({ ...p, discount_amount: Math.max(0, parseInt(e.target.value) || 0) }))}
-                className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-none focus:border-moon-accent transition-colors"
+                className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-hidden focus:border-moon-accent transition-colors"
               />
             </div>
           </div>
@@ -422,7 +422,7 @@ export default function AdminOrderEditPage() {
               <select
                 value={form.payment_method}
                 onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))}
-                className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-none focus:border-moon-accent transition-colors"
+                className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-hidden focus:border-moon-accent transition-colors"
               >
                 <option value="">未設定</option>
                 <option value="cash">現金</option>
@@ -435,7 +435,7 @@ export default function AdminOrderEditPage() {
               <select
                 value={form.status}
                 onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-                className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-none focus:border-moon-accent transition-colors"
+                className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-hidden focus:border-moon-accent transition-colors"
               >
                 {Object.entries(ORDER_STATUS).map(([v, label]) => (
                   <option key={v} value={v}>{label}</option>
@@ -453,7 +453,7 @@ export default function AdminOrderEditPage() {
             onChange={e => setForm(p => ({ ...p, admin_notes: e.target.value }))}
             placeholder="輸入內部備註..."
             rows={3}
-            className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-none focus:border-moon-accent transition-colors resize-none placeholder:text-moon-muted/40"
+            className="w-full bg-moon-black border border-moon-border text-moon-text text-sm px-3 py-2 focus:outline-hidden focus:border-moon-accent transition-colors resize-none placeholder:text-moon-muted/40"
           />
         </section>
 
@@ -505,7 +505,7 @@ export default function AdminOrderEditPage() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
           <div className="bg-moon-dark border border-red-500/40 w-full max-w-md p-6 space-y-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+              <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={20} />
               <div>
                 <h3 className="text-sm text-red-300 tracking-wide mb-2">注意：轉帳付款訂單</h3>
                 <p className="text-sm text-moon-muted leading-relaxed">

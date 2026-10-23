@@ -134,7 +134,7 @@ export default function Navbar() {
     <>
       {!isAdminRoute ? <KiwimuUniverseRail currentSite="shop" onTrack={trackUniverseNav} getLoginStatus={getUniverseLoginStatus} /> : null}
       <nav
-        className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-sm ${isAdminRoute ? 'admin-shell' : 'shop-navbar'}`}
+        className={`sticky top-0 z-30 border-b border-moon-border bg-moon-black/90 backdrop-blur-xs ${isAdminRoute ? 'admin-shell' : 'shop-navbar'}`}
       >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className={`flex h-16 items-center justify-between sm:h-20 ${isAdminRoute ? '' : 'shop-navbar-main'}`}>

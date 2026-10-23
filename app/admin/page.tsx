@@ -626,7 +626,7 @@ export default function AdminPage() {
                                                     <div
                                                         ref={provided.innerRef}
                                                         {...provided.droppableProps}
-                                                        className={`w-64 flex-shrink-0 border border-moon-border bg-moon-dark/70 p-3 transition-colors ${snapshot.isDraggingOver ? 'border-moon-accent/60 bg-moon-dark' : ''}`}
+                                                        className={`w-64 shrink-0 border border-moon-border bg-moon-dark/70 p-3 transition-colors ${snapshot.isDraggingOver ? 'border-moon-accent/60 bg-moon-dark' : ''}`}
                                                     >
                                                         <div className="flex items-center justify-between mb-3">
                                                             <span className={`text-xs tracking-wide font-medium ${ORDER_STATUS[col.key].color}`}>

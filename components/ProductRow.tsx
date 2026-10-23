@@ -202,7 +202,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                             >
                                 <Minus size={11} className="text-moon-text" />
                             </button>
-                            <span className="px-2.5 text-xs text-moon-text min-w-[2rem] text-center">{quantity}</span>
+                            <span className="px-2.5 text-xs text-moon-text min-w-8 text-center">{quantity}</span>
                             <button
                                 aria-label={`增加 ${item.name} 數量`}
                                 onClick={() => setQuantity(quantity + 1)}
