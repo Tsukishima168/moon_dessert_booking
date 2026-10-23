@@ -7,6 +7,7 @@ import { CheckCircle, LogIn, MapPin, RefreshCw, Tag, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { TAIWAN_CITIES } from '@/lib/taiwan-data';
+import { isPickupOnlyItem } from '@/lib/delivery-type';
 import { supabase } from '@/lib/supabase'; // Import Supabase
 import { readShopAttribution, trackShopEvent, hasPurchaseBeenTracked, markPurchaseTracked } from '@/lib/shop-analytics';
 import { getResolvedUser, getServerSessionUser } from '@/lib/client-auth';
@@ -35,6 +36,7 @@ interface PendingOrderSnapshot {
   amount: number;
   items: Array<{ name: string; quantity: number; price: number }>;
   linePayUrl: string;
+  lineMessage?: string;
   createdAt: string;
 }
 
@@ -160,6 +162,9 @@ export default function CheckoutPage() {
   const [confirmedName, setConfirmedName] = useState('');
   const [confirmedAmount, setConfirmedAmount] = useState(0);
   const [linePayUrl, setLinePayUrl] = useState('');
+  // 帶進 LINE@ 的訂單訊息（同時複製到剪貼簿，LINE 沒自動帶入時客人可直接貼上）
+  const [lineMessage, setLineMessage] = useState('');
+  const [lineCopyState, setLineCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [savedItems, setSavedItems] = useState<Array<{ name: string; quantity: number; price: number }>>([]);
   const [isLinePayLoading, setIsLinePayLoading] = useState(false);
   const [promoInput, setPromoInput] = useState('');
@@ -222,6 +227,7 @@ export default function CheckoutPage() {
       setConfirmedAmount(Number(pending.amount) || 0);
       setSavedItems(Array.isArray(pending.items) ? pending.items : []);
       setLinePayUrl(pending.linePayUrl || '');
+      setLineMessage(pending.lineMessage || '');
       setOrderSuccess(true);
       return true;
     } catch (error) {
@@ -246,6 +252,8 @@ export default function CheckoutPage() {
     setConfirmedAmount(0);
     setSavedItems([]);
     setLinePayUrl('');
+    setLineMessage('');
+    setLineCopyState('idle');
   }, []);
 
   const loadUserProfile = useCallback(async (email: string) => {
@@ -396,6 +404,25 @@ export default function CheckoutPage() {
     loadReservationRules();
   }, []);
 
+  // 商品配送方式（menu_items.delivery_type）：購物車含僅自取商品時不開放宅配，伺服器端也會擋
+  const [pickupOnlyMenuIds, setPickupOnlyMenuIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const loadDeliveryTypes = async () => {
+      try {
+        const response = await fetch('/api/menu');
+        if (!response.ok) return;
+        const result: { data?: { id: string; category?: string; delivery_type?: string }[] } = await response.json();
+        const ids = (result.data ?? [])
+          .filter((menuItem) => isPickupOnlyItem(menuItem.delivery_type, menuItem.category))
+          .map((menuItem) => menuItem.id);
+        setPickupOnlyMenuIds(new Set(ids));
+      } catch (error) {
+        console.error('載入商品配送方式錯誤:', error);
+      }
+    };
+    loadDeliveryTypes();
+  }, []);
+
   const watchedDeliveryMethod = watch('delivery_method') as 'pickup' | 'delivery';
   const deliveryMethod = watchedDeliveryMethod || 'pickup';
   // 自取與宅配的時段選項不同，切換取貨方式時清掉已選時段，避免帶著另一種方式的時段送單
@@ -403,7 +430,9 @@ export default function CheckoutPage() {
     setValue('pickup_time', '');
   }, [deliveryMethod, setValue]);
   const pickupAvailable = deliveryConfig?.pickup_available ?? true;
-  const deliveryAvailable = deliveryConfig?.delivery_available ?? true;
+  const pickupOnlyCartItems = items.filter((item) => pickupOnlyMenuIds.has(getMenuItemIdFromCartItemId(item.id)));
+  const deliveryBlockedByCart = pickupOnlyCartItems.length > 0;
+  const deliveryAvailable = (deliveryConfig?.delivery_available ?? true) && !deliveryBlockedByCart;
   const hasAvailableDeliveryMethod = pickupAvailable || deliveryAvailable;
   const bankTransferAvailable = paymentConfig?.bank_transfer ?? true;
   const watchedPickupDate = watch('pickup_date');
@@ -693,7 +722,7 @@ export default function CheckoutPage() {
         msg += `訂單編號：${newOrderId}\n`;
         msg += `訂購人：${data.customer_name} (${data.phone})\n`;
         msg += `總金額：$${confirmedFinalPrice}\n`;
-        msg += `取貨日期：${data.pickup_date}\n`;
+        msg += `${data.delivery_method === 'delivery' ? '到貨日期' : '取貨日期'}：${data.pickup_date}\n`;
         if (data.delivery_method === 'delivery') {
           msg += `配送地址：${finalAddress}\n`;
           msg += `到貨時段：${data.pickup_time}\n`;
@@ -708,7 +737,6 @@ export default function CheckoutPage() {
 
         if (data.delivery_notes) msg += `\n備註：${data.delivery_notes}`;
 
-        let lineUrl = '';
         if (bankTransferAvailable) {
           msg += `\n\n付款方式：\n`;
           msg += `LINE Bank (${paymentConfig?.bank_code ?? '824'}) ${paymentConfig?.bank_name ?? '連線商業銀行'}\n`;
@@ -716,22 +744,24 @@ export default function CheckoutPage() {
           msg += `備註欄請填寫：${newOrderId}\n`;
           msg += `\n付款完成後請回傳「後五碼」\n`;
           msg += `   （轉帳通知中的後五碼數字）`;
-
-          const encodedMsg = encodeURIComponent(msg);
-          lineUrl = `https://line.me/R/oaMessage/@931cxefd/?text=${encodedMsg}`;
         }
+
+        // 參照 map.kiwimu.com/menu：oaMessage 連結會把訊息直接帶進 LINE@ 對話框，客人按送出即可
+        const lineUrl = `https://line.me/R/oaMessage/@931cxefd/?text=${encodeURIComponent(msg)}`;
 
         setOrderId(newOrderId);
         setConfirmedName(data.customer_name);
         setConfirmedAmount(confirmedFinalPrice);
         setSavedItems(nextSavedItems);
         setLinePayUrl(lineUrl);
+        setLineMessage(msg);
         persistPendingOrder({
           orderId: newOrderId,
           customerName: data.customer_name,
           amount: confirmedFinalPrice,
           items: nextSavedItems,
           linePayUrl: lineUrl,
+          lineMessage: msg,
           createdAt: new Date().toISOString(),
         });
         // 儲存姓名電話到 profile（登入用戶）
@@ -899,6 +929,20 @@ export default function CheckoutPage() {
   }, [promoCode, totalPrice, setPromoCode, clearPromoCode]);
 
   // 成功畫面：顯示訂單資訊 + 手動前往 LINE 按鈕
+  // 一鍵：先把訂單資訊複製到剪貼簿，再跳到 LINE@（訊息會自動帶入；沒帶入時可直接貼上）
+  const handleLineHandoff = async () => {
+    if (!linePayUrl) return;
+    if (lineMessage && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(lineMessage);
+        setLineCopyState('copied');
+      } catch {
+        setLineCopyState('failed');
+      }
+    }
+    window.location.href = linePayUrl;
+  };
+
   if (orderSuccess) {
     return (
       <div className="min-h-screen bg-moon-black flex items-center justify-center p-4">
@@ -926,6 +970,24 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {/* LINE@ 一鍵傳送訂單資訊（店家客服以 LINE@ 對話為準） */}
+          {linePayUrl && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleLineHandoff}
+                className="flex items-center justify-center gap-2 w-full bg-[#06C755] hover:bg-[#05b04b] text-white py-4 tracking-widest text-sm transition-colors"
+              >
+                一鍵複製訂單，傳到 LINE@
+              </button>
+              <p className="text-xs leading-relaxed text-moon-muted text-center">
+                {lineCopyState === 'copied'
+                  ? '訂單資訊已複製。若 LINE 對話框沒有自動帶入，長按輸入框貼上後送出即可。'
+                  : '會開啟月島甜點 LINE@，訂單資訊自動帶入對話框，按送出即完成，我們會在 LINE 確認訂單與付款。'}
+              </p>
+            </div>
+          )}
+
           <p className="text-sm leading-relaxed text-moon-muted">訂單已建立。付款結果請以訂單狀態為準，重新開啟本頁可繼續付款。</p>
           {checkoutMessage && <p role="alert" className="border border-red-400/30 p-3 text-sm leading-relaxed text-moon-text">{checkoutMessage}</p>}
 
@@ -942,7 +1004,7 @@ export default function CheckoutPage() {
 
           {bankTransferAvailable && (
             <div className="border border-moon-border/20 p-4 space-y-2 bg-moon-dark/20">
-              <p className="text-xs text-moon-muted tracking-wider mb-2">— 或改用轉帳 —</p>
+              <p className="text-xs text-moon-muted tracking-wider mb-2">{paymentConfig?.can_use_line_pay ? '— 或改用轉帳 —' : '— 轉帳付款資訊 —'}</p>
               <p className="text-sm text-moon-text">LINE Bank（{paymentConfig?.bank_code ?? '824'}）{paymentConfig?.bank_name ?? '連線商業銀行'}</p>
               <p className="text-sm text-moon-text">帳號：{paymentConfig?.bank_account ?? '111007479473'}</p>
               <p className="text-xs text-moon-muted mt-2">
@@ -950,16 +1012,6 @@ export default function CheckoutPage() {
               </p>
               <p className="text-xs text-moon-muted">完成後請在 LINE 回傳後五碼</p>
             </div>
-          )}
-
-          {/* LINE 訊息按鈕（轉帳用） */}
-          {bankTransferAvailable && linePayUrl && (
-            <a
-              href={linePayUrl}
-              className="flex items-center justify-center gap-2 w-full border border-[#00B900]/40 text-[#00B900] hover:bg-[#00B900]/10 py-3 tracking-widest text-sm transition-colors"
-            >
-              前往 LINE 回報轉帳 →
-            </a>
           )}
 
           <p className="text-center text-xs text-moon-muted">
@@ -1195,9 +1247,14 @@ export default function CheckoutPage() {
                     <input type="radio" value="delivery" {...register('delivery_method')} disabled={!deliveryAvailable} className="sr-only" />
                     <div className="text-xl mb-1">🚚</div>
                     <div className="text-xs">{`宅配 (+$${deliveryConfig?.delivery_fee ?? 150})`}</div>
-                    {!deliveryAvailable && <div className="mt-1 text-xs text-moon-muted">暫停開放</div>}
+                    {!deliveryAvailable && <div className="mt-1 text-xs text-moon-muted">{deliveryBlockedByCart ? '含僅自取商品' : '暫停開放'}</div>}
                   </label>
                 </div>
+                {deliveryBlockedByCart && (deliveryConfig?.delivery_available ?? true) && (
+                  <p className="text-xs text-moon-muted">
+                    {`「${pickupOnlyCartItems.map((item) => item.name).join('」、「')}」僅限門市自取，購物車有這些商品時無法宅配。`}
+                  </p>
+                )}
                 {!hasAvailableDeliveryMethod && (
                   <p className="text-xs shop-status-error">目前未開放自取或宅配，請稍後再試。</p>
                 )}

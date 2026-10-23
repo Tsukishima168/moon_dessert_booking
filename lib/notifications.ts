@@ -33,6 +33,12 @@ export type StatusNotificationChannel = 'discord' | 'email';
 //   優先用 Bot Token（DISCORD_TOKEN）直接發到該頻道（與 map 相同機制），
 //   無 token 時 fallback 用 Webhook。每則訊息都加來源標籤，方便在共用頻道區分 shop 與 map/menu。
 const DISCORD_API = 'https://discord.com/api/v10';
+
+// Discord 品項列：店家出單要看尺寸，品名後面帶規格（例：• 北海道十勝戚風蛋糕｜六吋 x1）
+function formatDiscordItemLine(item: { name: string; quantity: number; variant_name?: string }): string {
+  const variant = item.variant_name && item.variant_name !== '標準' ? `｜${item.variant_name}` : '';
+  return `• ${item.name}${variant} x${item.quantity}`;
+}
 const DISCORD_ORDER_CHANNEL_ID =
   process.env.DISCORD_ORDER_CHANNEL_ID || '1467024414699819152'; // #月島訂單通知
 const DISCORD_SOURCE_LABEL =
@@ -177,7 +183,7 @@ export async function notifyNewOrder(data: {
       { name: isDelivery ? '🚚 配送資訊' : '🏪 自取資訊', value: fieldText(isDelivery ? `地址: ${data.deliveryAddress}\n備註: ${data.deliveryNotes || '無'}` : '門市自取'), inline: true },
       { name: '📅 時間', value: fieldText(data.pickupTime), inline: true },
       { name: '\u200b', value: '\u200b', inline: false },
-      { name: '訂購商品', value: fieldText(data.items.map((i) => `• ${i.name} x${i.quantity}`).join('\n')) },
+      { name: '訂購商品', value: fieldText(data.items.map(formatDiscordItemLine).join('\n')) },
     ],
     timestamp: new Date().toISOString(),
     footer: { text: fieldText(`Moon Moon Dessert | ${data.utmSource || 'shop.kiwimu.com'}`, 128) },
@@ -358,11 +364,11 @@ export async function sendPickupReminderEmail(_data: unknown): Promise<boolean> 
 
 export async function sendPickupReminderLineNotify(data: {
   orderId: string; customerName: string; phone?: string; pickupTime: string;
-  items: { name: string; quantity: number }[]; deliveryMethod?: string;
+  items: { name: string; quantity: number; variant_name?: string }[]; deliveryMethod?: string;
 }): Promise<boolean> {
   const ns = await getNotificationSettings();
   if (!ns.pickup_reminder.discord) return false;
-  const itemsList = (data.items || []).map((i) => `• ${i.name} x${i.quantity}`).join('\n');
+  const itemsList = (data.items || []).map(formatDiscordItemLine).join('\n');
   const message = `📦 明日取貨提醒\n訂單: ${data.orderId}\n客戶: ${data.customerName}\n電話: ${data.phone || '-'}\n時間: ${data.pickupTime}\n\n${itemsList}`;
   return sendDiscordNotify(message);
 }

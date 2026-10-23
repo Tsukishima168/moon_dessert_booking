@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto'
 import { isOrderablePrice, isStoreOnlyCategory } from '@/lib/orderable'
+import { isPickupOnlyItem } from '@/lib/delivery-type'
 import { createAdminClient } from '@/lib/supabase-admin'
 import type { OrderItem, PromoCodeValidation } from '@/lib/supabase'
 import { insertOrder } from '@/src/repositories/order.repository'
@@ -74,6 +75,7 @@ interface MenuItemRow {
   name: string
   is_available: boolean | null
   category_id?: string | null
+  delivery_type?: string | null
 }
 
 interface MenuVariantRow {
@@ -86,6 +88,7 @@ interface MenuVariantRow {
 interface CanonicalOrderItem extends OrderItem {
   menu_item_id: string
   variant_id: string
+  pickup_only: boolean
 }
 
 interface PromoCodeUsageReservation {
@@ -151,7 +154,7 @@ async function recalculateOrderPricing(items: OrderItem[]) {
 
   const { data: menuItems, error: menuItemsError } = await adminClient
     .from('menu_items')
-    .select('id, name, is_available, category_id')
+    .select('id, name, is_available, category_id, delivery_type')
 
   if (menuItemsError) {
     console.error('[recalculateOrderPricing] 無法讀取 menu_items，拒絕建立訂單:', menuItemsError.message)
@@ -237,6 +240,7 @@ async function recalculateOrderPricing(items: OrderItem[]) {
       price: canonicalPrice,
       menu_item_id: matchedMenuItem.id,
       variant_id: matchedVariant.id,
+      pickup_only: isPickupOnlyItem(matchedMenuItem.delivery_type, matchedMenuItem.category_id),
     }
   })
 
@@ -439,6 +443,12 @@ export async function createOrder(
   if (normalizedDeliveryMethod === 'delivery' && !deliverySettings.delivery_available) {
     throw new OrderValidationError('目前未開放宅配')
   }
+  if (normalizedDeliveryMethod === 'delivery') {
+    const pickupOnlyItem = canonicalItems.find((item) => item.pickup_only)
+    if (pickupOnlyItem) {
+      throw new OrderValidationError(`商品「${pickupOnlyItem.name}」僅限門市自取，請改選門市自取或移除該商品`)
+    }
+  }
 
   await validateOrderAvailability(
     input.pickup_time,
@@ -469,7 +479,7 @@ export async function createOrder(
   }
 
   const originalPrice = subtotal
-  const storedItems = canonicalItems.map(({ menu_item_id, variant_id, ...item }) => item)
+  const storedItems = canonicalItems.map(({ menu_item_id, variant_id, pickup_only, ...item }) => item)
 
   const orderId = `ORD-${randomBytes(8).toString('hex').toUpperCase()}`
 
