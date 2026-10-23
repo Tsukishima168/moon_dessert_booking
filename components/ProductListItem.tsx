@@ -8,7 +8,7 @@ import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
 import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
-import { getDeliveryTypeLabel } from '@/lib/delivery-type';
+import { getDeliveryTypeLabel, isPickupOnlyItem } from '@/lib/delivery-type';
 
 interface ProductListItemProps {
   item: MenuItemWithVariants;
@@ -58,8 +58,8 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
   };
 
   // 配送標示（P2-lite）
-  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type);
-  const isPickupOnly = item.delivery_type === 'pickup_only';
+  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category);
+  const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
   const productHref = `/product/${item.slug || item.id}`;
 
   // 是否為純展示（例如飲料）
@@ -107,7 +107,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           <div className="flex items-center gap-2">
             {deliveryLabel && (
               <span
-                className={`text-xs tracking-widest px-1.5 py-0.5 border hidden sm:inline ${isPickupOnly
+                className={`text-xs tracking-widest px-1.5 py-0.5 border ${isPickupOnly
                     ? 'border-moon-gold text-moon-gold'
                     : 'border-moon-border/60 text-moon-muted'
                   }`}

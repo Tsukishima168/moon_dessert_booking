@@ -11,7 +11,7 @@ import ProductPageActions from '@/components/ProductPageActions';
 import ProductViewTracker from '@/components/ProductViewTracker';
 import { getMenuItemBySlugOrId } from '@/lib/supabase';
 import type { MenuItemWithVariants } from '@/lib/supabase';
-import { getDeliveryTypeLabel } from '@/lib/delivery-type';
+import { getDeliveryTypeLabel, isPickupOnlyItem } from '@/lib/delivery-type';
 import { getOrderableVariants, isOrderablePrice, isStoreOnlyCategory } from '@/lib/orderable';
 
 // 商品資料（含價格/庫存）可能隨時變動，不做靜態快取，每次請求即時查詢。
@@ -80,8 +80,8 @@ export default async function ProductPage({ params }: ProductPageParams) {
   ));
 
   const minPrice = getMinPrice(item);
-  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type);
-  const isPickupOnly = item.delivery_type === 'pickup_only';
+  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category);
+  const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
   const canonicalSlug = item.slug || item.id;
   const productUrl = `${SITE_URL}/product/${canonicalSlug}`;
 

@@ -8,7 +8,7 @@ import { Plus, Minus, ShoppingCart } from 'lucide-react';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
-import { getDeliveryTypeLabel } from '@/lib/delivery-type';
+import { getDeliveryTypeLabel, isPickupOnlyItem } from '@/lib/delivery-type';
 import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
 
 interface ProductRowProps {
@@ -64,8 +64,8 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
     const serialNo = String(index + 1).padStart(2, '0');
 
     // 配送標示（P2-lite）
-    const deliveryLabel = getDeliveryTypeLabel(item.delivery_type);
-    const isPickupOnly = item.delivery_type === 'pickup_only';
+    const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category);
+    const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
     const productHref = `/product/${item.slug || item.id}`;
 
     if (isSoldOut && !storeOnly) {
@@ -130,7 +130,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
                     )}
                     {deliveryLabel && (
                         <span
-                            className={`text-xs tracking-widest px-1.5 py-0.5 border shrink-0 hidden lg:inline ${isPickupOnly
+                            className={`text-xs tracking-widest px-1.5 py-0.5 border shrink-0 ${isPickupOnly
                                     ? 'border-moon-gold text-moon-gold'
                                     : 'border-moon-border/60 text-moon-muted'
                                 }`}
