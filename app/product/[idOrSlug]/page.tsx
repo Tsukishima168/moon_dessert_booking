@@ -81,7 +81,11 @@ export async function generateMetadata({ params }: ProductPageParams): Promise<M
 
 export default async function ProductPage({ params }: ProductPageParams) {
   const { idOrSlug } = await params;
-  const item = await getProduct(idOrSlug);
+  // 商品與宅配設定並行讀取；getDeliverySettings 讀取失敗時回預設（開放），不會 reject。
+  const [item, deliverySettings] = await Promise.all([
+    getProduct(idOrSlug),
+    getDeliverySettings(),
+  ]);
 
   if (!item) {
     notFound();
@@ -94,8 +98,7 @@ export default async function ProductPage({ params }: ProductPageParams) {
 
   const minPrice = getMinPrice(item);
   // 宅配總開關關閉時（結帳頁宅配是「暫停開放」），不標「可宅配」。讀取失敗時沿用服務層預設（開放）。
-  const { delivery_available: deliveryAvailable } = await getDeliverySettings();
-  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category, deliveryAvailable);
+  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category, deliverySettings.delivery_available);
   const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
   const canonicalSlug = item.slug || item.id;
   const productUrl = `${SITE_URL}/product/${canonicalSlug}`;

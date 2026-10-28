@@ -75,7 +75,7 @@ export default function ShippingPage() {
           <SectionHeading className="mb-8 sm:mb-12" title="保存與運送注意事項" />
           <div className="space-y-4 max-w-2xl mx-auto">
             <p className="brand-body text-sm sm:text-base text-moon-gold">
-              <LinkifyText text="不同甜點的保存與食用方式不同。保存方式、成分與過敏原，請私訊 LINE（https://lin.ee/MndRHE2）詢問保存溫度、期限與運送方式；取貨時也會提供說明。" />
+              <LinkifyText text="不同甜點的保存與食用方式不同。保存溫度與期限、成分與過敏原、運送方式，請私訊 LINE（https://lin.ee/MndRHE2）詢問；取貨時也會提供說明。" />
             </p>
           </div>
         </section>

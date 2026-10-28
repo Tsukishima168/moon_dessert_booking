@@ -45,8 +45,22 @@ function HomePageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  // 宅配總開關（/api/settings）：關閉時商品不標「可宅配」。讀不到設定時視為開放（與結帳頁預設一致）。
-  const [deliveryAvailable, setDeliveryAvailable] = useState(true);
+  // 宅配總開關（/api/settings）：設定回來前先當作 false（不標「可宅配」，也不會閃出再消失）；
+  // 回來後只要 delivery_available 不是 false 就顯示。菜單不等這支 API，兩者各自獨立載入。
+  const [deliveryAvailable, setDeliveryAvailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/settings')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((settings: unknown) => {
+        if (active && settings !== null) setDeliveryAvailable(isDeliveryAvailableInSettings(settings));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // 前端搜尋過濾（不重新呼叫 API）
   const filteredMenuItems = searchQuery.trim()
@@ -65,18 +79,14 @@ function HomePageContent() {
           ? `/api/menu?mbti=${mbtiType}`
           : '/api/menu';
 
-        // 同時取得菜單、分類和公開店家設定（設定失敗不影響菜單）
-        const [menuResponse, categoriesResponse, settings] = await Promise.all([
+        // 同時取得菜單和分類
+        const [menuResponse, categoriesResponse] = await Promise.all([
           fetch(menuUrl),
           fetch('/api/categories'),
-          fetch('/api/settings')
-            .then((response) => (response.ok ? response.json() : null))
-            .catch(() => null),
         ]);
 
         const menuData = await menuResponse.json();
         const categoriesData = await categoriesResponse.json();
-        setDeliveryAvailable(isDeliveryAvailableInSettings(settings));
 
         if (menuData.success) {
           setMenuItems(menuData.data);
