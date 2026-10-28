@@ -4,11 +4,11 @@ import SectionHeading from '@/components/ui/SectionHeading';
 import LinkifyText from '@/components/ui/LinkifyText';
 
 export const metadata: Metadata = {
-  title: '服務條款｜月島甜點',
+  title: '服務條款',
   description: '月島甜點網站服務條款。',
   alternates: { canonical: '/terms' },
   openGraph: {
-    title: '服務條款｜月島甜點 | MOON MOON 月島甜點',
+    title: '服務條款 | MOON MOON 月島甜點',
     description: '月島甜點網站服務條款。',
     url: 'https://shop.kiwimu.com/terms',
     type: 'article',

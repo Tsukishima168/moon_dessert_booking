@@ -4,12 +4,12 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
 
 export const metadata: Metadata = {
-  title: '門市資訊｜月島甜點',
+  title: '門市資訊',
   description:
     '月島甜點門市資訊：台南市安南區本原街一段 97 巷 168 號，果菜市場周邊。週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。',
   alternates: { canonical: '/location' },
   openGraph: {
-    title: '門市資訊｜月島甜點 | MOON MOON 月島甜點',
+    title: '門市資訊 | MOON MOON 月島甜點',
     description: '台南市安南區本原街一段 97 巷 168 號，果菜市場周邊。週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。',
     url: 'https://shop.kiwimu.com/location',
     type: 'article',

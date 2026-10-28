@@ -3,11 +3,11 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
 
 export const metadata: Metadata = {
-  title: '隱私權政策｜月島甜點',
+  title: '隱私權政策',
   description: '月島甜點網站隱私權政策：蒐集的個人資料類別、使用之分析工具與聯絡方式。',
   alternates: { canonical: '/privacy' },
   openGraph: {
-    title: '隱私權政策｜月島甜點 | MOON MOON 月島甜點',
+    title: '隱私權政策 | MOON MOON 月島甜點',
     description: '月島甜點網站隱私權政策。',
     url: 'https://shop.kiwimu.com/privacy',
     type: 'article',

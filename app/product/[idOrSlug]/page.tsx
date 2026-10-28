@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: ProductPageParams): Promise<M
   const item = await getProduct(idOrSlug);
 
   if (!item) {
-    return { title: `找不到商品｜${SITE_NAME}` };
+    return { title: '找不到商品' };
   }
 
   const rawDescription = item.tagline || item.description || '';
@@ -54,16 +54,28 @@ export async function generateMetadata({ params }: ProductPageParams): Promise<M
   const url = `${SITE_URL}/product/${canonicalSlug}`;
 
   return {
-    title: `${item.name}｜月島甜點`,
+    title: item.name,
     description,
     alternates: { canonical: `/product/${canonicalSlug}` },
     openGraph: {
-      title: `${item.name}｜月島甜點 | ${SITE_NAME}`,
+      title: `${item.name} | ${SITE_NAME}`,
       description,
       url,
       type: 'article',
       images: item.image_url ? [{ url: item.image_url }] : undefined,
     },
+    // 商品頁沒有自己的 twitter 設定時會繼承全站的 logo 圖；有商品圖就讓 twitter 跟 og 一致。
+    // 沒有商品圖（例如 3 款飲品）就不覆寫，沿用全站預設。
+    ...(item.image_url
+      ? {
+          twitter: {
+            card: 'summary_large_image' as const,
+            title: `${item.name} | ${SITE_NAME}`,
+            description,
+            images: [item.image_url],
+          },
+        }
+      : {}),
   };
 }
 

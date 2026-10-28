@@ -6,12 +6,12 @@ import LinkifyText from '@/components/ui/LinkifyText';
 import { serializeJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
-  title: '常見問題｜月島甜點',
+  title: '常見問題',
   description:
     '月島甜點常見問題整理：Kiwimu MBTI 甜點是什麼、怎麼訂購、自取與宅配時段、運費與預訂天數、付款方式、保存與退換貨。',
   alternates: { canonical: '/faq' },
   openGraph: {
-    title: '常見問題｜月島甜點 | MOON MOON 月島甜點',
+    title: '常見問題 | MOON MOON 月島甜點',
     description: '訂購、自取、宅配、付款、保存與退換貨的常見問題一次看。',
     url: 'https://shop.kiwimu.com/faq',
     type: 'article',

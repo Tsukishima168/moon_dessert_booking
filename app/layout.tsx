@@ -26,15 +26,17 @@ const siteConfig = {
   image: 'https://res.cloudinary.com/dvizdsv4m/image/upload/v1768743629/Dessert-Chinese_u8uoxt.png', // OG 分享圖
 };
 
+// 公開菜單摘要（只放品名，不放價格與庫存）。品名對齊現行菜單（2026-10-27 內容檢核 S6：
+// 「茶香巴斯克」「草莓莓果千層」等已不在售）。菜單改版時請一併更新，並同步 public/llms.txt。
 const publicMenuHighlights = [
-  '北海道經典巴斯克',
-  '茶香巴斯克',
-  '檸檬柚子千層',
-  '經典十勝原味千層',
-  '奶酒提拉米蘇',
-  '經典提拉米蘇',
-  '北海道十勝戚風',
-  '經典烤布丁',
+  '北海道經典｜巴斯克乳酪',
+  '檸檬｜巴斯克乳酪',
+  '北海道十勝低糖原味｜千層蛋糕',
+  '檸檬日本柚子｜千層蛋糕',
+  '貝里詩奶酒｜提拉米蘇',
+  '經典｜提拉米蘇',
+  '北海道十勝戚風蛋糕',
+  '經典烤布丁｜乾濕分離',
 ];
 
 const publicStorePhone = process.env.NEXT_PUBLIC_STORE_PHONE;
@@ -59,8 +61,9 @@ const structuredData = {
       },
       geo: {
         '@type': 'GeoCoordinates',
-        latitude: 23.0478,
-        longitude: 120.1831,
+        // 與 kiwimu／map／passport／gacha 四站一致的店面座標（原值 23.0478, 120.1831 差約 1.6 km）。
+        latitude: 23.0473181,
+        longitude: 120.1987003,
       },
       areaServed: ['台南市安南區', '本原街', '果菜市場周邊'],
       openingHoursSpecification: [
@@ -145,8 +148,10 @@ export const metadata: Metadata = {
     images: [
       {
         url: siteConfig.image,
-        width: 1200,
-        height: 630,
+        // 實際尺寸（2174×312 的 logo 圖）。先前誤宣告 1200×630，社群預覽會被裁切或留白。
+        // TODO（需店主提供）：做一張 1200×630 的分享圖後，換掉 siteConfig.image 並把尺寸改回 1200×630。
+        width: 2174,
+        height: 312,
         alt: siteConfig.name,
       },
     ],
@@ -158,7 +163,6 @@ export const metadata: Metadata = {
     title: siteConfig.title,
     description: siteConfig.description,
     images: [siteConfig.image],
-    creator: '@moonmoondessert', // 如果有 Twitter 請替換
   },
 
   // 其他 meta tags

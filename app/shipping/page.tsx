@@ -5,12 +5,12 @@ import SectionHeading from '@/components/ui/SectionHeading';
 import LinkifyText from '@/components/ui/LinkifyText';
 
 export const metadata: Metadata = {
-  title: '運送與取貨資訊｜月島甜點',
+  title: '運送與取貨資訊',
   description:
     '月島甜點自取與宅配須知：自取地點與時段、宅配確認方式與運費、可預訂日期。',
   alternates: { canonical: '/shipping' },
   openGraph: {
-    title: '運送與取貨資訊｜月島甜點 | MOON MOON 月島甜點',
+    title: '運送與取貨資訊 | MOON MOON 月島甜點',
     description: '自取與宅配須知：地點、時段、運費、預訂前置天數。',
     url: 'https://shop.kiwimu.com/shipping',
     type: 'article',
