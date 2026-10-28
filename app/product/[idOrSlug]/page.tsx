@@ -13,6 +13,7 @@ import { getMenuItemBySlugOrId } from '@/lib/supabase';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { getDeliveryTypeLabel, isPickupOnlyItem } from '@/lib/delivery-type';
 import { getOrderableVariants, isOrderablePrice, isStoreOnlyCategory } from '@/lib/orderable';
+import { getDeliverySettings } from '@/src/services/settings.service';
 
 // 商品資料（含價格/庫存）可能隨時變動，不做靜態快取，每次請求即時查詢。
 export const dynamic = 'force-dynamic';
@@ -80,7 +81,9 @@ export default async function ProductPage({ params }: ProductPageParams) {
   ));
 
   const minPrice = getMinPrice(item);
-  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category);
+  // 宅配總開關關閉時（結帳頁宅配是「暫停開放」），不標「可宅配」。讀取失敗時沿用服務層預設（開放）。
+  const { delivery_available: deliveryAvailable } = await getDeliverySettings();
+  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category, deliveryAvailable);
   const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
   const canonicalSlug = item.slug || item.id;
   const productUrl = `${SITE_URL}/product/${canonicalSlug}`;

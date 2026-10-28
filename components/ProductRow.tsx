@@ -15,10 +15,12 @@ interface ProductRowProps {
     item: MenuItemWithVariants;
     displayOnly?: boolean;
     index?: number;
+    /** 宅配總開關（/api/settings）；false 時不顯示「可宅配」。預設 true＝維持原行為。 */
+    deliveryAvailable?: boolean;
 }
 
 /** Desktop ordering row. Product data and cart actions remain shared with the existing flow. */
-export default function ProductRow({ item, displayOnly = false, index = 0 }: ProductRowProps) {
+export default function ProductRow({ item, displayOnly = false, index = 0, deliveryAvailable = true }: ProductRowProps) {
     // 飲品一律門市供應（不論首頁是否傳入 displayOnly，例如搜尋結果與推薦列表）。
     const storeOnly = displayOnly || isStoreOnlyCategory(item.category);
     const addItem = useCartStore((state) => state.addItem);
@@ -64,7 +66,7 @@ export default function ProductRow({ item, displayOnly = false, index = 0 }: Pro
     const serialNo = String(index + 1).padStart(2, '0');
 
     // 配送標示（P2-lite）
-    const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category);
+    const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category, deliveryAvailable);
     const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
     const productHref = `/product/${item.slug || item.id}`;
 

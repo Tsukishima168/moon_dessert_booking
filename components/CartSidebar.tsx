@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
+import { isDeliveryAvailableInSettings } from '@/lib/delivery-type';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -105,7 +106,8 @@ export default function CartSidebar() {
     };
   }, [closeCart, isOpen]);
 
-  // 免運門檻（讀公開業務設定，串接後台「配送與取貨」）
+  // 免運門檻（讀公開業務設定，串接後台「配送與取貨」）。
+  // 宅配總開關關閉時門檻視為 0（不顯示「再買 $N 享免運」）：結帳頁宅配是「暫停開放」，免運提示只會誤導。
   const [freeShipThreshold, setFreeShipThreshold] = useState(0);
   useEffect(() => {
     let active = true;
@@ -115,7 +117,9 @@ export default function CartSidebar() {
         if (!active || !isRecord(s)) return;
         const ds = s.delivery_settings;
         const t =
-          isRecord(ds) && typeof ds.free_delivery_threshold === 'number'
+          isDeliveryAvailableInSettings(s) &&
+          isRecord(ds) &&
+          typeof ds.free_delivery_threshold === 'number'
             ? ds.free_delivery_threshold
             : 0;
         setFreeShipThreshold(t);
