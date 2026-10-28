@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
+import LinkifyText from '@/components/ui/LinkifyText';
 
 export const metadata: Metadata = {
   title: '運送與取貨資訊｜月島甜點',
@@ -45,7 +46,7 @@ export default function ShippingPage() {
               自取地址：台南市安南區本原街一段 97 巷 168 號（月島甜點店，果菜市場周邊）。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
-              週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。臨時營業異動請看月島公告。預訂取貨時段與營業時間分開安排，請從結帳頁當時開放的日期及時段選擇，並依訂單內容取貨。
+              週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。臨時營業異動請看<a href="https://www.instagram.com/moon_moon_dessert/" target="_blank" rel="noopener noreferrer" className="text-moon-accent underline underline-offset-4 hover:text-moon-text transition-colors">月島 Instagram 公告</a>。預訂取貨時段與營業時間分開安排，請從結帳頁當時開放的日期及時段選擇，並依訂單內容取貨。
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
               請從結帳頁可選的日期安排預訂。不同品項所需準備時間可能不同，急件請先透過 LINE 確認能否安排。
@@ -74,7 +75,7 @@ export default function ShippingPage() {
           <SectionHeading className="mb-8 sm:mb-12" title="保存與運送注意事項" />
           <div className="space-y-4 max-w-2xl mx-auto">
             <p className="brand-body text-sm sm:text-base text-moon-gold">
-              不同甜點的保存與食用方式不同，請查看商品頁及取貨時提供的說明。若未找到您要的品項資訊，請先透過 LINE 詢問保存溫度、期限與運送方式。
+              <LinkifyText text="不同甜點的保存與食用方式不同。保存方式、成分與過敏原，請私訊 LINE（https://lin.ee/MndRHE2）詢問保存溫度、期限與運送方式；取貨時也會提供說明。" />
             </p>
           </div>
         </section>

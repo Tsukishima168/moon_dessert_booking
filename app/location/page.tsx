@@ -49,7 +49,7 @@ export default function LocationPage() {
             <p className="brand-body text-sm sm:text-base text-moon-muted/90">
               週一公休；週二至五 13:00–18:00；週六日 11:00–18:00
               <br />
-              臨時營業異動請看月島公告；已預訂的取貨日期與時段以訂單內容為準
+              臨時營業異動請看<a href="https://www.instagram.com/moon_moon_dessert/" target="_blank" rel="noopener noreferrer" className="text-moon-accent underline underline-offset-4 hover:text-moon-text transition-colors">月島 Instagram 公告</a>；已預訂的取貨日期與時段以訂單內容為準
             </p>
             <p className="brand-body text-sm sm:text-base text-moon-gold">
               來店前需要確認位置或取貨安排，請透過 LINE 官方帳號 @931cxefd 聯繫我們。

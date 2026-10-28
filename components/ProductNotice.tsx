@@ -7,6 +7,8 @@
  */
 
 const OFFICIAL_LINE_URL = 'https://line.me/R/ti/p/@931cxefd';
+// 保存方式／成分／過敏原目前沒有放在商品資料裡，統一請客人私訊 LINE（同一個官方帳號的短連結，與 /faq、/shipping、/terms 一致）。
+const LINE_INQUIRY_URL = 'https://lin.ee/MndRHE2';
 
 interface ProductNoticeProps {
   leadTimeDays?: number | null;
@@ -31,6 +33,18 @@ export default function ProductNotice({ leadTimeDays }: ProductNoticeProps) {
           官方 LINE
         </a>
         確認能否安排與商品說明。
+      </p>
+      <p className="brand-body text-xs sm:text-sm text-moon-muted/90">
+        保存方式、成分與過敏原，請私訊
+        <a
+          href={LINE_INQUIRY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-moon-accent hover:underline"
+        >
+          LINE
+        </a>
+        詢問。
       </p>
     </div>
   );

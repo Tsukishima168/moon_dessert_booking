@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
+import LinkifyText from '@/components/ui/LinkifyText';
 import { serializeJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
@@ -60,7 +61,7 @@ const faqSchema = {
       name: '自取地點與時間是？',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: '自取地點為台南市安南區本原街一段 97 巷 168 號（月島甜點店）。週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。臨時異動請看月島公告；預訂取貨請從結帳頁開放的日期與時段選擇，並依訂單內容取貨。',
+        text: '自取地點為台南市安南區本原街一段 97 巷 168 號（月島甜點店）。週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。臨時異動請看月島 Instagram 公告（https://www.instagram.com/moon_moon_dessert/）；預訂取貨請從結帳頁開放的日期與時段選擇，並依訂單內容取貨。',
       },
     },
     {
@@ -103,7 +104,7 @@ const FAQ_GROUPS: { title: string; items: FaqItem[] }[] = [
     items: [
       {
         q: '自取地點與時間是？',
-        a: '自取地點為台南市安南區本原街一段 97 巷 168 號（月島甜點店）。週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。臨時異動請看月島公告；預訂取貨請從結帳頁開放的日期與時段選擇，並依訂單內容取貨。',
+        a: '自取地點為台南市安南區本原街一段 97 巷 168 號（月島甜點店）。週一公休；週二至五 13:00–18:00；週六日 11:00–18:00。臨時異動請看月島 Instagram 公告（https://www.instagram.com/moon_moon_dessert/）；預訂取貨請從結帳頁開放的日期與時段選擇，並依訂單內容取貨。',
       },
       {
         q: '宅配範圍與運費怎麼算？',
@@ -120,7 +121,7 @@ const FAQ_GROUPS: { title: string; items: FaqItem[] }[] = [
     items: [
       {
         q: '甜點怎麼保存？可以放多久？',
-        a: '請查看商品頁及取貨時提供的保存說明。不同品項的保存溫度與期限不同，未找到資訊時，請透過 LINE 提供品名詢問。',
+        a: '保存方式、成分與過敏原，請私訊 LINE（https://lin.ee/MndRHE2）詢問，並提供品名；不同品項的保存溫度與期限不同，取貨時也會提供保存說明。',
       },
       {
         q: '可以客製化甜點嗎（插卡、蠟燭、寫字等）？',
@@ -188,7 +189,7 @@ export default function FaqPage() {
                   <h3 className="brand-body text-sm sm:text-base text-moon-text mb-2">
                     {item.q}
                   </h3>
-                  <p className="brand-body text-xs sm:text-sm text-moon-muted/90">{item.a}</p>
+                  <p className="brand-body text-xs sm:text-sm text-moon-muted/90"><LinkifyText text={item.a} /></p>
                 </div>
               ))}
             </div>
