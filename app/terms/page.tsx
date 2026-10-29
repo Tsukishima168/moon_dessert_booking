@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
+import LinkifyText from '@/components/ui/LinkifyText';
 
 export const metadata: Metadata = {
-  title: '服務條款｜月島甜點',
+  title: '服務條款',
   description: '月島甜點網站服務條款。',
   alternates: { canonical: '/terms' },
   openGraph: {
-    title: '服務條款｜月島甜點 | MOON MOON 月島甜點',
+    title: '服務條款 | MOON MOON 月島甜點',
     description: '月島甜點網站服務條款。',
     url: 'https://shop.kiwimu.com/terms',
     type: 'article',
@@ -27,7 +28,7 @@ const SECTIONS: TermsSection[] = [
   },
   {
     title: '商品與價格',
-    body: '可訂購品項、規格與價格請查看商品頁及結帳明細。若商品未開放預訂，或有成分、過敏原及客製需求，請先透過 LINE 確認。',
+    body: '可訂購品項、規格與價格請查看商品頁及結帳明細。保存方式、成分與過敏原，或有客製需求，請私訊 LINE（https://lin.ee/MndRHE2）詢問；若商品未開放預訂，也請先透過 LINE 確認。',
   },
   {
     title: '付款與訂單確認',
@@ -77,7 +78,7 @@ export default function TermsPage() {
           >
             <SectionHeading className="mb-8 sm:mb-12" title={section.title} />
             <div className="max-w-2xl mx-auto">
-              <p className="brand-body text-sm sm:text-base text-moon-muted">{section.body}</p>
+              <p className="brand-body text-sm sm:text-base text-moon-muted"><LinkifyText text={section.body} /></p>
             </div>
           </section>
         ))}

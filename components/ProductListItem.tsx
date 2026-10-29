@@ -13,9 +13,10 @@ import { getDeliveryTypeLabel, isPickupOnlyItem } from '@/lib/delivery-type';
 interface ProductListItemProps {
   item: MenuItemWithVariants;
   displayOnly?: boolean; // 只展示，不開放預訂（例如飲料）
+  deliveryAvailable?: boolean; // 宅配總開關（/api/settings）；false 時不顯示「可宅配」，預設 true＝維持原行為
 }
 
-export default function ProductListItem({ item, displayOnly = false }: ProductListItemProps) {
+export default function ProductListItem({ item, displayOnly = false, deliveryAvailable = true }: ProductListItemProps) {
   const addItem = useCartStore((state) => state.addItem);
   const openCart = useCartStore((state) => state.openCart);
   // 只有價格 > 0 的規格可以線上訂購；0 元規格是門市限定。
@@ -58,7 +59,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
   };
 
   // 配送標示（P2-lite）
-  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category);
+  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category, deliveryAvailable);
   const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
   const productHref = `/product/${item.slug || item.id}`;
 

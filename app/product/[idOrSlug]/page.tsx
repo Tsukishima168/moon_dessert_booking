@@ -13,6 +13,7 @@ import { getMenuItemBySlugOrId } from '@/lib/supabase';
 import type { MenuItemWithVariants } from '@/lib/supabase';
 import { getDeliveryTypeLabel, isPickupOnlyItem } from '@/lib/delivery-type';
 import { getOrderableVariants, isOrderablePrice, isStoreOnlyCategory } from '@/lib/orderable';
+import { getDeliverySettings } from '@/src/services/settings.service';
 
 // 商品資料（含價格/庫存）可能隨時變動，不做靜態快取，每次請求即時查詢。
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: ProductPageParams): Promise<M
   const item = await getProduct(idOrSlug);
 
   if (!item) {
-    return { title: `找不到商品｜${SITE_NAME}` };
+    return { title: '找不到商品' };
   }
 
   const rawDescription = item.tagline || item.description || '';
@@ -53,22 +54,38 @@ export async function generateMetadata({ params }: ProductPageParams): Promise<M
   const url = `${SITE_URL}/product/${canonicalSlug}`;
 
   return {
-    title: `${item.name}｜月島甜點`,
+    title: item.name,
     description,
     alternates: { canonical: `/product/${canonicalSlug}` },
     openGraph: {
-      title: `${item.name}｜月島甜點 | ${SITE_NAME}`,
+      title: `${item.name} | ${SITE_NAME}`,
       description,
       url,
       type: 'article',
       images: item.image_url ? [{ url: item.image_url }] : undefined,
     },
+    // 商品頁沒有自己的 twitter 設定時會繼承全站的 logo 圖；有商品圖就讓 twitter 跟 og 一致。
+    // 沒有商品圖（例如 3 款飲品）就不覆寫，沿用全站預設。
+    ...(item.image_url
+      ? {
+          twitter: {
+            card: 'summary_large_image' as const,
+            title: `${item.name} | ${SITE_NAME}`,
+            description,
+            images: [item.image_url],
+          },
+        }
+      : {}),
   };
 }
 
 export default async function ProductPage({ params }: ProductPageParams) {
   const { idOrSlug } = await params;
-  const item = await getProduct(idOrSlug);
+  // 商品與宅配設定並行讀取；getDeliverySettings 讀取失敗時回預設（開放），不會 reject。
+  const [item, deliverySettings] = await Promise.all([
+    getProduct(idOrSlug),
+    getDeliverySettings(),
+  ]);
 
   if (!item) {
     notFound();
@@ -80,7 +97,8 @@ export default async function ProductPage({ params }: ProductPageParams) {
   ));
 
   const minPrice = getMinPrice(item);
-  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category);
+  // 宅配總開關關閉時（結帳頁宅配是「暫停開放」），不標「可宅配」。讀取失敗時沿用服務層預設（開放）。
+  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category, deliverySettings.delivery_available);
   const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
   const canonicalSlug = item.slug || item.id;
   const productUrl = `${SITE_URL}/product/${canonicalSlug}`;
