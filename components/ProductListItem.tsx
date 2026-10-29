@@ -94,7 +94,7 @@ export default function ProductListItem({ item, displayOnly = false, deliveryAva
         <div className="flex items-center justify-between gap-4">
           <div className="shop-mobile-thumb">{item.image_url?.trim() ? <Image src={item.image_url} alt="" fill sizes="80px" className="object-cover" /> : <span aria-hidden="true">—</span>}</div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm sm:text-base text-moon-accent font-light tracking-wide line-clamp-2 leading-snug">
+            <h3 className="text-sm sm:text-base text-moon-accent font-light tracking-wide line-clamp-2 leading-snug sm:leading-6">
               {item.name}
             </h3>
             {item.description?.trim() && (
@@ -155,7 +155,7 @@ export default function ProductListItem({ item, displayOnly = false, deliveryAva
 
           {/* 商品描述 */}
           {item.description && (
-            <p className="text-xs sm:text-sm text-moon-muted leading-relaxed mb-2 sm:mb-3">
+            <p className="text-xs sm:text-sm text-moon-muted leading-relaxed sm:leading-5 mb-2 sm:mb-3">
               {item.description}
             </p>
           )}

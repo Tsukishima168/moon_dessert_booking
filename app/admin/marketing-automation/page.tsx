@@ -324,7 +324,7 @@ export default function MarketingAutomationPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                        <div className="flex items-center gap-2 shrink-0">
                                             <button
                                                 onClick={() => toggleRule(rule.id, rule.is_active)}
                                                 className={`p-2 rounded transition-colors ${
@@ -396,7 +396,7 @@ export default function MarketingAutomationPage() {
                                     value={form.title}
                                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                                     placeholder="例：訂單確認信"
-                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -406,7 +406,7 @@ export default function MarketingAutomationPage() {
                                 <select
                                     value={form.trigger_type}
                                     onChange={e => setForm(f => ({ ...f, trigger_type: e.target.value as FormState['trigger_type'] }))}
-                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                 >
                                     <option value="order">🛒 訂單已下單</option>
                                     <option value="birthday">🎂 生日當天</option>
@@ -431,7 +431,7 @@ export default function MarketingAutomationPage() {
                                     min={0}
                                     value={form.delay_minutes}
                                     onChange={e => setForm(f => ({ ...f, delay_minutes: parseInt(e.target.value) || 0 }))}
-                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -463,7 +463,7 @@ export default function MarketingAutomationPage() {
                                     <select
                                         value={form.template_id}
                                         onChange={e => setForm(f => ({ ...f, template_id: e.target.value }))}
-                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-black border border-moon-border text-moon-text px-3 py-2 text-sm focus:outline-hidden focus:border-moon-accent"
                                     >
                                         <option value="">— 不使用範本 —</option>
                                         {templates.map(t => (

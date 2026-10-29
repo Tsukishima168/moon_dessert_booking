@@ -293,7 +293,7 @@ export default function PushTemplatesPage() {
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         <button
                                             onClick={() => openEdit(template)}
                                             className="p-2 text-moon-muted hover:text-moon-accent hover:bg-moon-accent/10 rounded transition-colors"
@@ -346,7 +346,7 @@ export default function PushTemplatesPage() {
                                         type="text"
                                         value={form.name}
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                         placeholder="例: 訂單完成提醒"
                                         required
                                     />
@@ -361,7 +361,7 @@ export default function PushTemplatesPage() {
                                         <select
                                             value={form.channel}
                                             onChange={(e) => setForm({ ...form, channel: e.target.value as FormState['channel'] })}
-                                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-none focus:border-moon-accent"
+                                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-hidden focus:border-moon-accent"
                                         >
                                             <option value="line">💬 LINE</option>
                                             <option value="sms">📱 簡訊</option>
@@ -375,7 +375,7 @@ export default function PushTemplatesPage() {
                                         <select
                                             value={form.template_type}
                                             onChange={(e) => setForm({ ...form, template_type: e.target.value as FormState['template_type'] })}
-                                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-none focus:border-moon-accent"
+                                            className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text focus:outline-hidden focus:border-moon-accent"
                                         >
                                             <option value="order_update">訂單更新</option>
                                             <option value="promotion">推廣</option>
@@ -395,7 +395,7 @@ export default function PushTemplatesPage() {
                                         type="text"
                                         value={form.title}
                                         onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                         placeholder="例: 您的訂單已完成"
                                     />
                                 </div>
@@ -408,7 +408,7 @@ export default function PushTemplatesPage() {
                                     <textarea
                                         value={form.message}
                                         onChange={(e) => setForm({ ...form, message: e.target.value })}
-                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                         placeholder="例: 您的訂單 {order_id} 已完成，歡迎領取！"
                                         rows={4}
                                         required
@@ -425,7 +425,7 @@ export default function PushTemplatesPage() {
                                         type="url"
                                         value={form.image_url}
                                         onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                         placeholder="https://..."
                                     />
                                 </div>
@@ -439,7 +439,7 @@ export default function PushTemplatesPage() {
                                         type="url"
                                         value={form.action_url}
                                         onChange={(e) => setForm({ ...form, action_url: e.target.value })}
-                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                         placeholder="https://..."
                                     />
                                 </div>
@@ -453,7 +453,7 @@ export default function PushTemplatesPage() {
                                         type="text"
                                         value={form.variables_raw}
                                         onChange={(e) => setForm({ ...form, variables_raw: e.target.value })}
-                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-none focus:border-moon-accent"
+                                        className="w-full bg-moon-border/50 border border-moon-border px-4 py-2 rounded text-moon-text placeholder-moon-muted focus:outline-hidden focus:border-moon-accent"
                                         placeholder="例: order_id, customer_name, pickup_time"
                                     />
                                 </div>

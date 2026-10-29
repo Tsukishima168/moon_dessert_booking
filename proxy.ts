@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isSameOriginMutation } from '@/src/lib/request-origin';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const cookieWrite = path.startsWith('/api/admin/') || path.startsWith('/api/user/') ||
     path === '/api/auth/set-session' || path === '/api/order' || path === '/api/payment/linepay/request';

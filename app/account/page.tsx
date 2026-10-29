@@ -249,7 +249,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-moon-dark text-moon-text">
-      <header className="sticky top-0 z-10 min-[641px]:top-[calc(var(--ku-rail-height)+var(--shop-navbar-h))] border-b border-moon-border bg-moon-black/95 backdrop-blur">
+      <header className="sticky top-0 z-10 min-[641px]:top-[calc(var(--ku-rail-height)+var(--shop-navbar-h))] border-b border-moon-border bg-moon-black/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div>
             <p className="brand-eyebrow">Moon Passport</p>
@@ -312,10 +312,10 @@ export default function AccountPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-col gap-6">
           <TabsList className="h-auto w-full flex-wrap justify-start gap-2 bg-moon-black/80 p-1 md:w-auto">
-            <TabsTrigger value="overview" className="min-h-11 data-[active]:bg-moon-accent data-[active]:text-moon-black">總覽</TabsTrigger>
-            <TabsTrigger value="orders" className="min-h-11 data-[active]:bg-moon-accent data-[active]:text-moon-black">訂單</TabsTrigger>
-            <TabsTrigger value="offers" className="min-h-11 data-[active]:bg-moon-accent data-[active]:text-moon-black">我的優惠</TabsTrigger>
-            <TabsTrigger value="profile" className="min-h-11 data-[active]:bg-moon-accent data-[active]:text-moon-black">個人資料</TabsTrigger>
+            <TabsTrigger value="overview" className="min-h-11 data-active:bg-moon-accent data-active:text-moon-black">總覽</TabsTrigger>
+            <TabsTrigger value="orders" className="min-h-11 data-active:bg-moon-accent data-active:text-moon-black">訂單</TabsTrigger>
+            <TabsTrigger value="offers" className="min-h-11 data-active:bg-moon-accent data-active:text-moon-black">我的優惠</TabsTrigger>
+            <TabsTrigger value="profile" className="min-h-11 data-active:bg-moon-accent data-active:text-moon-black">個人資料</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">

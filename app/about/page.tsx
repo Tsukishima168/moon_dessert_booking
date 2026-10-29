@@ -35,7 +35,7 @@ export default function AboutPage() {
           <div className="flex justify-center mb-6">
             <Eyebrow bordered>ABOUT · KIWIMU UNIVERSE</Eyebrow>
           </div>
-          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug">
+          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug sm:leading-9 lg:leading-10">
             月島還是一間甜點店，
             <br className="hidden sm:block" />
             只是我們先問：你現在是什麼狀態？

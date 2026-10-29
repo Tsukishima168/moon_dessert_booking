@@ -49,7 +49,7 @@ export default function RefundPage() {
           <div className="flex justify-center mb-6">
             <Eyebrow bordered>REFUND · 退換貨政策</Eyebrow>
           </div>
-          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug">
+          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug sm:leading-9 lg:leading-10">
             訂單有需要調整的地方，
             <br className="hidden sm:block" />
             讓我們一起確認。

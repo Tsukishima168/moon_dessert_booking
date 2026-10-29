@@ -358,7 +358,7 @@ export default function MenuAdminPage() {
                 {/* 錯誤訊息 */}
                 {error && (
                     <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 flex items-start gap-3">
-                        <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={18} />
+                        <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={18} />
                         <div>
                             <p className="text-red-300 text-sm font-medium">載入錯誤</p>
                             <p className="text-red-200/70 text-xs mt-1">{error}</p>
@@ -522,7 +522,7 @@ export default function MenuAdminPage() {
                                     value={form.name}
                                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                                     placeholder="例：草莓塔"
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -537,7 +537,7 @@ export default function MenuAdminPage() {
                                     onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
                                     placeholder="例：cake / 塔類 / 飲品"
                                     list="category-list"
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                                 <datalist id="category-list">
                                     {categories.map((c) => <option key={c} value={c} />)}
@@ -554,7 +554,7 @@ export default function MenuAdminPage() {
                                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                                     placeholder="商品說明、食材、口感..."
                                     rows={3}
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent resize-none"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent resize-none"
                                 />
                             </div>
 
@@ -568,7 +568,7 @@ export default function MenuAdminPage() {
                                     value={form.price}
                                     onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
                                     min={0}
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -583,7 +583,7 @@ export default function MenuAdminPage() {
                                         value={form.image_url}
                                         onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
                                         placeholder="https://res.cloudinary.com/..."
-                                        className="flex-1 px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                        className="flex-1 px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                     />
                                     <div className="relative">
                                         <input
@@ -653,7 +653,7 @@ export default function MenuAdminPage() {
                                                 value={v.variant_name}
                                                 onChange={(e) => updateVariant(idx, 'variant_name', e.target.value)}
                                                 placeholder="規格名（例：4吋）"
-                                                className="flex-1 px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                                className="flex-1 px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                             />
                                             <input
                                                 type="number"
@@ -661,7 +661,7 @@ export default function MenuAdminPage() {
                                                 onChange={(e) => updateVariant(idx, 'price', Number(e.target.value))}
                                                 placeholder="價格"
                                                 min={0}
-                                                className="w-24 px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                                className="w-24 px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                             />
                                             {form.variants.length > 1 && (
                                                 <button
@@ -697,7 +697,7 @@ export default function MenuAdminPage() {
                                     value={form.tagline}
                                     onChange={(e) => setForm((f) => ({ ...f, tagline: e.target.value }))}
                                     placeholder="例：北海道經典｜濃郁不膩口"
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -711,7 +711,7 @@ export default function MenuAdminPage() {
                                     value={form.size_info}
                                     onChange={(e) => setForm((f) => ({ ...f, size_info: e.target.value }))}
                                     placeholder="例：4吋，約2-3人份"
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -725,7 +725,7 @@ export default function MenuAdminPage() {
                                     onChange={(e) => setForm((f) => ({ ...f, ingredients: e.target.value }))}
                                     placeholder={'鮮奶油\n乳酪\n雞蛋'}
                                     rows={3}
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent resize-none"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent resize-none"
                                 />
                             </div>
 
@@ -739,7 +739,7 @@ export default function MenuAdminPage() {
                                     onChange={(e) => setForm((f) => ({ ...f, allergens: e.target.value }))}
                                     placeholder={'乳製品\n蛋\n堅果'}
                                     rows={2}
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent resize-none"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent resize-none"
                                 />
                             </div>
 
@@ -753,7 +753,7 @@ export default function MenuAdminPage() {
                                     value={form.storage_info}
                                     onChange={(e) => setForm((f) => ({ ...f, storage_info: e.target.value }))}
                                     placeholder="例：冷藏保存3日，食用前退冰10分鐘"
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -766,7 +766,7 @@ export default function MenuAdminPage() {
                                     <select
                                         value={form.delivery_type}
                                         onChange={(e) => setForm((f) => ({ ...f, delivery_type: e.target.value as DeliveryType }))}
-                                        className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                        className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                     >
                                         <option value="">未設定</option>
                                         <option value="pickup_only">限自取 pickup_only</option>
@@ -785,7 +785,7 @@ export default function MenuAdminPage() {
                                         placeholder="例：3"
                                         min={0}
                                         step={1}
-                                        className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                        className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                     />
                                 </div>
                             </div>
@@ -800,7 +800,7 @@ export default function MenuAdminPage() {
                                     onChange={(e) => setForm((f) => ({ ...f, gallery_urls: e.target.value }))}
                                     placeholder={'https://res.cloudinary.com/.../1.jpg\nhttps://res.cloudinary.com/.../2.jpg'}
                                     rows={2}
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent resize-none"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent resize-none"
                                 />
                             </div>
 
@@ -814,7 +814,7 @@ export default function MenuAdminPage() {
                                     value={form.included_items}
                                     onChange={(e) => setForm((f) => ({ ...f, included_items: e.target.value }))}
                                     placeholder="例：插卡、蠟燭、提袋"
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
 
@@ -828,7 +828,7 @@ export default function MenuAdminPage() {
                                         type="datetime-local"
                                         value={form.available_from}
                                         onChange={(e) => setForm((f) => ({ ...f, available_from: e.target.value }))}
-                                        className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                        className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                     />
                                 </div>
                                 <div>
@@ -839,7 +839,7 @@ export default function MenuAdminPage() {
                                         type="datetime-local"
                                         value={form.available_until}
                                         onChange={(e) => setForm((f) => ({ ...f, available_until: e.target.value }))}
-                                        className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                        className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                     />
                                 </div>
                             </div>
@@ -855,7 +855,7 @@ export default function MenuAdminPage() {
                                     onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
                                     placeholder="例：hokkaido-basque-cheesecake"
                                     maxLength={100}
-                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-none focus:border-moon-accent"
+                                    className="w-full px-3 py-2 bg-moon-black border border-moon-border text-moon-text text-sm focus:outline-hidden focus:border-moon-accent"
                                 />
                             </div>
                         </div>

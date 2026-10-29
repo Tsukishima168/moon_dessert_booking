@@ -162,7 +162,7 @@ export default function FaqPage() {
           <div className="flex justify-center mb-6">
             <Eyebrow bordered>FAQ · 常見問題</Eyebrow>
           </div>
-          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug">
+          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug sm:leading-9 lg:leading-10">
             訂購前想先確認的事，
             <br className="hidden sm:block" />
             我們整理在這裡。
