@@ -1,0 +1,5 @@
+/* 讓共用的 Universe rail 樣式（kiwimu-universe.css，五站 byte-identical，不能改）跟 globals.css 的自訂規則同在 utilities 層。
+   Tailwind 3 時兩份 CSS 都沒有分層，比的是 specificity 與順序（globals 在前、rail 在後）；
+   Tailwind 4 的未分層 CSS 會無條件勝過所有分層，rail 就會蓋過 globals 裡 specificity 比它高的規則
+   （例如手機版 .ku-universe-rail .ku-universe-rail__more 的 gap: 4px）。放進同一層就恢復原本的 cascade。 */
+@import './kiwimu-universe.css' layer(utilities);

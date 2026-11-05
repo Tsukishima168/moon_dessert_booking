@@ -33,7 +33,7 @@ interface ResolvedSettings {
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 const inputCls =
-  'w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-none focus:border-moon-accent';
+  'w-full bg-moon-black border border-moon-border px-4 py-3 text-moon-text focus:outline-hidden focus:border-moon-accent';
 
 const LINE_PAY_STATUS_OPTIONS: Array<{
   value: LinePayStatus;

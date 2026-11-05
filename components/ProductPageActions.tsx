@@ -111,7 +111,7 @@ export default function ProductPageActions({ item }: ProductPageActionsProps) {
           >
             <Minus size={14} className="text-moon-text" />
           </button>
-          <span className="px-4 text-sm text-moon-text min-w-[2.5rem] text-center">{quantity}</span>
+          <span className="px-4 text-sm text-moon-text min-w-10 text-center">{quantity}</span>
           <button
             type="button"
             aria-label={`增加 ${item.name} 數量`}

@@ -34,6 +34,8 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+    // Next 16 把 minimumCacheTTL 預設從 60 秒改成 4 小時；後台換圖後訪客要在 1 分鐘內看到新圖，維持原行為。
+    minimumCacheTTL: 60,
     // Cloudinary 優化設定
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],

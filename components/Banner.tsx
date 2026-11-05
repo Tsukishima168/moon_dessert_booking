@@ -54,8 +54,8 @@ export default function Banner() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         {banner.display_type === 'hero' && banner.image_url && <img src={banner.image_url} alt="" className="hidden size-24 shrink-0 rounded-xl object-cover sm:block" />}
         <div className="min-w-0 flex-1">
-          <h3 className="break-words text-lg font-semibold leading-relaxed">{banner.title}</h3>
-          {banner.description && <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-relaxed">{banner.description}</p>}
+          <h3 className="wrap-break-word text-lg font-semibold leading-relaxed">{banner.title}</h3>
+          {banner.description && <p className="mt-2 wrap-break-word whitespace-pre-wrap text-sm leading-relaxed">{banner.description}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
             {banner.details && <button type="button" onClick={() => { track('click'); setDetailsOpen(true) }} className="inline-flex min-h-11 items-center rounded-xl border border-current px-4">查看活動詳情</button>}
             {banner.promo_code && <button type="button" onClick={copy} className="inline-flex min-h-11 max-w-full flex-wrap items-center gap-2 rounded-xl border border-current px-4" aria-label={`複製優惠碼 ${banner.promo_code}`}><Copy size={16} /><span>複製優惠碼</span><code className="break-all">{banner.promo_code}</code></button>}
@@ -66,7 +66,7 @@ export default function Banner() {
       </div>
     </div>
     {detailsOpen && <PromotionDialog title={banner.title} description="活動條件與使用方式" onClose={() => setDetailsOpen(false)}>
-      <p className="break-words whitespace-pre-wrap text-base leading-loose">{banner.details}</p>
+      <p className="wrap-break-word whitespace-pre-wrap text-base leading-loose">{banner.details}</p>
       <div className="mt-6 flex flex-wrap gap-3">
         {banner.promo_code && <button type="button" className="promotion-primary max-w-full flex-wrap gap-2" onClick={copy}>複製優惠碼 <code className="break-all">{banner.promo_code}</code></button>}
         {banner.link_url && <Link href={banner.link_url} onClick={() => track('click')} className="promotion-secondary max-w-full"><span className="min-w-0 break-all">{banner.link_text || '立即查看'} →</span></Link>}

@@ -117,12 +117,12 @@ for (const origin of ['https://blog.kiwimu.com', 'https://shop.kiwimu.com.evil.i
 assert.equal(isSameOriginMutation(request('/api/admin/menu')), true);
 assert.equal(isSameOriginMutation(new Request('http://localhost:5226/api/admin/upload', { method: 'POST', headers: { origin: 'http://localhost:5226', 'Content-Type': 'multipart/form-data' } })), true);
 assert.equal(isSameOriginMutation(new Request('https://fixture.vercel.app/api/admin/menu', { method: 'POST', headers: { origin: 'https://fixture.vercel.app' } })), true);
-const middleware = load('middleware.ts', {
+const proxy = load('proxy.ts', {
   'next/server': next, '@supabase/ssr': { createServerClient() { throw new Error('Rejected request reached session'); } },
 });
 const cross = request('/api/admin/menu', 'POST', {}, 'https://blog.kiwimu.com');
 cross.headers.set('rsc', '1');
-assert.equal((await middleware.middleware(cross)).status, 403);
+assert.equal((await proxy.proxy(cross)).status, 403);
 
 const paymentTokens = load('src/lib/order-payment-token.ts', {}, env);
 const orderId = 'ORD-ABCDEF0123456789';
@@ -340,6 +340,7 @@ nativeRequire('next/dist/server/node-environment');
 const { after } = nativeRequire('next/server');
 const { AfterContext } = nativeRequire('next/dist/server/after/after-context');
 const { workAsyncStorage } = nativeRequire('next/dist/server/app-render/work-async-storage.external');
+const { workUnitAsyncStorage } = nativeRequire('next/dist/server/app-render/work-unit-async-storage.external');
 const linkageCache = new Map(), sharedGlobals = {}, discordRequests = [], memberEvents = [];
 let emailEvents = 0, discordMode = 'ok';
 const linkageEnv = { ...env, DISCORD_TOKEN: 'offline-only-fixture-token', DISCORD_ORDER_CHANNEL_ID: 'fixture-channel' };
@@ -393,9 +394,11 @@ const linkedRoute = load('app/api/order/route.ts', {
 let closeResponse;
 const pendingTasks = [], taskErrors = [];
 const afterContext = new AfterContext({ waitUntil: task => pendingTasks.push(task), onClose: fn => { closeResponse = fn; }, onTaskError: error => taskErrors.push(error) });
-response = await workAsyncStorage.run({ afterContext }, () => linkedRoute.POST(request('/api/order', 'POST', {
+// Next 16 的 after() 除了 workStore 還要求 workUnitStore（請求階段），否則當成「不在請求範圍」而丟錯。
+const requestStore = { type: 'request', phase: 'action' };
+response = await workAsyncStorage.run({ afterContext }, () => workUnitAsyncStorage.run(requestStore, () => linkedRoute.POST(request('/api/order', 'POST', {
   ...orderInput, mbti_type: attribution.mbti, source_from: attribution.from, utm_source: attribution.utm_source,
-})));
+}))));
 assert.equal(response.status, 200);
 assert.equal(persisted.mbti_type, 'ESTJ-A');
 assert.equal(persisted.from_mbti_test, true);

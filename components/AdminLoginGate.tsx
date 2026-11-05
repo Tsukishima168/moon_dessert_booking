@@ -59,7 +59,7 @@ export default function AdminLoginGate() {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="密碼"
                         autoFocus
-                        className="w-full bg-moon-dark border border-moon-border px-4 py-3 text-white text-sm focus:border-moon-accent outline-none transition-colors"
+                        className="w-full bg-moon-dark border border-moon-border px-4 py-3 text-white text-sm focus:border-moon-accent outline-hidden transition-colors"
                     />
 
                     {error && (

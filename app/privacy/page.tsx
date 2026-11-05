@@ -60,7 +60,7 @@ export default function PrivacyPage() {
           <div className="flex justify-center mb-6">
             <Eyebrow bordered>PRIVACY · 隱私權政策</Eyebrow>
           </div>
-          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug">
+          <h1 className="brand-display text-2xl sm:text-3xl lg:text-4xl mb-6 leading-snug sm:leading-9 lg:leading-10">
             隱私權政策
           </h1>
           <p className="brand-body text-sm sm:text-base text-moon-text/90 max-w-2xl mx-auto">
