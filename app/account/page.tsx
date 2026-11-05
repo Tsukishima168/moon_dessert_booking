@@ -464,7 +464,7 @@ export default function AccountPage() {
                     className="border-moon-border bg-moon-dark/80 text-moon-muted"
                   />
                   <p className="text-xs text-moon-muted">
-                    Email 由登入帳號提供，這一輪不開放在前台直接修改。
+                    Email 由登入帳號提供，無法在此修改。
                   </p>
                 </div>
               </div>

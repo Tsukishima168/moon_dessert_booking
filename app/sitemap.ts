@@ -3,8 +3,11 @@ import { getMenuItems } from '@/lib/supabase';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = 'https://shop.kiwimu.com';
-    const coreLastModified = new Date('2026-05-06');
-    const contentLastModified = new Date('2026-07-10');
+    // lastmod 不再寫死日期（2026-10-27 內容檢核 O8：核心頁停在 5/6、內容頁停在 7/10，之後文案與商品都改過）。
+    // 這份 sitemap 是建置時產生的靜態檔，所以取「建置（部署）當下」的時間：每次部署都會更新。
+    const buildTime = new Date();
+    const coreLastModified = buildTime;
+    const contentLastModified = buildTime;
 
     const staticEntries: MetadataRoute.Sitemap = [
         {

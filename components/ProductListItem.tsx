@@ -8,14 +8,15 @@ import type { MenuItemWithVariants } from '@/lib/supabase';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
 import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
-import { getDeliveryTypeLabel } from '@/lib/delivery-type';
+import { getDeliveryTypeLabel, isPickupOnlyItem } from '@/lib/delivery-type';
 
 interface ProductListItemProps {
   item: MenuItemWithVariants;
   displayOnly?: boolean; // 只展示，不開放預訂（例如飲料）
+  deliveryAvailable?: boolean; // 宅配總開關（/api/settings）；false 時不顯示「可宅配」，預設 true＝維持原行為
 }
 
-export default function ProductListItem({ item, displayOnly = false }: ProductListItemProps) {
+export default function ProductListItem({ item, displayOnly = false, deliveryAvailable = true }: ProductListItemProps) {
   const addItem = useCartStore((state) => state.addItem);
   const openCart = useCartStore((state) => state.openCart);
   // 只有價格 > 0 的規格可以線上訂購；0 元規格是門市限定。
@@ -58,8 +59,8 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
   };
 
   // 配送標示（P2-lite）
-  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type);
-  const isPickupOnly = item.delivery_type === 'pickup_only';
+  const deliveryLabel = getDeliveryTypeLabel(item.delivery_type, item.category, deliveryAvailable);
+  const isPickupOnly = isPickupOnlyItem(item.delivery_type, item.category);
   const productHref = `/product/${item.slug || item.id}`;
 
   // 是否為純展示（例如飲料）
@@ -107,7 +108,7 @@ export default function ProductListItem({ item, displayOnly = false }: ProductLi
           <div className="flex items-center gap-2">
             {deliveryLabel && (
               <span
-                className={`text-xs tracking-widest px-1.5 py-0.5 border hidden sm:inline ${isPickupOnly
+                className={`text-xs tracking-widest px-1.5 py-0.5 border ${isPickupOnly
                     ? 'border-moon-gold text-moon-gold'
                     : 'border-moon-border/60 text-moon-muted'
                   }`}

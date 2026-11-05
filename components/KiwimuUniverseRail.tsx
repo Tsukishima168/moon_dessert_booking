@@ -65,7 +65,7 @@ const UNIVERSE_SITES: ReadonlyArray<{
   { id: 'passport', label: 'Passport', descriptor: '會員護照', origin: 'https://passport.kiwimu.com/' },
   { id: 'map', label: 'Map', descriptor: '島嶼地圖', origin: 'https://map.kiwimu.com/' },
   { id: 'gacha', label: 'Gacha', descriptor: '遊戲中心', origin: 'https://gacha.kiwimu.com/' },
-  { id: 'shop', label: 'Shop', descriptor: '甜點預訂', origin: 'https://shop.kiwimu.com/' },
+  { id: 'shop', label: 'Shop', descriptor: '甜點預訂', origin: 'https://map.kiwimu.com/menu' },
 ];
 
 const MOBILE_MORE_SITES = new Set<KiwimuUniverseSiteId>(['map', 'gacha']);

@@ -7,6 +7,7 @@ import { productCategoryLabel } from '@/lib/product-copy';
 import ProductListItem from '@/components/ProductListItem';
 import ProductRow from '@/components/ProductRow';
 import { getOrderableVariants, isStoreOnlyCategory } from '@/lib/orderable';
+import { isDeliveryAvailableInSettings } from '@/lib/delivery-type';
 import Banner from '@/components/Banner';
 import { MenuSkeleton } from '@/components/ui/MenuSkeleton';
 import Reveal from '@/components/ui/Reveal';
@@ -44,6 +45,22 @@ function HomePageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  // 宅配總開關（/api/settings）：設定回來前先當作 false（不標「可宅配」，也不會閃出再消失）；
+  // 回來後只要 delivery_available 不是 false 就顯示。菜單不等這支 API，兩者各自獨立載入。
+  const [deliveryAvailable, setDeliveryAvailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/settings')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((settings: unknown) => {
+        if (active && settings !== null) setDeliveryAvailable(isDeliveryAvailableInSettings(settings));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // 前端搜尋過濾（不重新呼叫 API）
   const filteredMenuItems = searchQuery.trim()
@@ -243,8 +260,8 @@ function HomePageContent() {
         {mbtiType && recommendedItems.length > 0 && (
           <section className="shop-recommendations">
             <h2>給 {mbtiType} 的口味靈感</h2><p>推薦只是起點，喜歡什麼口味由你決定。</p>
-            <div className="shop-product-list md:hidden">{recommendedItems.map(item => <ProductListItem key={item.id} item={item} />)}</div>
-            <div className="shop-product-list hidden md:block">{recommendedItems.map((item, i) => <ProductRow key={item.id} item={item} index={i} />)}</div>
+            <div className="shop-product-list md:hidden">{recommendedItems.map(item => <ProductListItem key={item.id} item={item} deliveryAvailable={deliveryAvailable} />)}</div>
+            <div className="shop-product-list hidden md:block">{recommendedItems.map((item, i) => <ProductRow key={item.id} item={item} index={i} deliveryAvailable={deliveryAvailable} />)}</div>
           </section>
         )}
 
@@ -253,8 +270,8 @@ function HomePageContent() {
         {filteredMenuItems.length === 0 && searchQuery && <div className="shop-no-results"><p>沒有找到這個口味。</p><button type="button" onClick={() => setSearchQuery('')}>查看全部甜點</button></div>}
         {categories.length === 0 ? (
           <>
-            <div className="shop-product-list md:hidden">{filteredMenuItems.map(item => <ProductListItem key={item.id} item={item} />)}</div>
-            <div className="shop-product-list hidden md:block">{filteredMenuItems.map((item, i) => <ProductRow key={item.id} item={item} index={i} />)}</div>
+            <div className="shop-product-list md:hidden">{filteredMenuItems.map(item => <ProductListItem key={item.id} item={item} deliveryAvailable={deliveryAvailable} />)}</div>
+            <div className="shop-product-list hidden md:block">{filteredMenuItems.map((item, i) => <ProductRow key={item.id} item={item} index={i} deliveryAvailable={deliveryAvailable} />)}</div>
           </>
         ) : (
           <div className="shop-categories">{categories.map(category => {
@@ -264,8 +281,8 @@ function HomePageContent() {
             return (
               <Reveal key={category.id} className="shop-category-section">
                 <div id={`category-${category.id}`} className="shop-category-title"><h3>{categoryLabel(category)}</h3><span>{categoryItems.length} 款</span></div>
-                <div className="shop-product-list md:hidden">{categoryItems.map(item => <ProductListItem key={item.id} item={item} displayOnly={isDrinkCategory} />)}</div>
-                <div className="shop-product-list hidden md:block">{categoryItems.map((item, i) => <ProductRow key={item.id} item={item} displayOnly={isDrinkCategory} index={i} />)}</div>
+                <div className="shop-product-list md:hidden">{categoryItems.map(item => <ProductListItem key={item.id} item={item} displayOnly={isDrinkCategory} deliveryAvailable={deliveryAvailable} />)}</div>
+                <div className="shop-product-list hidden md:block">{categoryItems.map((item, i) => <ProductRow key={item.id} item={item} displayOnly={isDrinkCategory} index={i} deliveryAvailable={deliveryAvailable} />)}</div>
               </Reveal>
             );
           })}</div>

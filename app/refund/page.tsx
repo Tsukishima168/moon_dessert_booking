@@ -4,11 +4,11 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import SectionHeading from '@/components/ui/SectionHeading';
 
 export const metadata: Metadata = {
-  title: '退換貨政策｜月島甜點',
+  title: '退換貨政策',
   description: '月島甜點取消、更改訂單、商品問題與退款進度的聯絡及申請方式。',
   alternates: { canonical: '/refund' },
   openGraph: {
-    title: '退換貨政策｜月島甜點 | MOON MOON 月島甜點',
+    title: '退換貨政策 | MOON MOON 月島甜點',
     description: '取消、更改訂單與商品問題的聯絡方式。',
     url: 'https://shop.kiwimu.com/refund',
     type: 'article',
