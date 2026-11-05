@@ -41,6 +41,10 @@ export interface LinePayRequestBody {
     display?: {
       locale?: 'zh_TW' | 'en' | 'ja';
     };
+    extra?: {
+      branchName?: string;    // 商家後台「分店名稱」欄，用來分辨同一商店下的不同站
+      branchId?: string;
+    };
   };
 }
 
