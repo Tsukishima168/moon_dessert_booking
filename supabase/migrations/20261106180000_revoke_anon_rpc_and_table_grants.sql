@@ -29,7 +29,9 @@
 --       daily_checkins    passport src/lib/checkinService.ts：SELECT（:44）與 upsert（:78，onConflict device_id,checked_in_at）
 --       mbti_claims       kiwimu utils/mbtiClaim.ts:33：insert；核銷走 SECURITY DEFINER 的 consume_mbti_claim()
 --       line_pay_orders   kiwimu server/linePayOrderStore.ts：getUserAdminDb()（service role）
---       quest_completions、special_eggs：沒有任何 repo 的程式讀寫
+--       quest_completions、special_eggs：沒有任何 repo 的 origin/main 程式讀寫
+--       （special_eggs 在 pg_stat_statements 有 anon 5 次、authenticated 2 次 UPDATE claimed_count，
+--        來源是 map 的情人節彩蛋，該段程式已在 map da89b77（2026-02-14）移除，目前沒有呼叫端）
 --
 -- 這支 migration 做的事（全部在同一個 transaction，可重複執行）：
 --   [1] insert_user_event_for_user：從 PUBLIC、anon、authenticated 收回 EXECUTE，只留 service_role。
