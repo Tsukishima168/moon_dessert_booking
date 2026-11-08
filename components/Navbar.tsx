@@ -10,8 +10,7 @@ import { LogOut, ShoppingCart, User } from 'lucide-react';
 import KiwimuUniverseRail, { readSupabaseLoginStatus } from '@/components/KiwimuUniverseRail';
 import type { KiwimuUniverseNavigationDetails } from '@/components/KiwimuUniverseRail';
 import ThemeToggle from '@/components/ThemeToggle';
-import { clearServerSession, getResolvedUser } from '@/lib/client-auth';
-import { supabase } from '@/lib/supabase';
+import { hasStoredAuthSessionHint } from '@/lib/auth-cookie-hint';
 import { openPassportLogin, PASSPORT_AUTH_COMPLETE_EVENT } from '@/src/lib/auth-storage';
 import { trackShopEvent } from '@/lib/shop-analytics';
 import { useCartStore } from '@/store/cartStore';
@@ -21,7 +20,13 @@ const trackUniverseNav = (eventName: 'universe_nav_click', details: KiwimuUniver
   trackShopEvent(eventName, { ...details });
 };
 // login_status 只讀 session 狀態，不走 getResolvedUser（它會同步 server session、送 site_visited，有副作用）。
-const getUniverseLoginStatus = () => readSupabaseLoginStatus(supabase);
+// supabase-js（約 62 KB gzip）不再隨每一頁載入：沒有 session cookie 的訪客一定是 anonymous
+// （getSession 在沒有儲存的 session 時回 null），不需要載入 SDK；有 cookie 才動態載入照舊查詢。
+const getUniverseLoginStatus = async () => {
+  if (!hasStoredAuthSessionHint()) return 'anonymous' as const;
+  const { supabase } = await import('@/lib/supabase');
+  return readSupabaseLoginStatus(supabase);
+};
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -36,7 +41,29 @@ export default function Navbar() {
 
   const isAdminRoute = pathname?.startsWith('/admin');
 
+  // supabase-js 延後到「確實需要」才載入（見 hasStoredAuthSessionHint）：
+  // 有 session cookie、或使用者剛完成 Passport 登入時才 import；匿名訪客的頁面不下載它。
+  const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const authSubscribePromiseRef = useRef<Promise<void> | null>(null);
+
+  const ensureAuthSubscription = useCallback(() => {
+    if (!authSubscribePromiseRef.current) {
+      const pending = import('@/lib/supabase').then(({ supabase }) => {
+        // 若 effect 已清理（authSubscribePromiseRef 被清掉），就不要再訂閱。
+        if (authSubscribePromiseRef.current !== pending) return;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          setCurrentUser(session?.user ?? null);
+          setAuthReady(true);
+        });
+        authSubscriptionRef.current = subscription;
+      });
+      authSubscribePromiseRef.current = pending;
+    }
+    return authSubscribePromiseRef.current;
+  }, []);
+
   const restoreAuth = useCallback(async () => {
+    const { getResolvedUser } = await import('@/lib/client-auth');
     const user = await getResolvedUser();
     setCurrentUser(user);
     setAuthReady(true);
@@ -46,25 +73,30 @@ export default function Navbar() {
   useEffect(() => {
     setHasHydrated(true);
 
-    void restoreAuth();
+    // 沒有 session cookie：確定是訪客，直接顯示登入鈕，不載入 supabase-js。
+    // 之後若使用者從 Passport 登入完成，由下面的 handlePassportComplete 再載入（與原本一樣只靠這個事件接上）。
+    if (hasStoredAuthSessionHint()) {
+      void restoreAuth();
+      void ensureAuthSubscription();
+    } else {
+      setAuthReady(true);
+    }
 
     const handlePassportComplete = () => {
       setAuthError(null);
+      void ensureAuthSubscription();
       void restoreAuth().then(() => router.refresh());
     };
 
     window.addEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUser(session?.user ?? null);
-      setAuthReady(true);
-    });
-
     return () => {
       window.removeEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
-      subscription.unsubscribe();
+      authSubscribePromiseRef.current = null;
+      authSubscriptionRef.current?.unsubscribe();
+      authSubscriptionRef.current = null;
     };
-  }, [restoreAuth, router]);
+  }, [ensureAuthSubscription, restoreAuth, router]);
 
   const totalItems = hasHydrated ? getTotalItems() : 0;
 
@@ -86,6 +118,10 @@ export default function Navbar() {
     try {
       setLoggingOut(true);
       setAuthError(null);
+      const [{ clearServerSession }, { supabase }] = await Promise.all([
+        import('@/lib/client-auth'),
+        import('@/lib/supabase'),
+      ]);
       if (!await clearServerSession()) throw new Error('server_logout_failed');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -110,6 +146,8 @@ export default function Navbar() {
 
     setAuthLoginBusy(true);
     setAuthError(null);
+    // 登入視窗開著的這段時間先把 auth 模組預熱，登入完成後 restoreAuth 不必再等下載。
+    void import('@/lib/client-auth');
     openPassportLogin({
       returnTo: window.location.href,
       intent: 'shop_navbar_login',
