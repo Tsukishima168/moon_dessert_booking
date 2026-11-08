@@ -74,7 +74,8 @@ export default function Navbar() {
     setHasHydrated(true);
 
     // 沒有 session cookie：確定是訪客，直接顯示登入鈕，不載入 supabase-js。
-    // 之後若使用者從 Passport 登入完成，由下面的 handlePassportComplete 再載入（與原本一樣只靠這個事件接上）。
+    // 之後有兩條路接上：Passport 登入完成事件（handlePassportComplete），或分頁重新可見／取得焦點時
+    // 發現 cookie 出現（別的分頁／網站登入後回來；原本由 auth-js 的 visibilitychange 重讀 cookie 觸發 SIGNED_IN）。
     if (hasStoredAuthSessionHint()) {
       void restoreAuth();
       void ensureAuthSubscription();
@@ -88,10 +89,22 @@ export default function Navbar() {
       void restoreAuth().then(() => router.refresh());
     };
 
+    // 尚未連上 supabase（authSubscribePromiseRef 為空）而 cookie 已出現，才補連線；連上後交給 auth-js 自己處理。
+    const handleReturn = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (authSubscribePromiseRef.current || !hasStoredAuthSessionHint()) return;
+      void ensureAuthSubscription();
+      void restoreAuth();
+    };
+
     window.addEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
+    document.addEventListener('visibilitychange', handleReturn);
+    window.addEventListener('focus', handleReturn);
 
     return () => {
       window.removeEventListener(PASSPORT_AUTH_COMPLETE_EVENT, handlePassportComplete);
+      document.removeEventListener('visibilitychange', handleReturn);
+      window.removeEventListener('focus', handleReturn);
       authSubscribePromiseRef.current = null;
       authSubscriptionRef.current?.unsubscribe();
       authSubscriptionRef.current = null;
