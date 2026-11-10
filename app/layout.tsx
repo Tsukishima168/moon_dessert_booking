@@ -12,7 +12,7 @@ import FacebookPixel from '@/components/FacebookPixel';
 import AttributionSync from '@/components/AttributionSync';
 import { serializeJsonLd } from '@/lib/json-ld';
 
-// Inter 只當西文與數字後備；主字體堆疊（Noto Sans TC 優先）定義在 app/globals.css 的 --font-sans。
+// Inter 只當西文與數字後備；主字體堆疊（系統中文字優先）定義在 app/globals.css 的 --font-sans。
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter-latin', display: 'swap' });
 
 // 網站基本資訊（計畫1：安南區・果菜市場・本原街在地）
@@ -202,15 +202,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#1F2F1F" />
 
-        {/* Noto Sans TC：shop 自己載入一次（範圍字重 300..700，一個 variable 檔涵蓋整段；300 給 brand-display 等原本的細字重）。Universe rail kit 不載字體。 */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* App Router 的 root layout <head> 就是這條規則（本來針對 pages/_document）想要的位置，字體會套用到全站，不是單頁。 */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300..700&display=swap"
-        />
+        {/* 中文字型用手機／系統內建字（-apple-system、PingFang TC 等），不再下載網路中文字型。堆疊定義在 app/globals.css 的 --font-sans；Universe rail kit 不載字體。 */}
 
         {/*
           gtag stub — 定義 window.dataLayer / window.gtag，跟正式網域判斷完全脫鉤。

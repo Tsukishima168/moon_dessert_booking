@@ -122,7 +122,7 @@ export async function sendCustomerEmail(data: {
   const emailHtml = `<!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f5f0e8;color:#1f2f1f;">
-  <div style="font-family:'Noto Sans TC',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;line-height:1.8;">
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'PingFang TC','Heiti TC','Noto Sans CJK TC','Microsoft JhengHei',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;line-height:1.8;">
     <h1 style="margin:0 0 24px;font-size:24px;color:#1f3527;">${escapeEmailText(storeName)} 訂單確認</h1>
     <p>我們已收到您的預訂，請核對以下內容。</p>
     <div style="background:#fffdf8;border:1px solid #d8d7c4;border-radius:12px;padding:20px;">
