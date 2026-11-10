@@ -18,7 +18,7 @@ export function orderCancelledTemplate({ customerName, orderNumber, reason }: Or
 <html lang="zh-TW">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f5f0e8;">
-  <div style="font-family:'Noto Sans TC',Arial,sans-serif;max-width:600px;margin:0 auto;background:#f5f0e8;color:#1f2f1f;padding:40px 32px;">
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'PingFang TC','Heiti TC','Noto Sans CJK TC','Microsoft JhengHei',Arial,sans-serif;max-width:600px;margin:0 auto;background:#f5f0e8;color:#1f2f1f;padding:40px 32px;">
 
     <h1 style="color:#795b23;font-weight:600;letter-spacing:0.3em;font-size:20px;margin:0 0 32px;text-align:center;">
       MOON MOON

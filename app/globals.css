@@ -395,9 +395,9 @@
      目前靠這段（utilities 層）勝出才有正確的值。這段不能刪，也不能搬到 theme 層之前，否則全站字體和 rounded-md 會一起失效。
      要改名的話，@theme inline、components/ui/button.tsx 的 var(--radius-md)、本檔所有 var(--font-sans) 三處要一起改。 */
   :root {
-    /* 字體堆疊只有一套：Noto Sans TC 優先（由 layout <head> 的 Google Fonts <link> 載入），
+    /* 字體堆疊只有一套：手機／系統內建中文字優先（不再下載網路中文字型），
        Inter（next/font，--font-inter-latin 由 <html> 提供）只當西文與數字的後備。 */
-    --font-sans: 'Noto Sans TC', var(--font-inter-latin, 'Inter'), system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "PingFang TC", "Heiti TC", "Noto Sans CJK TC", "Microsoft JhengHei", var(--font-inter-latin, 'Inter'), system-ui, sans-serif;
     --radius: 0.75rem;
     --radius-md: 0.625rem;
     /* moon-* token 名稱是歷史命名，與實際色值不一致；用的時候請看「角色」欄，不要看字面。
@@ -858,6 +858,8 @@
   :root { --ku-nav-z: 35; }
   /* 共用 rail 不繼承 shop body 的 0.02em 字距：320 寬時「更多」等入口會因此換行，rail 變 71px 高。 */
   .ku-universe-rail { letter-spacing: normal; }
+  /* rail kit（byte-identical，不能改）把 --ku-nav-font 設成 "Noto Sans TC"；站上已不載入它，這裡用 aside. 提高優先度（kit 與本檔同層、同優先度且排在後面）改成系統中文堆疊。 */
+  aside.ku-universe-rail { --ku-nav-font: -apple-system, BlinkMacSystemFont, "PingFang TC", "Heiti TC", "Noto Sans CJK TC", "Microsoft JhengHei", system-ui, sans-serif; }
   @media (max-width: 640px) { .ku-universe-rail .ku-universe-rail__more { gap: 4px; } }
   /* 導覽列桌機時貼在 sticky rail 下方（rail ≤640 是 relative，導覽列自己 top-0）。 */
   @media (min-width: 641px) { .ku-universe-rail + .shop-navbar { top: var(--ku-rail-height); } }
