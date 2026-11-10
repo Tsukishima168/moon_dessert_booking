@@ -395,9 +395,10 @@
      目前靠這段（utilities 層）勝出才有正確的值。這段不能刪，也不能搬到 theme 層之前，否則全站字體和 rounded-md 會一起失效。
      要改名的話，@theme inline、components/ui/button.tsx 的 var(--radius-md)、本檔所有 var(--font-sans) 三處要一起改。 */
   :root {
-    /* 字體堆疊只有一套：手機／系統內建中文字優先（不再下載網路中文字型），
-       Inter（next/font，--font-inter-latin 由 <html> 提供）只當西文與數字的後備。 */
-    --font-sans: -apple-system, BlinkMacSystemFont, "PingFang TC", "Heiti TC", "Noto Sans CJK TC", "Microsoft JhengHei", var(--font-inter-latin, 'Inter'), system-ui, sans-serif;
+    /* 字體堆疊只有一套：西文與數字用 Inter（next/font，--font-inter-latin 由 <html> 提供，已經下載，
+       放最前面才會被用到，各平台英數字也一致；Inter 沒有中文字，中文會落到後面的手機／系統內建中文字），
+       不再下載網路中文字型。 */
+    --font-sans: var(--font-inter-latin, 'Inter'), -apple-system, BlinkMacSystemFont, "PingFang TC", "Heiti TC", "Noto Sans CJK TC", "Microsoft JhengHei", system-ui, sans-serif;
     --radius: 0.75rem;
     --radius-md: 0.625rem;
     /* moon-* token 名稱是歷史命名，與實際色值不一致；用的時候請看「角色」欄，不要看字面。
