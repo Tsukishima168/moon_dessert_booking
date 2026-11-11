@@ -2,6 +2,9 @@
   "name": "dessert-booking",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -41,7 +44,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^20.11.0",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "dotenv": "^17.3.1",
@@ -54,6 +57,9 @@
   "overrides": {
     "next": {
       "postcss": "^8.5.14"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
     }
   }
 }
